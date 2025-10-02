@@ -1,0 +1,86 @@
+import esbuild from 'esbuild';
+import fs from 'fs';
+import path from 'path';
+
+fs.rmSync('modules', { recursive: true, force: true });
+fs.mkdirSync('modules');
+
+const entryPoints = {
+	// process: '../lib/internal/process.js',
+	async_hooks: '../lib/internal/async_hooks.js',
+	assert: '../lib/assert.js',
+	buffer: '../lib/buffer.js',
+	console: '../lib/console.js',
+	constants: '../lib/constants.js',
+	crypto: '../lib/crypto.js',
+	events: '../lib/events.js',
+	http: '../lib/http.js',
+	https: '../lib/https.js',
+	fs: '../lib/fs.js',
+	os: '../lib/os.js',
+	querystring: '../lib/querystring.js',
+	stream: '../lib/stream.js',
+	string_decoder: '../lib/string_decoder.js',
+	diagnostics_channel: '../lib/diagnostics_channel.js',
+	timers: '../lib/timers.js',
+	'timers/promises': '../lib/timers/promises.js',
+	tty: '../lib/tty.js',
+	url: '../lib/url.js',
+	perf_hooks: '../lib/perf_hooks.js',
+	util: '../lib/util.js',
+	"util/types": '../lib/internal/util/types.js',
+	zlib: '../lib/zlib.js',
+	'stream/web': '../lib/stream/web.js',
+	vm: '../lib/vm.js',
+	// module: '../lib/module.js',
+	child_process: '../lib/child_process.js',
+	net: '../lib/net.js',
+	tls: '../lib/tls.js',
+	worker_threads: '../lib/worker_threads.js',
+	dns: '../lib/dns.js',
+	http2: '../lib/http2.js',
+	v8: '../lib/v8.js',
+	readline: '../lib/readline.js',
+	'readline/promises': '../lib/readline/promises.js',
+	path: '../lib/path.js',
+	'path/posix': '../lib/path/posix.js',
+	'path/win32': '../lib/path/win32.js',
+	// 'assert/strict': '.build-tmp/assert-strict.js',
+	// 'dns/promises': '.build-tmp/dns-promises.js',
+	// 'util/types': '.build-tmp/util-types.js',
+};
+
+const nodePolyfillPlugin = {
+	name: 'node-polyfill',
+	setup(build) {
+		const nodeBuiltins = Object.keys(entryPoints);
+		const filter = new RegExp(`^(node:)?(${nodeBuiltins.join('|')})$`);
+		build.onResolve({ filter }, (args) => {
+			const modulePath = args.path.startsWith('node:')
+				? args.path.slice(5)
+				: args.path;
+			if (entryPoints[modulePath]) {
+				return { path: path.resolve(entryPoints[modulePath]) };
+			}
+		});
+	},
+};
+
+esbuild
+	.build({
+		entryPoints,
+		bundle: true,
+		outdir: './modules',
+		format: 'esm',
+		platform: 'browser',
+		splitting: true,
+		plugins: [nodePolyfillPlugin],
+		define: {
+			process: 'globalThis.process',
+		},
+	})
+	.catch(() => process.exit(1))
+	.finally(() => {
+		// Clean up temporary files
+		fs.rmSync('.build-tmp', { recursive: true, force: true });
+	});
