@@ -495,6 +495,13 @@ export class InMemoryFileSystem {
     lstatSync(path) {
         return this.statSync(path);
     }
+    fstatSync(fd, options = { bigint: false }) {
+        const openFile = this.openFiles.get(fd);
+        if (!openFile) {
+            throw new Error(`EBADF: bad file descriptor, fstat`);
+        }
+        return new Stats(openFile.node);
+    }
     unlinkSync(path) {
         const result = this.walk(path);
         const { parent, node, name, blockedBy, missingParent } = result;

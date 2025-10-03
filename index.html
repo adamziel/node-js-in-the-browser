@@ -459,11 +459,17 @@
 				rmdir(path, options) {
 					return globalFs.rmdirSync(path, options);
 				},
-				stat(path) {
-					return globalFs.statSync(path);
-				},
-				lstat(path) {
-					return globalFs.lstatSync(path);
+			stat(path) {
+				return globalFs.statSync(path);
+			},
+			lstat(path) {
+				return globalFs.lstatSync(path);
+			},
+			fstat(fd, useBigint, callback) {
+				return Promise.resolve(globalFs.fstatSync(fd));
+			},
+				fsSync(path) {
+					return globalFs.fsSync(path);
 				},
 				unlink(path) {
 					return globalFs.unlinkSync(path);
