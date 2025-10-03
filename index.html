@@ -434,12 +434,25 @@
 				existsSync(path) {
 					return globalFs.existsSync(path);
 				},
-				mkdir(path, options, recursive, kUsePromises) {
-					if(kUsePromises) {//} === globalThis.internalModules.fs.kUsePromises) {
-						return Promise.resolve(globalFs.mkdirSync(path, options));
-					}
-					return globalFs.mkdirSync(path, options);
-				},
+			mkdir(path, options, recursive, kUsePromises) {
+				// Properly merge options and recursive parameter
+				let finalOptions = options;
+				if (typeof options === 'number') {
+					// If options is a number, it's the mode
+					finalOptions = { mode: options, recursive: recursive };
+				} else if (options && typeof options === 'object') {
+					// If options is an object, merge in the recursive parameter
+					finalOptions = { ...options, recursive: recursive };
+				} else if (recursive !== undefined) {
+					// If only recursive is provided
+					finalOptions = { recursive: recursive };
+				}
+				
+				if(kUsePromises) {
+					return Promise.resolve(globalFs.mkdirSync(path, finalOptions));
+				}
+				return globalFs.mkdirSync(path, finalOptions);
+			},
 				close(fd) {
 					return globalFs.closeSync(fd);
 				},
@@ -1875,7 +1888,7 @@
 			// works!
 			// process.argv = ["node", "npm", "init"];
 
-			process.argv = ["node", "npm", "install", "--force"];
+			process.argv = ["node", "npm", "install"];
 			process.argc = process.argv.length;
 			const args = process.argv;
 
