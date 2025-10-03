@@ -771,6 +771,49 @@ export class InMemoryFileSystem {
 			return -1;
 		}
 	}
+
+	writeFileUtf8(path, data, mode) {
+		try {
+			// Convert string to UTF-8 bytes
+			const bytes = toUint8Array(data, 'utf8');
+			
+			const result = this.walk(path);
+			if (result.blockedBy) {
+				throw new Error(`ENOTDIR: not a directory, open '${path}'`);
+			}
+			if (result.missingParent) {
+				throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+			}
+			if (!result.parent) {
+				throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+			}
+
+			const { parent, node, name } = result;
+			if (node && node.type === 'dir') {
+				throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+			}
+
+			if (node && node.type === 'file') {
+				// Update existing file
+				node.content = bytes;
+				if (mode !== undefined) {
+					node.mode = mode;
+				}
+				updateTimestamps(node, 'modify');
+				updateDirectoryTimestamp(parent);
+				return;
+			}
+
+			// Create new file
+			const fileNode = createFileNode(bytes, mode !== undefined ? mode : DEFAULT_FILE_MODE);
+			parent.children.set(name, fileNode);
+			updateDirectoryTimestamp(parent);
+		} catch (err) {
+			console.error('writeFileUtf8 error:', err);
+			throw err;
+		}
+	}
+	
 }
 
 // Helper functions

@@ -153,6 +153,9 @@
 				writeBuffer(fd, buffer, offset, length, position) {
 					return globalFs.writeBuffer(fd, buffer, offset, length, position);
 				},
+				writeFileUtf8(path, data, options) {
+					return globalFs.writeFileUtf8(path, data, options);
+				},
 			},
 			mksnapshot: {
 				setSerializeCallback() {},
@@ -167,8 +170,29 @@
 				exitCodes: {}
 			},
 			string_decoder: {
-				// @TODO
-				encodings: {}
+				encodings: [
+					"ascii",
+					"utf8",
+					"base64",
+					"base64url",
+					"utf16le",
+					"hex",
+					"buffer",
+					"latin1",
+				],
+				kIncompleteCharactersStart: 0,
+				kIncompleteCharactersEnd: 4,
+				kMissingBytes: 4,
+				kBufferedBytes: 5,
+				kEncodingField: 6,
+				kNumFields: 7,
+				kSize: 2048,
+				decode: (buffer, encoding, options) => {
+					return buffer.toString(encoding, options);
+				},
+				flush: (buffer) => {
+					return buffer.toString();
+				}
 			},
 			buffer: {},
 			types: {},
@@ -785,6 +809,28 @@
 		const stream = await import("./modules/stream.js");
 		globalThis.coreModules.stream = stream.default;
 
+		globalThis.process.stdout = new stream.default.Writable({
+			write(chunk, encoding, callback) {
+				console.log(chunk);
+				callback();
+			},
+		});
+		globalThis.process.stderr = new stream.default.Writable({
+			write(chunk, encoding, callback) {
+				console.log(new TextDecoder().decode(chunk));
+				callback();
+			},
+		});
+		globalThis.process.stdin = new stream.default.Readable({
+			read(size) {
+				console.log(size);
+				return null;
+			},
+		});
+		await import("./modules/boot.js");
+		globalThis.process.stdin.setEncoding("utf-8");
+		globalThis.process.stdin.resume();
+
 		const blob = await import("./modules/blob.js");
 		globalThis.coreModules.blob = blob.default;
 
@@ -834,6 +880,7 @@
 		// const workerThreads = await import("./modules/worker_threads.js");
 		// console.log(workerThreads.default);
 		
+
 		const { Module } = await import("./src/module.js");
 
 		function myNodeModule() {

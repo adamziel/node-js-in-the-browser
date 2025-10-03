@@ -6,6 +6,7 @@ fs.rmSync('modules', { recursive: true, force: true });
 fs.mkdirSync('modules');
 
 const entryPoints = {
+	boot: './to-modularize/boot.js',
 	primordials: '../lib/internal/per_context/primordials.js',
 	realm: '../lib/internal/bootstrap/realm.js',
 	async_hooks: '../lib/internal/async_hooks.js',
