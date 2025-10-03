@@ -4957,9 +4957,15 @@ var require_from_url = __commonJS({
       if (!parsed) {
         return;
       }
+      console.log(parsed);
+      try {
       const gitHostShortcut = gitHosts.byShortcut[parsed.protocol];
       const gitHostDomain = gitHosts.byDomain[parsed.hostname.startsWith("www.") ? parsed.hostname.slice(4) : parsed.hostname];
       const gitHostName = gitHostShortcut || gitHostDomain;
+      } catch (err) {
+        console.trace(err);
+        throw err;
+      }
       if (!gitHostName) {
         return;
       }

@@ -168,10 +168,19 @@ export class InternalFileHandle {
 	}
 
 	close() {
-		if (this.fd !== undefined) {
-			this.fs.closeSync(this.fd);
-			this.fd = undefined;
-		}
+		return new Promise((resolve, reject) => {
+			if (this.fd !== undefined) {
+				try {
+					this.fs.closeSync(this.fd);
+					this.fd = undefined;
+					resolve();
+				} catch (error) {
+					reject(error);
+				}
+			} else {
+				resolve();
+			}
+		});
 	}
 
 	read(buffer, offset, length, position) {
@@ -716,20 +725,38 @@ export class InMemoryFileSystem {
         if (!openFile) {
             throw new Error(`EBADF: bad file descriptor, read`);
         }
-        const readPosition = position !== null && position !== undefined
+        // Node.js uses -1 or null to mean "use current position"
+        const readPosition = (position !== null && position !== undefined && position >= 0)
             ? position
             : openFile.position;
         const { node: fileNode } = openFile;
         const availableBytes = Math.max(0, fileNode.content.length - readPosition);
-        const bytesToRead = Math.min(length, availableBytes);
+	const bytesToRead = Math.min(length, availableBytes);
         if (bytesToRead > 0) {
             buffer.set(fileNode.content.subarray(readPosition, readPosition + bytesToRead), offset);
-            if (position === null || position === undefined) {
+            // Only update position if using current position (not absolute position)
+            if (position === null || position === undefined || position < 0) {
                 openFile.position = readPosition + bytesToRead;
             }
-        }
+	}
+	
         updateTimestamps(fileNode, 'access');
         return bytesToRead;
+    }
+    read(fd, buffer, offset, length, position, callback) {
+        try {
+            const bytesRead = this.readSync(fd, buffer, offset, length, position);
+            if (callback) {
+                // Async-style callback with (error, bytesRead, buffer)
+                setImmediate(() => callback(null, bytesRead, buffer));
+            }
+            return bytesRead;
+        } catch (err) {
+            if (callback) {
+                setImmediate(() => callback(err));
+            }
+            throw err;
+        }
     }
     writeSync(fd, data, offsetOrPos, lengthOrEnc, position) {
         var _a, _b;
@@ -739,6 +766,7 @@ export class InMemoryFileSystem {
         }
         let buffer;
         let writePosition;
+        let useAbsolutePosition = false;
         if (typeof data === 'string') {
             const encoding = (_a = lengthOrEnc) !== null && _a !== void 0 ? _a : 'utf8';
             buffer = toUint8Array(data, encoding);
@@ -750,8 +778,11 @@ export class InMemoryFileSystem {
             buffer = data.subarray(offset, offset + length);
             writePosition = position;
         }
-        if (writePosition === null || writePosition === undefined) {
+        // Node.js uses -1 or null to mean "use current position"
+        if (writePosition === null || writePosition === undefined || writePosition < 0) {
             writePosition = openFile.position;
+        } else {
+            useAbsolutePosition = true;
         }
         const { node: fileNode } = openFile;
         const originalContent = fileNode.content;
@@ -765,7 +796,10 @@ export class InMemoryFileSystem {
         else {
             originalContent.set(buffer, writePosition);
         }
-        openFile.position = writePosition + buffer.length;
+        // Only update file position if not using absolute position
+        if (!useAbsolutePosition) {
+            openFile.position = writePosition + buffer.length;
+        }
         updateTimestamps(fileNode, 'modify');
         return buffer.length;
     }
@@ -967,10 +1001,206 @@ export class InMemoryFileSystem {
 			parent.children.set(name, fileNode);
 			updateDirectoryTimestamp(parent);
 		} catch (err) {
-			console.error('writeFileUtf8 error:', err);
-			throw err;
-		}
+		console.error('writeFileUtf8 error:', err);
+		throw err;
 	}
+}
+
+// Async wrappers for FSReqCallback pattern
+readFileAsync(path, options, req) {
+	setImmediate(() => {
+		try {
+			const result = this.readFileSync(path, options);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, result);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+writeFileAsync(path, data, options, req) {
+	setImmediate(() => {
+		try {
+			this.writeFileSync(path, data, options);
+			if (req && req.oncomplete) {
+				req.oncomplete(null);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+openAsync(path, flags, mode, req) {
+	setImmediate(() => {
+		try {
+			const fd = this.openSync(path, flags, mode);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, fd);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+closeAsync(fd, req) {
+	setImmediate(() => {
+		try {
+			this.closeSync(fd);
+			if (req && req.oncomplete) {
+				req.oncomplete(null);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+readAsync(fd, buffer, offset, length, position, req) {
+	setImmediate(() => {
+		try {
+			const bytesRead = this.readSync(fd, buffer, offset, length, position);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, bytesRead, buffer);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+writeAsync(fd, buffer, offset, length, position, req) {
+	setImmediate(() => {
+		try {
+			const bytesWritten = this.writeSync(fd, buffer, offset, length, position);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, bytesWritten);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+statAsync(path, bigint, req) {
+	setImmediate(() => {
+		try {
+			const stats = this.statSync(path);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, stats);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+fstatAsync(fd, bigint, req) {
+	setImmediate(() => {
+		try {
+			const stats = this.fstatSync(fd);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, stats);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+lstatAsync(path, bigint, req) {
+	setImmediate(() => {
+		try {
+			const stats = this.lstatSync(path);
+			if (req && req.oncomplete) {
+				req.oncomplete(null, stats);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+mkdirAsync(path, options, req) {
+	setImmediate(() => {
+		try {
+			this.mkdirSync(path, options);
+			if (req && req.oncomplete) {
+				req.oncomplete(null);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+unlinkAsync(path, req) {
+	setImmediate(() => {
+		try {
+			this.unlinkSync(path);
+			if (req && req.oncomplete) {
+				req.oncomplete(null);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+rmdirAsync(path, options, req) {
+	setImmediate(() => {
+		try {
+			this.rmdirSync(path, options);
+			if (req && req.oncomplete) {
+				req.oncomplete(null);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
+
+renameAsync(oldPath, newPath, req) {
+	setImmediate(() => {
+		try {
+			this.renameSync(oldPath, newPath);
+			if (req && req.oncomplete) {
+				req.oncomplete(null);
+			}
+		} catch (err) {
+			if (req && req.oncomplete) {
+				req.oncomplete(err);
+			}
+		}
+	});
+}
 	
 }
 

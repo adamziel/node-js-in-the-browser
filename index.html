@@ -408,9 +408,13 @@
 				kUsePromises: Symbol("kUsePromises"),
 				FSReqCallback: class FSReqCallback {
 					constructor() {
-						console.log("FSReqCallback");
-						this.cb = null;
+						this.context = undefined;
+						this.oncomplete = () => {};
 					}
+					
+					// Called when the async operation completes
+					// Node.js C++ code calls this with (err, result, ...)
+					// We simulate this pattern
 				},
 				constants: {},
 				open(path, flags, mode) {
@@ -435,6 +439,25 @@
 				},
 				close(fd) {
 					return globalFs.closeSync(fd);
+				},
+				read(fd, buffer, offset, length, position, kUsePromises) {
+					if(kUsePromises === globalThis.internalModules.fs.kUsePromises) {
+						const bytesRead = globalFs.readSync(fd, buffer, offset, length, position);
+						return Promise.resolve(bytesRead);
+					}
+					try {
+						const bytesRead = globalFs.readSync(fd, buffer, offset, length, position);
+						if (req?.oncomplete) {
+							// For async with FSReqCallback
+							req.oncomplete(null, bytesRead, buffer);
+						}
+						return bytesRead;
+					} catch (err) {
+						if (req?.oncomplete) {
+							req.oncomplete(err);
+						}
+						throw err;
+					}
 				},
 				readdir(path) {
 					return globalFs.readdirSync(path);
@@ -464,7 +487,7 @@
 					return globalFs.statSync(path);
 				},
 				lstat(path) {
-					return globalFs.lstatSync(path);
+					return Promise.resolve(globalFs.lstatSync(path));
 				},
 				fstat(fd, useBigint, callback) {
 					return Promise.resolve(globalFs.fstatSync(fd));
@@ -501,15 +524,16 @@
 				exitCodes: {}
 			},
 			string_decoder: {
+				kIncompleteCharactersStart: 0,
+				kIncompleteCharactersEnd: 4,
+				kMissingBytes: 4,
+				kBufferedBytes: 5,
+				kEncodingField: 6,
+				kNumFields: 7,
 				encodings: [
-					"ascii",
-					"utf8",
-					"base64",
-					"base64url",
-					"utf16le",
-					"hex",
-					"buffer",
-					"latin1",
+					'utf-8',
+					'ascii',
+					'base64'
 				],
 				kIncompleteCharactersStart: 0,
 				kIncompleteCharactersEnd: 4,
@@ -518,7 +542,9 @@
 				kEncodingField: 6,
 				kNumFields: 7,
 				kSize: 2048,
-				decode: (buffer, encoding, options) => {
+				decode: (encodingBuffer, buffer, options) => {
+					// encodingBuffer is a UInt8Array with 1 at the index of the encoding
+					const encoding = globalThis.internalModules.string_decoder.encodings[encodingBuffer.indexOf(1)] ?? 'utf-8';
 					return buffer.toString(encoding, options);
 				},
 				flush: (buffer) => {
@@ -1641,6 +1667,7 @@
 				}
 			} }
 		};
+
 		globalThis.internalModules.os.constants = globalThis.internalModules.constants.os;
 		console.log(globalThis.internalModules);
 
@@ -1714,9 +1741,11 @@
 		const util = await import("./modules/util.js");
 		globalThis.internalModules.util = { 
 			...globalThis.internalModules.util,
-			...util 
+			...util,
+			encodingsMap: globalThis.internalModules.string_decoder.encodings
 		};
 		globalThis.coreModules.util = util.default;
+		globalThis.coreModules.util.encodingsMap = globalThis.internalModules.string_decoder.encodings;
 
 		const errors = await import("./modules/errors.js");
 		globalThis.internalModules.errors = {
@@ -1737,13 +1766,15 @@
 
 		globalThis.process.stdout = new stream.default.Writable({
 			write(chunk, encoding, callback) {
-				console.log(new TextDecoder().decode(chunk));
+				let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+				console.log(message.substr(0, 500));
 				callback();
 			},
 		});
 		globalThis.process.stderr = new stream.default.Writable({
 			write(chunk, encoding, callback) {
-				console.log(new TextDecoder().decode(chunk));
+				let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+				console.trace(message.substr(0, 500));
 				callback();
 			},
 		});
@@ -1829,7 +1860,7 @@
 
 		const v8 = await import("./modules/v8.js");
 		globalThis.coreModules.v8 = { ...v8 };
-
+		
 		// const workerThreads = await import("./modules/worker_threads.js");
 		// console.log(workerThreads.default);
 		
