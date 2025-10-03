@@ -9,6 +9,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "esbuild": "^0.25.10"
+    "esbuild": "^0.25.10",
+    "punycode": "^2.3.1",
+    "qs": "^6.14.0",
+    "url": "^0.11.4"
   }
 }

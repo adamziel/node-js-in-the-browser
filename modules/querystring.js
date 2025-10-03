@@ -1,6 +1,6 @@
 import {
-  require_querystring2 as require_querystring
-} from "./chunk-5ZIPWLID.js";
+  require_querystring
+} from "./chunk-RTZDB72D.js";
 import "./chunk-FLITVJMQ.js";
 import "./chunk-XQ4ZUWQW.js";
 import "./chunk-UYUMXBC2.js";

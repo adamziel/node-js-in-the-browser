@@ -160,6 +160,145 @@ const updateDirectoryTimestamp = (directory) => {
 };
 
 
+// InternalFileHandle class for wrapping file descriptors
+export class InternalFileHandle {
+	constructor(fd, fs) {
+		this.fd = fd;
+		this.fs = fs;
+	}
+
+	close() {
+		if (this.fd !== undefined) {
+			this.fs.closeSync(this.fd);
+			this.fd = undefined;
+		}
+	}
+
+	read(buffer, offset, length, position) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, read');
+		}
+		return this.fs.readSync(this.fd, buffer, offset, length, position);
+	}
+
+	write(buffer, offset, length, position) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, write');
+		}
+		return this.fs.writeSync(this.fd, buffer, offset, length, position);
+	}
+
+	writev(buffers, position) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, writev');
+		}
+		
+		let totalWritten = 0;
+		let currentPosition = position;
+		
+		for (const buffer of buffers) {
+			const written = this.fs.writeSync(
+				this.fd, 
+				buffer, 
+				0, 
+				buffer.length, 
+				currentPosition
+			);
+			totalWritten += written;
+			if (currentPosition !== null && currentPosition !== undefined) {
+				currentPosition += written;
+			}
+		}
+		
+		return totalWritten;
+	}
+
+	readv(buffers, position) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, readv');
+		}
+		
+		let totalRead = 0;
+		let currentPosition = position;
+		
+		for (const buffer of buffers) {
+			const bytesRead = this.fs.readSync(
+				this.fd,
+				buffer,
+				0,
+				buffer.length,
+				currentPosition
+			);
+			totalRead += bytesRead;
+			if (bytesRead < buffer.length) {
+				break; // EOF reached
+			}
+			if (currentPosition !== null && currentPosition !== undefined) {
+				currentPosition += bytesRead;
+			}
+		}
+		
+		return totalRead;
+	}
+
+	stat(bigint = false) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, fstat');
+		}
+		const openFile = this.fs.openFiles.get(this.fd);
+		if (!openFile) {
+			throw new Error('EBADF: bad file descriptor, fstat');
+		}
+		return new Stats(openFile.node);
+	}
+
+	truncate(len = 0) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, ftruncate');
+		}
+		return this.fs.ftruncateSync(this.fd, len);
+	}
+
+	utimes(atime, mtime) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, futimes');
+		}
+		return this.fs.futimesSync(this.fd, atime, mtime);
+	}
+
+	chmod(mode) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, fchmod');
+		}
+		const openFile = this.fs.openFiles.get(this.fd);
+		if (!openFile) {
+			throw new Error('EBADF: bad file descriptor, fchmod');
+		}
+		openFile.node.mode = mode;
+	}
+
+	chown(uid, gid) {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, fchown');
+		}
+		// No-op in browser environment, but don't throw
+	}
+
+	datasync() {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, fdatasync');
+		}
+		// No-op in memory filesystem (always synced)
+	}
+
+	sync() {
+		if (this.fd === undefined) {
+			throw new Error('EBADF: bad file descriptor, fsync');
+		}
+		// No-op in memory filesystem (always synced)
+	}
+}
+
 export class InMemoryFileSystem {
     constructor(initialFiles) {
         this.root = createDirectoryNode();
@@ -546,7 +685,19 @@ export class InMemoryFileSystem {
             flags: typeof flags === 'string' ? flags : String(flags),
         });
         return fd;
-    }
+	}
+	openFileHandle(path, flags, mode, usePromises) {
+		const FileHandle = globalThis.coreModules["fs"].FileHandle;
+		const fd = this.openSync(path, flags, mode);
+		const internalHandle = new InternalFileHandle(fd, this);
+		const handle = new FileHandle(internalHandle);
+		if(usePromises === globalThis.internalModules.fs.kUsePromises) {
+			return new Promise((resolve, reject) => {
+				resolve(handle);
+			});
+		}
+		return handle;
+	}
     closeSync(fd) {
         if (!this.openFiles.has(fd)) {
             throw new Error(`EBADF: bad file descriptor, close`);
