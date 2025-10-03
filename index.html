@@ -520,8 +520,8 @@
 				truncate(path, len) {
 					return globalFs.truncateSync(path, len);
 				},
-				writeBuffer(fd, buffer, offset, length, position) {
-					return globalFs.writeBuffer(fd, buffer, offset, length, position);
+				writeBuffer(fd, buffer, offset, length, position, kUsePromises) {
+					return globalFs.writeBuffer(fd, buffer, offset, length, position, kUsePromises);
 				},
 				writeFileUtf8(path, data, options) {
 					return globalFs.writeFileUtf8(path, data, options);
@@ -1926,7 +1926,7 @@
 					})
 				);
 				fs.writeFileSync(
-					'/package.json',
+					'/bin/package.json',
 					JSON.stringify({
 						name: 'my-test-app',
 						version: '1.0.0',

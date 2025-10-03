@@ -1,5 +1,12 @@
 "use strict";
 
+// Helper function to create filesystem errors with proper code property
+function createFsError(code, message) {
+	const error = new Error(message);
+	error.code = code;
+	return error;
+}
+
 class Stats {
     constructor(node) {
         this.type = node.type;
@@ -185,21 +192,21 @@ export class InternalFileHandle {
 
 	read(buffer, offset, length, position) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, read');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, read');
 		}
 		return this.fs.readSync(this.fd, buffer, offset, length, position);
 	}
 
 	write(buffer, offset, length, position) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, write');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, write');
 		}
 		return this.fs.writeSync(this.fd, buffer, offset, length, position);
 	}
 
 	writev(buffers, position) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, writev');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, writev');
 		}
 		
 		let totalWritten = 0;
@@ -224,7 +231,7 @@ export class InternalFileHandle {
 
 	readv(buffers, position) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, readv');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, readv');
 		}
 		
 		let totalRead = 0;
@@ -252,57 +259,57 @@ export class InternalFileHandle {
 
 	stat(bigint = false) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, fstat');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fstat');
 		}
 		const openFile = this.fs.openFiles.get(this.fd);
 		if (!openFile) {
-			throw new Error('EBADF: bad file descriptor, fstat');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fstat');
 		}
 		return new Stats(openFile.node);
 	}
 
 	truncate(len = 0) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, ftruncate');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, ftruncate');
 		}
 		return this.fs.ftruncateSync(this.fd, len);
 	}
 
 	utimes(atime, mtime) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, futimes');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, futimes');
 		}
 		return this.fs.futimesSync(this.fd, atime, mtime);
 	}
 
 	chmod(mode) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, fchmod');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fchmod');
 		}
 		const openFile = this.fs.openFiles.get(this.fd);
 		if (!openFile) {
-			throw new Error('EBADF: bad file descriptor, fchmod');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fchmod');
 		}
 		openFile.node.mode = mode;
 	}
 
 	chown(uid, gid) {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, fchown');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fchown');
 		}
 		// No-op in browser environment, but don't throw
 	}
 
 	datasync() {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, fdatasync');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fdatasync');
 		}
 		// No-op in memory filesystem (always synced)
 	}
 
 	sync() {
 		if (this.fd === undefined) {
-			throw new Error('EBADF: bad file descriptor, fsync');
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fsync');
 		}
 		// No-op in memory filesystem (always synced)
 	}
@@ -381,7 +388,7 @@ export class InMemoryFileSystem {
             let next = current.children.get(part);
             if (!next) {
                 if (!recursive && index !== segments.length - 1) {
-                    throw new Error(`ENOENT: no such file or directory, mkdir '${path}'`);
+                    throw createFsError('ENOENT', `ENOENT: no such file or directory, mkdir '${path}'`);
                 }
                 next = createDirectoryNode(mode !== null && mode !== void 0 ? mode : DEFAULT_DIRECTORY_MODE);
                 current.children.set(part, next);
@@ -393,25 +400,25 @@ export class InMemoryFileSystem {
                 createdAny = true;
             }
             if (next.type !== 'dir') {
-                throw new Error(`ENOTDIR: not a directory, mkdir '${path}'`);
+                throw createFsError('ENOTDIR', `ENOTDIR: not a directory, mkdir '${path}'`);
             }
             current = next;
         }
         if (!recursive && !createdAny) {
-            throw new Error(`EEXIST: file already exists, mkdir '${path}'`);
+            throw createFsError('EEXIST', `EEXIST: file already exists, mkdir '${path}'`);
         }
         return firstCreatedPath;
     }
     readFileSync(path, options) {
         const { node, blockedBy, missingParent } = this.walk(path);
         if (missingParent) {
-            throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, open '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, open '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, open '${path}'`);
         }
         if (!node || node.type !== 'file') {
-            throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, open '${path}'`);
         }
         updateTimestamps(node, 'access');
         const encoding = extractEncoding(options);
@@ -423,17 +430,17 @@ export class InMemoryFileSystem {
         const bytes = toUint8Array(data, encoding);
         const result = this.walk(path);
         if (result.blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, open '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, open '${path}'`);
         }
         if (result.missingParent) {
-            throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, open '${path}'`);
         }
         if (!result.parent) {
-            throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+            throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
         }
         const { parent, node, name } = result;
         if (node && node.type === 'dir') {
-            throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+            throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
         }
         if (node && node.type === 'file') {
             node.content = bytes;
@@ -466,16 +473,16 @@ export class InMemoryFileSystem {
     readdirSync(path, options) {
         const { node, blockedBy, missingParent } = this.walk(path);
         if (missingParent) {
-            throw new Error(`ENOENT: no such file or directory, scandir '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, scandir '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, scandir '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, scandir '${path}'`);
         }
         if (!node) {
-            throw new Error(`ENOENT: no such file or directory, scandir '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, scandir '${path}'`);
         }
         if (node.type !== 'dir') {
-            throw new Error(`ENOTDIR: not a directory, scandir '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, scandir '${path}'`);
         }
         const opts = typeof options === 'string' ? { encoding: options } : options !== null && options !== void 0 ? options : {};
         if (opts.withFileTypes) {
@@ -491,13 +498,13 @@ export class InMemoryFileSystem {
     statSync(path) {
         const { node, blockedBy, missingParent } = this.walk(path);
         if (missingParent) {
-            throw new Error(`ENOENT: no such file or directory, stat '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, stat '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, stat '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, stat '${path}'`);
         }
         if (!node) {
-            throw new Error(`ENOENT: no such file or directory, stat '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, stat '${path}'`);
         }
         return new Stats(node);
     }
@@ -507,7 +514,7 @@ export class InMemoryFileSystem {
     fstatSync(fd, options = { bigint: false }) {
         const openFile = this.openFiles.get(fd);
         if (!openFile) {
-            throw new Error(`EBADF: bad file descriptor, fstat`);
+            throw createFsError('EBADF', `EBADF: bad file descriptor, fstat`);
         }
         return new Stats(openFile.node);
     }
@@ -515,16 +522,16 @@ export class InMemoryFileSystem {
         const result = this.walk(path);
         const { parent, node, name, blockedBy, missingParent } = result;
         if (missingParent) {
-            throw new Error(`ENOENT: no such file or directory, unlink '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, unlink '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, unlink '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, unlink '${path}'`);
         }
         if (!node) {
-            throw new Error(`ENOENT: no such file or directory, unlink '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, unlink '${path}'`);
         }
         if (node.type !== 'file') {
-            throw new Error(`EPERM: operation not permitted, unlink '${path}'`);
+            throw createFsError('EPERM', `EPERM: operation not permitted, unlink '${path}'`);
         }
         parent === null || parent === void 0 ? void 0 : parent.children.delete(name);
         if (parent) {
@@ -535,20 +542,20 @@ export class InMemoryFileSystem {
         var _a;
         const { parent, node, name, blockedBy, missingParent } = this.walk(path);
         if (missingParent) {
-            throw new Error(`ENOENT: no such file or directory, rmdir '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rmdir '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, rmdir '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, rmdir '${path}'`);
         }
         if (!node) {
-            throw new Error(`ENOENT: no such file or directory, rmdir '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rmdir '${path}'`);
         }
         if (node.type !== 'dir') {
-            throw new Error(`ENOTDIR: not a directory, rmdir '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, rmdir '${path}'`);
         }
         const recursive = (_a = options === null || options === void 0 ? void 0 : options.recursive) !== null && _a !== void 0 ? _a : false;
         if (!recursive && node.children.size > 0) {
-            throw new Error(`ENOTEMPTY: directory not empty, rmdir '${path}'`);
+            throw createFsError('ENOTEMPTY', `ENOTEMPTY: directory not empty, rmdir '${path}'`);
         }
         if (recursive) {
             node.children.clear();
@@ -564,16 +571,16 @@ export class InMemoryFileSystem {
             if (options === null || options === void 0 ? void 0 : options.force) {
                 return;
             }
-            throw new Error(`ENOENT: no such file or directory, rm '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rm '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, rm '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, rm '${path}'`);
         }
         if (!node) {
             if (options === null || options === void 0 ? void 0 : options.force) {
                 return;
             }
-            throw new Error(`ENOENT: no such file or directory, rm '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rm '${path}'`);
         }
         if (node.type === 'dir') {
             this.rmdirSync(path, { recursive: options === null || options === void 0 ? void 0 : options.recursive });
@@ -584,23 +591,23 @@ export class InMemoryFileSystem {
     renameSync(oldPath, newPath) {
         const oldResult = this.walk(oldPath);
         if (!oldResult.node) {
-            throw new Error(`ENOENT: no such file or directory, rename '${oldPath}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rename '${oldPath}'`);
         }
         if (!oldResult.parent) {
-            throw new Error(`EPERM: operation not permitted, rename '${oldPath}'`);
+            throw createFsError('EPERM', `EPERM: operation not permitted, rename '${oldPath}'`);
         }
         const newResult = this.walk(newPath);
         if (newResult.blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, rename '${newPath}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, rename '${newPath}'`);
         }
         if (newResult.missingParent) {
-            throw new Error(`ENOENT: no such file or directory, rename '${newPath}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rename '${newPath}'`);
         }
         if (newResult.node) {
-            throw new Error(`EEXIST: file already exists, rename '${newPath}'`);
+            throw createFsError('EEXIST', `EEXIST: file already exists, rename '${newPath}'`);
         }
         if (!newResult.parent) {
-            throw new Error(`ENOENT: no such file or directory, rename '${newPath}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, rename '${newPath}'`);
         }
         oldResult.parent.children.delete(oldResult.name);
         newResult.parent.children.set(newResult.name, oldResult.node);
@@ -610,10 +617,10 @@ export class InMemoryFileSystem {
     copyFileSync(src, dest) {
         const { node, blockedBy, missingParent } = this.walk(src);
         if (missingParent || blockedBy) {
-            throw new Error(`ENOENT: no such file or directory, copy '${src}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, copy '${src}'`);
         }
         if (!node || node.type !== 'file') {
-            throw new Error(`ENOENT: no such file or directory, copy '${src}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, copy '${src}'`);
         }
         this.writeFileSync(dest, cloneBuffer(node.content));
     }
@@ -623,18 +630,18 @@ export class InMemoryFileSystem {
         const bytes = toUint8Array(data, encoding);
         const { parent, node, name, blockedBy, missingParent } = this.walk(path);
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, open '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, open '${path}'`);
         }
         if (missingParent) {
-            throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, open '${path}'`);
         }
         if (!parent) {
             // This case should ideally not be hit for a valid non-root path
-            throw new Error(`EACCES: permission denied, open '${path}'`);
+            throw createFsError('EACCES', `EACCES: permission denied, open '${path}'`);
         }
         if (node) {
             if (node.type === 'dir') {
-                throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+                throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
             }
             // It's a file, append content
             const newContent = new Uint8Array(node.content.length + bytes.length);
@@ -659,16 +666,16 @@ export class InMemoryFileSystem {
     openSync(path, flags, mode = DEFAULT_FILE_MODE) {
         const { parent, node: existingNode, name, blockedBy, missingParent, } = this.walk(path);
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, open '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, open '${path}'`);
         }
         if (existingNode && existingNode.type === 'dir') {
-            throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+            throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
         }
         const f = parseOpenFlags(flags);
         let fileNode;
         if (existingNode) {
             if (existingNode.type !== 'file') {
-                throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+                throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
             }
             fileNode = existingNode;
             if (f.truncate) {
@@ -676,17 +683,17 @@ export class InMemoryFileSystem {
                 updateTimestamps(fileNode, 'modify');
             }
             if (f.exclusive && f.create) {
-                throw new Error(`EEXIST: file already exists, open '${path}'`);
+                throw createFsError('EEXIST', `EEXIST: file already exists, open '${path}'`);
             }
         }
         else {
             if (!parent) {
-                throw new Error(`EACCES: permission denied, open '${path}'`);
+                throw createFsError('EACCES', `EACCES: permission denied, open '${path}'`);
             }
             if (!f.create) {
                 // need existing file for read or write without create
                 if (missingParent || !parent.children.has(name)) {
-                    throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+                    throw createFsError('ENOENT', `ENOENT: no such file or directory, open '${path}'`);
                 }
             }
             // create if requested
@@ -703,27 +710,27 @@ export class InMemoryFileSystem {
         return fd;
 	}
 	openFileHandle(path, flags, mode, usePromises) {
+		if (usePromises === globalThis.internalModules.fs.kUsePromises) {
+			return promiseFromSync(() => this.openFileHandleSync(path, flags, mode));
+		}
+		return this.openFileHandleSync(path, flags, mode);
+	}
+	openFileHandleSync(path, flags, mode) {
 		const FileHandle = globalThis.coreModules["fs"].FileHandle;
 		const fd = this.openSync(path, flags, mode);
 		const internalHandle = new InternalFileHandle(fd, this);
-		const handle = new FileHandle(internalHandle);
-		if(usePromises === globalThis.internalModules.fs.kUsePromises) {
-			return new Promise((resolve, reject) => {
-				resolve(handle);
-			});
-		}
-		return handle;
+		return new FileHandle(internalHandle);
 	}
     closeSync(fd) {
         if (!this.openFiles.has(fd)) {
-            throw new Error(`EBADF: bad file descriptor, close`);
+            throw createFsError('EBADF', `EBADF: bad file descriptor, close`);
         }
         this.openFiles.delete(fd);
     }
     readSync(fd, buffer, offset, length, position) {
         const openFile = this.openFiles.get(fd);
         if (!openFile) {
-            throw new Error(`EBADF: bad file descriptor, read`);
+            throw createFsError('EBADF', `EBADF: bad file descriptor, read`);
         }
         // Node.js uses -1 or null to mean "use current position"
         const readPosition = (position !== null && position !== undefined && position >= 0)
@@ -762,7 +769,7 @@ export class InMemoryFileSystem {
         var _a, _b;
         const openFile = this.openFiles.get(fd);
         if (!openFile) {
-            throw new Error(`EBADF: bad file descriptor, write`);
+            throw createFsError('EBADF', `EBADF: bad file descriptor, write`);
         }
         let buffer;
         let writePosition;
@@ -806,10 +813,10 @@ export class InMemoryFileSystem {
     truncateSync(path, len = 0) {
         const { node, blockedBy, missingParent } = this.walk(path);
         if (missingParent || !node) {
-            throw new Error(`ENOENT: no such file or directory, truncate '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, truncate '${path}'`);
         }
         if (blockedBy || node.type !== 'file') {
-            throw new Error(`EISDIR: illegal operation on a directory, truncate '${path}'`);
+            throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, truncate '${path}'`);
         }
         if (len < 0) {
             len = 0;
@@ -829,7 +836,7 @@ export class InMemoryFileSystem {
     ftruncateSync(fd, len = 0) {
         const openFile = this.openFiles.get(fd);
         if (!openFile) {
-            throw new Error(`EBADF: bad file descriptor, ftruncate`);
+            throw createFsError('EBADF', `EBADF: bad file descriptor, ftruncate`);
         }
         const node = openFile.node;
         if (len < 0) {
@@ -851,10 +858,10 @@ export class InMemoryFileSystem {
     utimesSync(path, atime, mtime) {
         const { node, blockedBy, missingParent } = this.walk(path);
         if (missingParent || !node) {
-            throw new Error(`ENOENT: no such file or directory, utimes '${path}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, utimes '${path}'`);
         }
         if (blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, utimes '${path}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, utimes '${path}'`);
         }
         node.atime = atime;
         node.mtime = mtime;
@@ -863,7 +870,7 @@ export class InMemoryFileSystem {
     futimesSync(fd, atime, mtime) {
         const openFile = this.openFiles.get(fd);
         if (!openFile) {
-            throw new Error(`EBADF: bad file descriptor, futimes`);
+            throw createFsError('EBADF', `EBADF: bad file descriptor, futimes`);
         }
         const node = openFile.node;
         node.atime = atime;
@@ -873,20 +880,20 @@ export class InMemoryFileSystem {
     linkSync(existingPath, newPath) {
         const src = this.walk(existingPath);
         if (!src.node) {
-            throw new Error(`ENOENT: no such file or directory, link '${existingPath}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, link '${existingPath}'`);
         }
         if (src.node.type !== 'file') {
-            throw new Error(`EPERM: operation not permitted, link '${existingPath}'`);
+            throw createFsError('EPERM', `EPERM: operation not permitted, link '${existingPath}'`);
         }
         const dst = this.walk(newPath);
         if (dst.blockedBy) {
-            throw new Error(`ENOTDIR: not a directory, link '${newPath}'`);
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, link '${newPath}'`);
         }
         if (dst.missingParent || !dst.parent) {
-            throw new Error(`ENOENT: no such file or directory, link '${newPath}'`);
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, link '${newPath}'`);
         }
         if (dst.node) {
-            throw new Error(`EEXIST: file already exists, link '${newPath}'`);
+            throw createFsError('EEXIST', `EEXIST: file already exists, link '${newPath}'`);
         }
         dst.parent.children.set(dst.name, src.node);
         updateDirectoryTimestamp(dst.parent);
@@ -899,14 +906,21 @@ export class InMemoryFileSystem {
             candidate = prefix + randomSuffix();
             attempt++;
             if (attempt > 1000) {
-                throw new Error(`EMFILE: too many mkdtemp attempts for prefix '${prefix}'`);
+                throw createFsError('EMFILE', `EMFILE: too many mkdtemp attempts for prefix '${prefix}'`);
             }
         } while (this.existsSync(candidate));
         this.mkdirSync(candidate);
         return candidate;
 	}
 	
-	writeBuffer(fd, buffer, offset, length, position, unused, ctx) {
+	writeBuffer(fd, buffer, offset, length, position, kUsePromises) {
+		if (kUsePromises !== undefined) {
+			return promiseFromSync(() => this.writeBufferSync(fd, buffer, offset, length, position));
+		}
+		return this.writeBufferSync(fd, buffer, offset, length, position);
+	}
+
+	writeBufferSync(fd, buffer, offset, length, position) {
 		const fs = this;
 		try {
 			const openFile = fs.openFiles.get(fd);
@@ -947,18 +961,8 @@ export class InMemoryFileSystem {
 			}
 
 			updateTimestamps(fileNode, 'modify');
-
-			// Store result in context
-			if (ctx !== undefined) {
-				// ctx.errno = 0;
-				// ctx.bytesWritten = bufferToWrite.length;
-			}
 			return bufferToWrite.length;
 		} catch (err) {
-			if(ctx !== undefined) {
-				// ctx.errno = -1;
-				// ctx.error = err.message;
-			}
 			console.error(err);
 			return -1;
 		}
@@ -971,18 +975,18 @@ export class InMemoryFileSystem {
 			
 			const result = this.walk(path);
 			if (result.blockedBy) {
-				throw new Error(`ENOTDIR: not a directory, open '${path}'`);
+				throw createFsError('ENOTDIR', `ENOTDIR: not a directory, open '${path}'`);
 			}
 			if (result.missingParent) {
-				throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+				throw createFsError('ENOENT', `ENOENT: no such file or directory, open '${path}'`);
 			}
 			if (!result.parent) {
-				throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+				throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
 			}
 
 			const { parent, node, name } = result;
 			if (node && node.type === 'dir') {
-				throw new Error(`EISDIR: illegal operation on a directory, open '${path}'`);
+				throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
 			}
 
 			if (node && node.type === 'file') {
@@ -1202,6 +1206,16 @@ renameAsync(oldPath, newPath, req) {
 	});
 }
 	
+}
+
+function promiseFromSync(syncFn) {
+	return new Promise((resolve, reject) => {
+		try {
+			resolve(syncFn());
+		} catch (err) {
+			reject(err);
+		}
+	});
 }
 
 // Helper functions

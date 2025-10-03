@@ -70797,6 +70797,7 @@ var require_shrinkwrap = __commonJS({
         } else {
           s.filename = resolve(s.path, "package-lock.json");
         }
+        console.log('resolve', s.path, "package-lock.json", "===", s.filename);
         s.loadedFromDisk = !!(sw || lock);
         s.type = basename(s.filename);
         return s;
