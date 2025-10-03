@@ -149,9 +149,12 @@ export class Module {
 		if (normalised.includes('node-gyp')) {
 			return 'fake';
 		}
-		// if(request === './default-input.js') {
-		// 	return '/bin/default-input.js';
-		// }
+		// @TODO: Implement actual resolve
+		if (request === './default-input.js') {
+			console.log('resolve ./default-input.js');
+			console.log({request, parent});
+			return '/bin/default-input.js';
+		}
 		// const error = new Error(`Module ${module} not found`);
 		// error.code = 'MODULE_NOT_FOUND';
 		// throw error;
@@ -303,40 +306,7 @@ Module._extensions['.json'] = function (module, filename) {
 	}
 };
 
-const builtinModules = [
-	'assert',
-	'buffer',
-	'child_process',
-	'cluster',
-	'console',
-	'constants',
-	'crypto',
-	'dgram',
-	'dns',
-	'domain',
-	'events',
-	'fs',
-	'http',
-	'https',
-	'module',
-	'net',
-	'os',
-	'path',
-	'punycode',
-	'querystring',
-	'readline',
-	'repl',
-	'stream',
-	'string_decoder',
-	'sys',
-	'timers',
-	'tls',
-	'tty',
-	'url',
-	'util',
-	'vm',
-	'zlib',
-];
+export const builtinModules = Object.keys(globalThis.coreModules);
 
 export const modulePolyfill = Object.assign(Module, {
 	Module,

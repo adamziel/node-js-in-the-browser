@@ -1,8 +1,28 @@
 import {
-  require_child_process
-} from "./chunk-UA6LXRJC.js";
+  ChildProcess,
+  child_process_default,
+  exec,
+  execFile,
+  fork,
+  init_child_process,
+  registerSpawnHandler,
+  setDefaultSpawnHandler,
+  spawn
+} from "./chunk-5ZIPWLID.js";
+import "./chunk-FLITVJMQ.js";
+import "./chunk-XQ4ZUWQW.js";
 import "./chunk-UYUMXBC2.js";
 import "./chunk-QGV5XKCM.js";
 import "./chunk-MPGL2DXN.js";
 import "./chunk-2ESYSVXG.js";
-export default require_child_process();
+init_child_process();
+export {
+  ChildProcess,
+  child_process_default as default,
+  exec,
+  execFile,
+  fork,
+  registerSpawnHandler,
+  setDefaultSpawnHandler,
+  spawn
+};

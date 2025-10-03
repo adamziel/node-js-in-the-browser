@@ -1,8 +1,13 @@
 import {
-  require_v8
-} from "./chunk-UA6LXRJC.js";
-import "./chunk-UYUMXBC2.js";
-import "./chunk-QGV5XKCM.js";
-import "./chunk-MPGL2DXN.js";
+  getHeapSpaceStatistics,
+  getHeapStatistics,
+  init_v8,
+  v8_default
+} from "./chunk-XQ4ZUWQW.js";
 import "./chunk-2ESYSVXG.js";
-export default require_v8();
+init_v8();
+export {
+  v8_default as default,
+  getHeapSpaceStatistics,
+  getHeapStatistics
+};

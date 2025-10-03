@@ -40,7 +40,7 @@ export function chdir(directory) {
 }
 
 export const cwd = () => {
-	return '/';
+	return '/bin';
 };
 
 export const getuid = () => {

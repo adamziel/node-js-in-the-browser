@@ -94639,7 +94639,8 @@ var require_exit_handler = __commonJS({
         }
         this.#exitErrorMessage = err?.suppressError === true ? false : !!err;
         const exitCode = err?.exitCode ?? this.#process.exitCode ?? (err ? 1 : void 0);
-        this.#process.stderr.write("", () => this.#process.stdout.write("", () => {
+        console.error(err);
+        this.#process.stderr.write(err.message, () => this.#process.stdout.write("", () => {
           this.#process.exit(exitCode);
         }));
       };

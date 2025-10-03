@@ -14,6 +14,124 @@
 		import * as builtins from "./src/builtins.js";
 		const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 		const globalFs = new InMemoryFileSystem();
+
+		// Implement V8 internal functions in JavaScript
+		function getOwnNonIndexProperties(obj, filter) {
+			if (typeof obj !== 'object' || obj === null) {
+				return [];
+			}
+
+			const ALL_PROPERTIES = 0;
+			const ONLY_WRITABLE = 1;
+			const ONLY_ENUMERABLE = 2;
+			const ONLY_CONFIGURABLE = 4;
+			const SKIP_STRINGS = 8;
+			const SKIP_SYMBOLS = 16;
+
+			let keys = [];
+			
+			// Get string keys
+			if (!(filter & SKIP_STRINGS)) {
+				keys = keys.concat(Object.getOwnPropertyNames(obj).filter(k => {
+					// Skip numeric indices
+					const num = Number(k);
+					if (Number.isInteger(num) && num >= 0 && String(num) === k) {
+						return false;
+					}
+					return true;
+				}));
+			}
+
+			// Get symbol keys
+			if (!(filter & SKIP_SYMBOLS)) {
+				keys = keys.concat(Object.getOwnPropertySymbols(obj));
+			}
+
+			// Apply property filters
+			if (filter !== ALL_PROPERTIES) {
+				keys = keys.filter(key => {
+					const desc = Object.getOwnPropertyDescriptor(obj, key);
+					if (!desc) return false;
+
+					if ((filter & ONLY_WRITABLE) && !desc.writable) return false;
+					if ((filter & ONLY_ENUMERABLE) && !desc.enumerable) return false;
+					if ((filter & ONLY_CONFIGURABLE) && !desc.configurable) return false;
+
+					return true;
+				});
+			}
+
+			return keys;
+		}
+
+		function getPromiseDetails(promise) {
+			// Return undefined if it's not a Promise
+			if (!(promise instanceof Promise)) {
+				return undefined;
+			}
+
+			// We can't directly access promise state in JavaScript, 
+			// but we can use a trick with Promise.race
+			const kPending = 0;
+			const kFulfilled = 1;
+			const kRejected = 2;
+
+			// This is a best-effort polyfill since JavaScript doesn't expose promise internals
+			// For synchronous inspection, we'd need to track promises ourselves
+			// Return pending state as fallback
+			return [kPending];
+		}
+
+		function getProxyDetails(proxy, includeTarget = true) {
+			// Return undefined if it's not a proxy
+			// Unfortunately, JavaScript doesn't provide a way to detect if something is a Proxy
+			// or to extract its target and handler
+			// This is a limitation of the language
+			return undefined;
+		}
+
+		function previewEntries(obj) {
+			// Preview entries for Maps, Sets, typed arrays etc
+			if (obj instanceof Map) {
+				const entries = Array.from(obj.entries()).slice(0, 100);
+				return [entries, entries.length < obj.size];
+			}
+			if (obj instanceof Set) {
+				const entries = Array.from(obj.values()).slice(0, 100);
+				return [entries, entries.length < obj.size];
+			}
+			// For arrays and typed arrays
+			if (Array.isArray(obj) || ArrayBuffer.isView(obj)) {
+				const entries = Array.from(obj).slice(0, 100);
+				return [entries, entries.length < obj.length];
+			}
+			return undefined;
+		}
+
+		function internalGetConstructorName(obj) {
+			if (obj === null || obj === undefined) {
+				return '';
+			}
+			if (typeof obj !== 'object' && typeof obj !== 'function') {
+				return '';
+			}
+			// Get constructor name
+			if (obj.constructor && obj.constructor.name) {
+				return obj.constructor.name;
+			}
+			// Fallback to Object.prototype.toString
+			const str = Object.prototype.toString.call(obj);
+			const match = str.match(/^\[object (\w+)\]$/);
+			return match ? match[1] : 'Object';
+		}
+
+		function getExternalValue(external) {
+			// External values are V8-specific and represent C++ pointers
+			// We can't truly polyfill this in JavaScript
+			// Return 0n as a placeholder
+			return 0n;
+		}
+
 		globalThis.internalModules = {
 			builtins: {
 				...builtins 
@@ -25,6 +143,15 @@
 				resetRootCertStore() {},
 				getUserRootCertificates() {},
 				getSSLCiphers() {},
+				getHashes() {
+					return [];
+				},
+				getCurves() {
+					return [];
+				},
+				getCiphers() {
+					return [];
+				},
 				startLoadingCertificatesOffThread() {},
 				KeyObjectHandle: null,
 				createNativeKeyObjectClass() {
@@ -72,6 +199,37 @@
 						});
 					}
 				},
+				constants: {
+					kPending: 0,
+					kFulfilled: 1,
+					kRejected: 2,
+					kExiting: 0,
+					kExitCode: 1,
+					kHasExitCode: 2,
+					ALL_PROPERTIES: 0,
+					ONLY_WRITABLE: 1,
+					ONLY_ENUMERABLE: 2,
+					ONLY_CONFIGURABLE: 4,
+					SKIP_STRINGS: 8,
+					SKIP_SYMBOLS: 16,
+					kDisallowCloneAndTransfer: 0,
+					kTransferable: 1,
+					kCloneable: 2,
+				},
+				propertyFilter: {
+					ALL_PROPERTIES: 0,
+					ONLY_WRITABLE: 1,
+					ONLY_ENUMERABLE: 2,
+					ONLY_CONFIGURABLE: 4,
+					SKIP_STRINGS: 8,
+					SKIP_SYMBOLS: 16,
+				},
+				getOwnNonIndexProperties,
+				getPromiseDetails,
+				getProxyDetails,
+				previewEntries,
+				getConstructorName: internalGetConstructorName,
+				getExternalValue
 			},
 			options: {
 				getCLIOptionsValues: () => ({}),
@@ -99,6 +257,10 @@
 				rename(oldPath, newPath) {
 					return globalFs.renameSync(oldPath, newPath);
 				},
+				exists(path) {
+					console.log("Regular exists – how is it different from existsSync?")
+					return globalFs.existsSync(path);
+				},
 				existsSync(path) {
 					return globalFs.existsSync(path);
 				},
@@ -108,46 +270,43 @@
 				close(fd) {
 					return globalFs.closeSync(fd);
 				},
-				readdirSync(path) {
+				readdir(path) {
 					return globalFs.readdirSync(path);
 				},
-				readFileSync(path, options) {
+				readFile(path, options) {
 					return globalFs.readFileSync(path, options);
 				},
 				writeFile(path, data, options) {
 					return globalFs.writeFileSync(path, data, options);
 				},
-				writeFileSync(path, data, options) {
-					return globalFs.writeFileSync(path, data, options);
-				},
-				appendFileSync(path, data, options) {
+				appendFile(path, data, options) {
 					return globalFs.appendFileSync(path, data, options);
 				},
-				truncateSync(path, len) {
+				truncate(path, len) {
 					return globalFs.truncateSync(path, len);
 				},
-				renameSync(oldPath, newPath) {
+				rename(oldPath, newPath) {
 					return globalFs.renameSync(oldPath, newPath);
 				},
-				rmSync(path, options) {
+				rm(path, options) {
 					return globalFs.rmSync(path, options);
 				},
-				rmdirSync(path, options) {
+				rmdir(path, options) {
 					return globalFs.rmdirSync(path, options);
 				},
-				statSync(path) {
+				stat(path) {
 					return globalFs.statSync(path);
 				},
-				lstatSync(path) {
+				lstat(path) {
 					return globalFs.lstatSync(path);
 				},
-				unlinkSync(path) {
+				unlink(path) {
 					return globalFs.unlinkSync(path);
 				},
-				symlinkSync(existingPath, newPath) {
+				symlink(existingPath, newPath) {
 					return globalFs.symlinkSync(existingPath, newPath);
 				},
-				truncateSync(path, len) {
+				truncate(path, len) {
 					return globalFs.truncateSync(path, len);
 				},
 				writeBuffer(fd, buffer, offset, length, position) {
@@ -194,8 +353,144 @@
 					return buffer.toString();
 				}
 			},
-			buffer: {},
-			types: {},
+		buffer: {},
+		types: {
+			isRegExp(value) {
+				return Object.prototype.toString.call(value) === '[object RegExp]';
+			},
+			isDate(value) {
+				return Object.prototype.toString.call(value) === '[object Date]';
+			},
+			isNativeError(value) {
+				if (value === null || value === undefined) {
+					return false;
+				}
+				// Check if it's an instance of Error or one of the native error types
+				return value instanceof Error ||
+					value instanceof EvalError ||
+					value instanceof RangeError ||
+					value instanceof ReferenceError ||
+					value instanceof SyntaxError ||
+					value instanceof TypeError ||
+					value instanceof URIError ||
+					(typeof AggregateError !== 'undefined' && value instanceof AggregateError);
+			},
+			isPromise(value) {
+				return value instanceof Promise;
+			},
+			isProxy(value) {
+				// JavaScript doesn't provide a way to detect proxies reliably
+				// This is a limitation of the language
+				return false;
+			},
+			isMap(value) {
+				return Object.prototype.toString.call(value) === '[object Map]';
+			},
+			isSet(value) {
+				return Object.prototype.toString.call(value) === '[object Set]';
+			},
+			isMapIterator(value) {
+				return Object.prototype.toString.call(value) === '[object Map Iterator]';
+			},
+			isSetIterator(value) {
+				return Object.prototype.toString.call(value) === '[object Set Iterator]';
+			},
+			isWeakMap(value) {
+				return Object.prototype.toString.call(value) === '[object WeakMap]';
+			},
+			isWeakSet(value) {
+				return Object.prototype.toString.call(value) === '[object WeakSet]';
+			},
+			isArrayBuffer(value) {
+				return Object.prototype.toString.call(value) === '[object ArrayBuffer]';
+			},
+			isDataView(value) {
+				return Object.prototype.toString.call(value) === '[object DataView]';
+			},
+			isSharedArrayBuffer(value) {
+				return Object.prototype.toString.call(value) === '[object SharedArrayBuffer]';
+			},
+			isTypedArray(value) {
+				return ArrayBuffer.isView(value) && !(value instanceof DataView);
+			},
+			isUint8Array(value) {
+				return Object.prototype.toString.call(value) === '[object Uint8Array]';
+			},
+			isUint8ClampedArray(value) {
+				return Object.prototype.toString.call(value) === '[object Uint8ClampedArray]';
+			},
+			isUint16Array(value) {
+				return Object.prototype.toString.call(value) === '[object Uint16Array]';
+			},
+			isUint32Array(value) {
+				return Object.prototype.toString.call(value) === '[object Uint32Array]';
+			},
+			isInt8Array(value) {
+				return Object.prototype.toString.call(value) === '[object Int8Array]';
+			},
+			isInt16Array(value) {
+				return Object.prototype.toString.call(value) === '[object Int16Array]';
+			},
+			isInt32Array(value) {
+				return Object.prototype.toString.call(value) === '[object Int32Array]';
+			},
+			isFloat32Array(value) {
+				return Object.prototype.toString.call(value) === '[object Float32Array]';
+			},
+			isFloat64Array(value) {
+				return Object.prototype.toString.call(value) === '[object Float64Array]';
+			},
+			isBigInt64Array(value) {
+				return Object.prototype.toString.call(value) === '[object BigInt64Array]';
+			},
+			isBigUint64Array(value) {
+				return Object.prototype.toString.call(value) === '[object BigUint64Array]';
+			},
+			isGeneratorObject(value) {
+				return Object.prototype.toString.call(value) === '[object Generator]';
+			},
+			isGeneratorFunction(value) {
+				return Object.prototype.toString.call(value) === '[object GeneratorFunction]';
+			},
+			isAsyncFunction(value) {
+				return Object.prototype.toString.call(value) === '[object AsyncFunction]';
+			},
+			isArrayBufferView(value) {
+				return ArrayBuffer.isView(value);
+			},
+			isBoxedPrimitive(value) {
+				return value instanceof Boolean ||
+					value instanceof Number ||
+					value instanceof String ||
+					value instanceof Symbol ||
+					value instanceof BigInt;
+			},
+			isAnyArrayBuffer(value) {
+				const tag = Object.prototype.toString.call(value);
+				return tag === '[object ArrayBuffer]' || tag === '[object SharedArrayBuffer]';
+			},
+			isArgumentsObject(value) {
+				return Object.prototype.toString.call(value) === '[object Arguments]';
+			},
+			isBooleanObject(value) {
+				return Object.prototype.toString.call(value) === '[object Boolean]';
+			},
+			isNumberObject(value) {
+				return Object.prototype.toString.call(value) === '[object Number]';
+			},
+			isStringObject(value) {
+				return Object.prototype.toString.call(value) === '[object String]';
+			},
+			isSymbolObject(value) {
+				return Object.prototype.toString.call(value) === '[object Symbol]';
+			},
+			isBigIntObject(value) {
+				return Object.prototype.toString.call(value) === '[object BigInt]';
+			},
+			isModuleNamespaceObject(value) {
+				return Object.prototype.toString.call(value) === '[object Module]';
+			},
+		},
 			timers: {
 				timeoutInfo: []
 			},
@@ -253,7 +548,22 @@
 					}
 				}
 			},
+			udp_wrap: {
+				constants: {
+					// @TODO: verify these
+					UV_UDP_IPV6ONLY: 1,
+					UV_UDP_REUSEPORT: 2
+				},
+				UDP: class UDP {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
 			tty_wrap: {
+				isTTY() {
+					return false;
+				},
 				Tty: class Tty {
 					constructor() {
 						this.persistent = false;
@@ -269,29 +579,158 @@
 			},
 			uv: {},
 			os: {
-				getOSInformation() {
-					return ["Linux", "5.15.0-56-generic", "5.15.0-56-generic"];
+				arch() {
+					return 'x64';
 				},
-				getHomeDirectory() {
-					return "/home/user";
+				cpus() {
+					return [
+						{
+							model: 'Virtual CPU',
+							speed: 2400,
+							times: {
+								user: 252020,
+								nice: 0,
+								sys: 30340,
+								idle: 1070356870,
+								irq: 0,
+							},
+						},
+					];
+				},
+				hostname() {
+					return 'localhost';
+				},
+				machine() {
+					return 'x86_64';
+				},
+				networkInterfaces() {
+					return {
+						lo: [
+							{
+								address: '127.0.0.1',
+								netmask: '255.0.0.0',
+								family: 'IPv4',
+								mac: '00:00:00:00:00:00',
+								internal: true,
+								cidr: '127.0.0.1/8',
+							},
+						],
+					};
+				},
+				platform() {
+					return 'linux';
+				},
+				release() {
+					return '5.4.0';
+				},
+				setPriority(pidOrPriority, priority) {
+					// No-op in browser environment
+				},
+				tmpdir() {
+					return '/tmp';
+				},
+				totalmem() {
+					return 8589934592; // 8GB
+				},
+				type() {
+					return 'Linux';
+				},
+				uptime() {
+					return Math.floor(performance.now() / 1000);
+				},
+				userInfo(options) {
+					return {
+						uid: 1000,
+						gid: 1000,
+						username: 'user',
+						homedir: '/home/user',
+						shell: '/bin/bash',
+					};
+				},
+				version() {
+					return '#1 SMP Thu Oct 6 16:21:56 UTC 2022';
+				},
+				getOSInformation() {
+					return ['Linux', '5.4.0', '5.4.0'];
+				},
+				isBigEndian() {
+					return false;
+				},
+				getAvailableParallelism() {
+					return navigator.hardwareConcurrency || 10;
+				},
+				getFreeMem() {
+					// Estimate 2GB free memory (browser environments don't expose this)
+					return 2147483648;
 				},
 				getHostname() {
-					return "localhost";
+					return 'localhost';
+				},
+				getOSVersion() {
+					return '#1 SMP Thu Oct 6 16:21:56 UTC 2022';
+				},
+				getOSType() {
+					return 'Linux';
+				},
+				getOSRelease() {
+					return '5.4.0';
+				},
+				getMachine() {
+					return 'x86_64';
+				},
+				getHomeDirectory() {
+					return '/home/user';
+				},
+				getTotalMem() {
+					return 8589934592; // 8GB
+				},
+				getUptime() {
+					return Math.floor(performance.now() / 1000);
+				},
+				homedir() {
+					return '/home/user';
+				},
+				getPriority(pid) {
+					return 0;
 				},
 				getInterfaceAddresses() {
 					return [];
 				},
-				getUptime() {
-					return 1000;
+				getLoadAvg() {
+					return [0, 0, 0];
 				},
-				getAvailableParallelism() {
-					return 10;
+				getOSVersion() {
+					return '5.4.0';
+				},
+				getOSType() {
+					return 'Linux';
+				},
+				getOSRelease() {
+					return '5.4.0';
+				},
+				getMachine() {
+					return 'x86_64';
+				},
+				getHomeDirectory() {
+					return '/home/user';
 				},
 				getTotalMem() {
-					return 1000;
+					return 8589934592; // 8GB
 				},
-				getFreeMem() {
-					return 100;
+				getUptime() {
+					return Math.floor(performance.now() / 1000);
+				},
+				getUserInfo(options) {
+					return {
+						uid: 1000,
+						gid: 1000,
+						username: 'user',
+						homedir: '/home/user',
+						shell: '/bin/bash',
+					};
+				},
+				setPriority(pidOrPriority, priority) {
+					// No-op in browser environment
 				},
 			},
 			zlib: {
@@ -315,7 +754,105 @@
 			task_queue: {
 				promiseRejectEvents: {}
 			},
+			stream_pipe: {
+				StreamPipe: class StreamPipe {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
 			symbols: {},
+			http2: {
+				setCallbackFunctions() {},
+				constants: {
+					HTTP2_HEADER_STATUS: ':status',
+					HTTP2_HEADER_METHOD: ':method',
+					HTTP2_HEADER_AUTHORITY: ':authority',
+					HTTP2_HEADER_SCHEME: ':scheme',
+					HTTP2_HEADER_PATH: ':path',
+					HTTP2_HEADER_PROTOCOL: ':protocol',
+					HTTP2_HEADER_DATE: 'date',
+					HTTP2_HEADER_ACCEPT_CHARSET: 'accept-charset',
+					HTTP2_HEADER_ACCEPT_ENCODING: 'accept-encoding',
+					HTTP2_HEADER_ACCEPT_LANGUAGE: 'accept-language',
+					HTTP2_HEADER_ACCEPT_RANGES: 'accept-ranges',
+					HTTP2_HEADER_ACCEPT: 'accept',
+					HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS: 'access-control-allow-credentials',
+					HTTP2_HEADER_ACCESS_CONTROL_ALLOW_HEADERS: 'access-control-allow-headers',
+					HTTP2_HEADER_ACCESS_CONTROL_ALLOW_METHODS: 'access-control-allow-methods',
+					HTTP2_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN: 'access-control-allow-origin',
+					HTTP2_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS: 'access-control-expose-headers',
+					HTTP2_HEADER_ACCESS_CONTROL_MAX_AGE: 'access-control-max-age',
+					HTTP2_HEADER_ACCESS_CONTROL_REQUEST_HEADERS: 'access-control-request-headers',
+					HTTP2_HEADER_ACCESS_CONTROL_REQUEST_METHOD: 'access-control-request-method',
+					HTTP2_HEADER_AGE: 'age',
+					HTTP2_HEADER_ALLOW: 'allow',
+					HTTP2_HEADER_AUTHORIZATION: 'authorization',
+					HTTP2_HEADER_CACHE_CONTROL: 'cache-control',
+					HTTP2_HEADER_CONTENT_DISPOSITION: 'content-disposition',
+					HTTP2_HEADER_CONTENT_ENCODING: 'content-encoding',
+					HTTP2_HEADER_CONTENT_LANGUAGE: 'content-language',
+					HTTP2_HEADER_CONTENT_LENGTH: 'content-length',
+					HTTP2_HEADER_CONTENT_LOCATION: 'content-location',
+					HTTP2_HEADER_CONTENT_RANGE: 'content-range',
+					HTTP2_HEADER_CONTENT_TYPE: 'content-type',
+					HTTP2_HEADER_COOKIE: 'cookie',
+					HTTP2_HEADER_CONNECTION: 'connection',
+					HTTP2_HEADER_DNT: 'dnt',
+					HTTP2_HEADER_ETAG: 'etag',
+					HTTP2_HEADER_EXPECT: 'expect',
+					HTTP2_HEADER_EXPIRES: 'expires',
+					HTTP2_HEADER_FORWARDED: 'forwarded',
+					HTTP2_HEADER_FROM: 'from',
+					HTTP2_HEADER_HOST: 'host',
+					HTTP2_HEADER_IF_MATCH: 'if-match',
+					HTTP2_HEADER_IF_MODIFIED_SINCE: 'if-modified-since',
+					HTTP2_HEADER_IF_NONE_MATCH: 'if-none-match',
+					HTTP2_HEADER_IF_RANGE: 'if-range',
+					HTTP2_HEADER_IF_UNMODIFIED_SINCE: 'if-unmodified-since',
+					HTTP2_HEADER_LAST_MODIFIED: 'last-modified',
+					HTTP2_HEADER_LINK: 'link',
+					HTTP2_HEADER_LOCATION: 'location',
+					HTTP2_HEADER_MAX_FORWARDS: 'max-forwards',
+					HTTP2_HEADER_PREFER: 'prefer',
+					HTTP2_HEADER_PROXY_AUTHENTICATE: 'proxy-authenticate',
+					HTTP2_HEADER_PROXY_AUTHORIZATION: 'proxy-authorization',
+					HTTP2_HEADER_PROXY_CONNECTION: 'proxy-connection',
+					HTTP2_HEADER_RANGE: 'range',
+					HTTP2_HEADER_REFERER: 'referer',
+					HTTP2_HEADER_REFRESH: 'refresh',
+					HTTP2_HEADER_RETRY_AFTER: 'retry-after',
+					HTTP2_HEADER_SERVER: 'server',
+					HTTP2_HEADER_SET_COOKIE: 'set-cookie',
+					HTTP2_HEADER_STRICT_TRANSPORT_SECURITY: 'strict-transport-security',
+					HTTP2_HEADER_TRAILER: 'trailer',
+					HTTP2_HEADER_TRANSFER_ENCODING: 'transfer-encoding',
+					HTTP2_HEADER_TK: 'tk',
+					HTTP2_HEADER_UPGRADE_INSECURE_REQUESTS: 'upgrade-insecure-requests',
+					HTTP2_HEADER_USER_AGENT: 'user-agent',
+					HTTP2_HEADER_VARY: 'vary',
+					HTTP2_HEADER_VIA: 'via',
+					HTTP2_HEADER_WARNING: 'warning',
+					HTTP2_HEADER_WWW_AUTHENTICATE: 'www-authenticate',
+					HTTP2_HEADER_X_CONTENT_TYPE_OPTIONS: 'x-content-type-options',
+					HTTP2_HEADER_X_FRAME_OPTIONS: 'x-frame-options',
+					HTTP2_HEADER_KEEP_ALIVE: 'keep-alive',
+					HTTP2_HEADER_CONTENT_MD5: 'content-md5',
+					HTTP2_HEADER_TE: 'te',
+					HTTP2_HEADER_UPGRADE: 'upgrade',
+					HTTP2_HEADER_HTTP2_SETTINGS: 'http2-settings',
+					HTTP2_HEADER_X_XSS_PROTECTION: 'x-xss-protection',
+					HTTP2_HEADER_ALT_SVC: 'alt-svc',
+					HTTP2_HEADER_CONTENT_SECURITY_POLICY: 'content-security-policy',
+					HTTP2_HEADER_EARLY_DATA: 'early-data',
+					HTTP2_HEADER_EXPECT_CT: 'expect-ct',
+					HTTP2_HEADER_ORIGIN: 'origin',
+					HTTP2_HEADER_PURPOSE: 'purpose',
+					HTTP2_HEADER_TIMING_ALLOW_ORIGIN: 'timing-allow-origin',
+					HTTP2_HEADER_X_FORWARDED_FOR: 'x-forwarded-for',
+					HTTP2_HEADER_PRIORITY: 'priority',
+				}
+			},
 			constants: {
 				os: {
 					UV_UDP_REUSEADDR: 4,
@@ -452,6 +989,216 @@
 					SQLITE_CHANGESET_OMIT: 0,
 					SQLITE_CHANGESET_REPLACE: 1,
 					SQLITE_CHANGESET_ABORT: 2,
+				},
+				http: {
+					HPE_OK: 0,
+					HPE_INTERNAL: 1,
+					HPE_STRICT: 2,
+					HPE_CR_EXPECTED: 25,
+					HPE_LF_EXPECTED: 3,
+					HPE_UNEXPECTED_CONTENT_LENGTH: 4,
+					HPE_UNEXPECTED_SPACE: 30,
+					HPE_CLOSED_CONNECTION: 5,
+					HPE_INVALID_METHOD: 6,
+					HPE_INVALID_URL: 7,
+					HPE_INVALID_CONSTANT: 8,
+					HPE_INVALID_VERSION: 9,
+					HPE_INVALID_HEADER_TOKEN: 10,
+					HPE_INVALID_CONTENT_LENGTH: 11,
+					HPE_INVALID_CHUNK_SIZE: 12,
+					HPE_INVALID_STATUS: 13,
+					HPE_INVALID_EOF_STATE: 14,
+					HPE_INVALID_TRANSFER_ENCODING: 15,
+					HPE_CB_MESSAGE_BEGIN: 16,
+					HPE_CB_HEADERS_COMPLETE: 17,
+					HPE_CB_MESSAGE_COMPLETE: 18,
+					HPE_CB_CHUNK_HEADER: 19,
+					HPE_CB_CHUNK_COMPLETE: 20,
+					HPE_PAUSED: 21,
+					HPE_PAUSED_UPGRADE: 22,
+					HPE_PAUSED_H2_UPGRADE: 23,
+					HPE_USER: 24,
+					HPE_CB_URL_COMPLETE: 26,
+					HPE_CB_STATUS_COMPLETE: 27,
+					HPE_CB_METHOD_COMPLETE: 32,
+					HPE_CB_VERSION_COMPLETE: 33,
+					HPE_CB_HEADER_FIELD_COMPLETE: 28,
+					HPE_CB_HEADER_VALUE_COMPLETE: 29,
+					HPE_CB_CHUNK_EXTENSION_NAME_COMPLETE: 34,
+					HPE_CB_CHUNK_EXTENSION_VALUE_COMPLETE: 35,
+					HPE_CB_RESET: 31,
+					HPE_CB_PROTOCOL_COMPLETE: 38,
+					F_CONNECTION_KEEP_ALIVE: 0x1,
+					F_CONNECTION_CLOSE: 0x2,
+					F_CONNECTION_UPGRADE: 0x4,
+					F_CHUNKED: 0x8,
+					F_UPGRADE: 0x10,
+					F_CONTENT_LENGTH: 0x20,
+					F_SKIPBODY: 0x40,
+					F_TRAILING: 0x80,
+					F_TRANSFER_ENCODING: 0x200,
+					LENIENT_HEADERS: 0x1,
+					LENIENT_CHUNKED_LENGTH: 0x2,
+					LENIENT_KEEP_ALIVE: 0x4,
+					LENIENT_TRANSFER_ENCODING: 0x8,
+					LENIENT_VERSION: 0x10,
+					LENIENT_DATA_AFTER_CLOSE: 0x20,
+					LENIENT_OPTIONAL_LF_AFTER_CR: 0x40,
+					LENIENT_OPTIONAL_CRLF_AFTER_CHUNK: 0x80,
+					LENIENT_OPTIONAL_CR_BEFORE_LF: 0x100,
+					LENIENT_SPACES_AFTER_CHUNK_SIZE: 0x200,
+					HTTP_BOTH: 0,
+					HTTP_REQUEST: 1,
+					HTTP_RESPONSE: 2,
+					HTTP_FINISH_SAFE: 0,
+					HTTP_FINISH_SAFE_WITH_CB: 1,
+					HTTP_FINISH_UNSAFE: 2,
+					HTTP_DELETE: 0,
+					HTTP_GET: 1,
+					HTTP_HEAD: 2,
+					HTTP_POST: 3,
+					HTTP_PUT: 4,
+					HTTP_CONNECT: 5,
+					HTTP_OPTIONS: 6,
+					HTTP_TRACE: 7,
+					HTTP_COPY: 8,
+					HTTP_LOCK: 9,
+					HTTP_MKCOL: 10,
+					HTTP_MOVE: 11,
+					HTTP_PROPFIND: 12,
+					HTTP_PROPPATCH: 13,
+					HTTP_SEARCH: 14,
+					HTTP_UNLOCK: 15,
+					HTTP_BIND: 16,
+					HTTP_REBIND: 17,
+					HTTP_UNBIND: 18,
+					HTTP_ACL: 19,
+					HTTP_REPORT: 20,
+					HTTP_MKACTIVITY: 21,
+					HTTP_CHECKOUT: 22,
+					HTTP_MERGE: 23,
+					HTTP_MSEARCH: 24,
+					HTTP_NOTIFY: 25,
+					HTTP_SUBSCRIBE: 26,
+					HTTP_UNSUBSCRIBE: 27,
+					HTTP_PATCH: 28,
+					HTTP_PURGE: 29,
+					HTTP_MKCALENDAR: 30,
+					HTTP_LINK: 31,
+					HTTP_UNLINK: 32,
+					HTTP_SOURCE: 33,
+					HTTP_PRI: 34,
+					HTTP_DESCRIBE: 35,
+					HTTP_ANNOUNCE: 36,
+					HTTP_SETUP: 37,
+					HTTP_PLAY: 38,
+					HTTP_PAUSE: 39,
+					HTTP_TEARDOWN: 40,
+					HTTP_GET_PARAMETER: 41,
+					HTTP_SET_PARAMETER: 42,
+					HTTP_REDIRECT: 43,
+					HTTP_RECORD: 44,
+					HTTP_FLUSH: 45,
+					HTTP_QUERY: 46,
+					HTTP_STATUS_CONTINUE: 100,
+					HTTP_STATUS_SWITCHING_PROTOCOLS: 101,
+					HTTP_STATUS_PROCESSING: 102,
+					HTTP_STATUS_EARLY_HINTS: 103,
+					HTTP_STATUS_RESPONSE_IS_STALE: 110,
+					HTTP_STATUS_REVALIDATION_FAILED: 111,
+					HTTP_STATUS_DISCONNECTED_OPERATION: 112,
+					HTTP_STATUS_HEURISTIC_EXPIRATION: 113,
+					HTTP_STATUS_MISCELLANEOUS_WARNING: 199,
+					HTTP_STATUS_OK: 200,
+					HTTP_STATUS_CREATED: 201,
+					HTTP_STATUS_ACCEPTED: 202,
+					HTTP_STATUS_NON_AUTHORITATIVE_INFORMATION: 203,
+					HTTP_STATUS_NO_CONTENT: 204,
+					HTTP_STATUS_RESET_CONTENT: 205,
+					HTTP_STATUS_PARTIAL_CONTENT: 206,
+					HTTP_STATUS_MULTI_STATUS: 207,
+					HTTP_STATUS_ALREADY_REPORTED: 208,
+					HTTP_STATUS_TRANSFORMATION_APPLIED: 214,
+					HTTP_STATUS_IM_USED: 226,
+					HTTP_STATUS_MISCELLANEOUS_PERSISTENT_WARNING: 299,
+					HTTP_STATUS_MULTIPLE_CHOICES: 300,
+					HTTP_STATUS_MOVED_PERMANENTLY: 301,
+					HTTP_STATUS_FOUND: 302,
+					HTTP_STATUS_SEE_OTHER: 303,
+					HTTP_STATUS_NOT_MODIFIED: 304,
+					HTTP_STATUS_USE_PROXY: 305,
+					HTTP_STATUS_SWITCH_PROXY: 306,
+					HTTP_STATUS_TEMPORARY_REDIRECT: 307,
+					HTTP_STATUS_PERMANENT_REDIRECT: 308,
+					HTTP_STATUS_BAD_REQUEST: 400,
+					HTTP_STATUS_UNAUTHORIZED: 401,
+					HTTP_STATUS_PAYMENT_REQUIRED: 402,
+					HTTP_STATUS_FORBIDDEN: 403,
+					HTTP_STATUS_NOT_FOUND: 404,
+					HTTP_STATUS_METHOD_NOT_ALLOWED: 405,
+					HTTP_STATUS_NOT_ACCEPTABLE: 406,
+					HTTP_STATUS_PROXY_AUTHENTICATION_REQUIRED: 407,
+					HTTP_STATUS_REQUEST_TIMEOUT: 408,
+					HTTP_STATUS_CONFLICT: 409,
+					HTTP_STATUS_GONE: 410,
+					HTTP_STATUS_LENGTH_REQUIRED: 411,
+					HTTP_STATUS_PRECONDITION_FAILED: 412,
+					HTTP_STATUS_PAYLOAD_TOO_LARGE: 413,
+					HTTP_STATUS_URI_TOO_LONG: 414,
+					HTTP_STATUS_UNSUPPORTED_MEDIA_TYPE: 415,
+					HTTP_STATUS_RANGE_NOT_SATISFIABLE: 416,
+					HTTP_STATUS_EXPECTATION_FAILED: 417,
+					HTTP_STATUS_IM_A_TEAPOT: 418,
+					HTTP_STATUS_PAGE_EXPIRED: 419,
+					HTTP_STATUS_ENHANCE_YOUR_CALM: 420,
+					HTTP_STATUS_MISDIRECTED_REQUEST: 421,
+					HTTP_STATUS_UNPROCESSABLE_ENTITY: 422,
+					HTTP_STATUS_LOCKED: 423,
+					HTTP_STATUS_FAILED_DEPENDENCY: 424,
+					HTTP_STATUS_TOO_EARLY: 425,
+					HTTP_STATUS_UPGRADE_REQUIRED: 426,
+					HTTP_STATUS_PRECONDITION_REQUIRED: 428,
+					HTTP_STATUS_TOO_MANY_REQUESTS: 429,
+					HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE_UNOFFICIAL: 430,
+					HTTP_STATUS_REQUEST_HEADER_FIELDS_TOO_LARGE: 431,
+					HTTP_STATUS_LOGIN_TIMEOUT: 440,
+					HTTP_STATUS_NO_RESPONSE: 444,
+					HTTP_STATUS_RETRY_WITH: 449,
+					HTTP_STATUS_BLOCKED_BY_PARENTAL_CONTROL: 450,
+					HTTP_STATUS_UNAVAILABLE_FOR_LEGAL_REASONS: 451,
+					HTTP_STATUS_CLIENT_CLOSED_LOAD_BALANCED_REQUEST: 460,
+					HTTP_STATUS_INVALID_X_FORWARDED_FOR: 463,
+					HTTP_STATUS_REQUEST_HEADER_TOO_LARGE: 494,
+					HTTP_STATUS_SSL_CERTIFICATE_ERROR: 495,
+					HTTP_STATUS_SSL_CERTIFICATE_REQUIRED: 496,
+					HTTP_STATUS_HTTP_REQUEST_SENT_TO_HTTPS_PORT: 497,
+					HTTP_STATUS_INVALID_TOKEN: 498,
+					HTTP_STATUS_CLIENT_CLOSED_REQUEST: 499,
+					HTTP_STATUS_INTERNAL_SERVER_ERROR: 500,
+					HTTP_STATUS_NOT_IMPLEMENTED: 501,
+					HTTP_STATUS_BAD_GATEWAY: 502,
+					HTTP_STATUS_SERVICE_UNAVAILABLE: 503,
+					HTTP_STATUS_GATEWAY_TIMEOUT: 504,
+					HTTP_STATUS_HTTP_VERSION_NOT_SUPPORTED: 505,
+					HTTP_STATUS_VARIANT_ALSO_NEGOTIATES: 506,
+					HTTP_STATUS_INSUFFICIENT_STORAGE: 507,
+					HTTP_STATUS_LOOP_DETECTED: 508,
+					HTTP_STATUS_BANDWIDTH_LIMIT_EXCEEDED: 509,
+					HTTP_STATUS_NOT_EXTENDED: 510,
+					HTTP_STATUS_NETWORK_AUTHENTICATION_REQUIRED: 511,
+					HTTP_STATUS_WEB_SERVER_UNKNOWN_ERROR: 520,
+					HTTP_STATUS_WEB_SERVER_IS_DOWN: 521,
+					HTTP_STATUS_CONNECTION_TIMEOUT: 522,
+					HTTP_STATUS_ORIGIN_IS_UNREACHABLE: 523,
+					HTTP_STATUS_TIMEOUT_OCCURED: 524,
+					HTTP_STATUS_SSL_HANDSHAKE_FAILED: 525,
+					HTTP_STATUS_INVALID_SSL_CERTIFICATE: 526,
+					HTTP_STATUS_RAILGUN_ERROR: 527,
+					HTTP_STATUS_SITE_IS_OVERLOADED: 529,
+					HTTP_STATUS_SITE_IS_FROZEN: 530,
+					HTTP_STATUS_IDENTITY_PROVIDER_AUTHENTICATION_ERROR: 561,
+					HTTP_STATUS_NETWORK_READ_TIMEOUT: 598,
+					HTTP_STATUS_NETWORK_CONNECT_TIMEOUT: 599
 				},
 				fs: {
 					UV_FS_SYMLINK_DIR: 1,
@@ -722,6 +1469,7 @@
 				}
 			} }
 		};
+		globalThis.internalModules.os.constants = globalThis.internalModules.constants.os;
 		console.log(globalThis.internalModules);
 
 		await import("./modules/primordials.js");
@@ -744,10 +1492,11 @@
 
 		const process = await import("./src/process.js");
 		globalThis.process = { ...process };
+		globalThis.coreModules.process = globalThis.process;
 
 		const types = await import("./modules/internal/types.js");
 		globalThis.internalModules.util = { types: {...types}, ...globalThis.internalModules.util };
-		globalThis.internalModules.types = { ...types };
+		globalThis.internalModules.types = { ...globalThis.internalModules.types, ...types };
 
 		const internalConstants = await import("./modules/internal/constants.js");
 		globalThis.internalModules.constants = { 
@@ -772,6 +1521,7 @@
 				}
 			}
 		};
+		globalThis.coreModules.constants = globalThis.internalModules.constants;
 		globalThis.internalModules.util = { 
 			constants: {...internalConstants},
 			...globalThis.internalModules.util
@@ -779,9 +1529,12 @@
 
 		const buffer = await import("./modules/buffer.js");
 		globalThis.internalModules.buffer = { buffer: {...buffer}, ...globalThis.internalModules.buffer };
+		globalThis.coreModules.buffer = buffer;
+		globalThis.buffer = buffer.Buffer;
 
 		const stringDecoder = await import("./modules/string_decoder.js");
 		globalThis.internalModules.string_decoder = { stringDecoder: {...stringDecoder}, ...globalThis.internalModules.string_decoder };
+		globalThis.coreModules.string_decoder = stringDecoder.default;
 
 		const inspect = await import("./modules/util/inspect.js");
 		globalThis.internalModules.util = { inspect: {...inspect}, ...globalThis.internalModules.util };
@@ -791,6 +1544,7 @@
 			...globalThis.internalModules.util,
 			...util 
 		};
+		globalThis.coreModules.util = util.default;
 
 		const errors = await import("./modules/errors.js");
 		globalThis.internalModules.errors = {
@@ -811,7 +1565,7 @@
 
 		globalThis.process.stdout = new stream.default.Writable({
 			write(chunk, encoding, callback) {
-				console.log(chunk);
+				console.log(new TextDecoder().decode(chunk));
 				callback();
 			},
 		});
@@ -831,15 +1585,25 @@
 		globalThis.process.stdin.setEncoding("utf-8");
 		globalThis.process.stdin.resume();
 
+		globalThis.coreModules.os = globalThis.internalModules.os;
+
 		const blob = await import("./modules/blob.js");
 		globalThis.coreModules.blob = blob.default;
 
 		const fs = await import("./modules/fs.js");
 		globalThis.coreModules.fs = fs.default;
 
+		const fsPromises = await import("./modules/fs/promises.js");
+		globalThis.coreModules["fs/promises"] = fsPromises.default.exports;
+
+		const events = await import("./modules/events.js");
+		globalThis.coreModules.events = events.default;
 
 		const http = await import("./modules/http.js");
 		globalThis.coreModules.http = http.default;
+
+		const http2 = await import("./modules/http2.js");
+		globalThis.coreModules.http2 = http2.default;
 
 		const crypto = await import("./modules/crypto.js");
 		globalThis.coreModules.crypto = crypto.default;
@@ -855,6 +1619,7 @@
 
 		const url = await import("./modules/url.js");
 		globalThis.coreModules.url = url.default;
+		console.log(globalThis.coreModules.url);
 
 		const zlib = await import("./modules/zlib.js");
 		globalThis.coreModules.zlib = zlib.default;
@@ -874,25 +1639,48 @@
 		const tty = await import("./modules/tty.js");
 		globalThis.coreModules.tty = tty.default;
 
-		// const vm = await import("./modules/vm.js");
-		// console.log(vm.default);
+		const assert = await import("./modules/assert.js");
+		globalThis.coreModules.assert = assert.default;
+
+		const timers = await import("./modules/timers.js");
+		globalThis.coreModules.timers = timers.default;
+
+		const timersPromises = await import("./modules/timers/promises.js");
+		globalThis.coreModules["timers/promises"] = timersPromises.default;
+
+		const childProcess = await import("./modules/child_process.js");
+		globalThis.coreModules.child_process = childProcess.default;
+
+		const vm = await import("./modules/vm.js");
+		globalThis.coreModules.vm = { ...vm };
+
+		const v8 = await import("./modules/v8.js");
+		globalThis.coreModules.v8 = { ...v8 };
 
 		// const workerThreads = await import("./modules/worker_threads.js");
 		// console.log(workerThreads.default);
 		
 
-		const { Module } = await import("./src/module.js");
+		const Module = await import("./src/module.js");
+		globalThis.coreModules.module = Module;
 
 		function myNodeModule() {
+			const buffer = require("buffer");
+			globalThis.Buffer = buffer.Buffer;
+
 			const fs = require('fs');
 			const Module = require('module');
+			console.log(Module);
+			process.argv = ["node", "npm"];
+			process.argv = ["node", "npm", "init"];
+			process.argc = process.argv.length;
 			const args = process.argv;
 
 			async function doRun() {
-				const npmResponse = await fetch('/npm-single.js');
+				const npmResponse = await fetch('/npm/npm-single.js');
 				const npmCode = await npmResponse.text();
 
-				const defaultInputResponse = await fetch('/default-input.js');
+				const defaultInputResponse = await fetch('/npm/default-input.js');
 				const defaultInputCode = await defaultInputResponse.text();
 
 				if (!fs.existsSync('/.npm')) {
@@ -934,7 +1722,7 @@
 
 				const command = args[0];
 				if (args[1] === 'npm') {
-					Module.runMain({ code: npmCode, path: args[0] });
+					Module.Module.runMain({ code: npmCode, path: args[0] });
 				} else if (command === 'ls') {
 					const files = fs.readdirSync(args[1] || process.cwd()).sort();
 					process.stdout.write('\n' + files.join('\n') + '\n');
@@ -951,7 +1739,7 @@
 		}
 
 		try {
-			Module.runMain({
+			Module.Module.runMain({
 				code: `(${myNodeModule})()`,
 				path: 'main-module.js',
 			});
@@ -962,7 +1750,7 @@
 				// This is an unexpected error.
 				console.error('Worker error:', e);
 				const errorMessage = e instanceof Error ? e.stack : String(e);
-				postToTerminal(`\r\n\x1b[31m${errorMessage}\x1b[0m`);
+				console.log(`\r\n\x1b[31m${errorMessage}\x1b[0m`);
 			}
 		} finally {
 			self.postMessage({ type: 'status', data: 'finished' });

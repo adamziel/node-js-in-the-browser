@@ -1,5 +1,5 @@
 import {
-  require_promises
+  require_promises2 as require_promises
 } from "../chunk-5ZIPWLID.js";
 import "../chunk-FLITVJMQ.js";
 import "../chunk-XQ4ZUWQW.js";
