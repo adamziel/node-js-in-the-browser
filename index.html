@@ -422,6 +422,7 @@
 				rename(oldPath, newPath) {
 					return globalFs.renameSync(oldPath, newPath);
 				},
+				
 				exists(path) {
 					console.log("Regular exists – how is it different from existsSync?")
 					return globalFs.existsSync(path);
@@ -459,15 +460,15 @@
 				rmdir(path, options) {
 					return globalFs.rmdirSync(path, options);
 				},
-			stat(path) {
-				return globalFs.statSync(path);
-			},
-			lstat(path) {
-				return globalFs.lstatSync(path);
-			},
-			fstat(fd, useBigint, callback) {
-				return Promise.resolve(globalFs.fstatSync(fd));
-			},
+				stat(path) {
+					return globalFs.statSync(path);
+				},
+				lstat(path) {
+					return globalFs.lstatSync(path);
+				},
+				fstat(fd, useBigint, callback) {
+					return Promise.resolve(globalFs.fstatSync(fd));
+				},
 				fsSync(path) {
 					return globalFs.fsSync(path);
 				},
