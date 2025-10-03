@@ -7,6 +7,9 @@ import {
   v8_exports
 } from "./chunk-XQ4ZUWQW.js";
 import {
+  require_url
+} from "./chunk-DOFOK6V2.js";
+import {
   require_constants
 } from "./chunk-UYUMXBC2.js";
 import {
@@ -4860,7 +4863,7 @@ var require_writablestream = __commonJS({
         value
       };
     };
-    var WritableStream = class {
+    var WritableStream2 = class {
       [kType] = "WritableStream";
       /**
        * @param {UnderlyingSink} [sink]
@@ -4987,25 +4990,25 @@ var require_writablestream = __commonJS({
         );
       }
     };
-    ObjectDefineProperties(WritableStream.prototype, {
+    ObjectDefineProperties(WritableStream2.prototype, {
       locked: kEnumerableProperty,
       abort: kEnumerableProperty,
       close: kEnumerableProperty,
       getWriter: kEnumerableProperty,
-      [SymbolToStringTag]: getNonWritablePropertyDescriptor(WritableStream.name)
+      [SymbolToStringTag]: getNonWritablePropertyDescriptor(WritableStream2.name)
     });
     function InternalTransferredWritableStream() {
-      ObjectSetPrototypeOf(this, WritableStream.prototype);
+      ObjectSetPrototypeOf(this, WritableStream2.prototype);
       markTransferMode(this, false, true);
       this[kType] = "WritableStream";
       this[kState] = createWritableStreamState();
       this[kIsClosedPromise] = PromiseWithResolvers();
     }
-    ObjectSetPrototypeOf(InternalTransferredWritableStream.prototype, WritableStream.prototype);
-    ObjectSetPrototypeOf(InternalTransferredWritableStream, WritableStream);
+    ObjectSetPrototypeOf(InternalTransferredWritableStream.prototype, WritableStream2.prototype);
+    ObjectSetPrototypeOf(InternalTransferredWritableStream, WritableStream2);
     function TransferredWritableStream() {
       const stream = new InternalTransferredWritableStream();
-      stream.constructor = WritableStream;
+      stream.constructor = WritableStream2;
       return stream;
     }
     TransferredWritableStream.prototype[kDeserialize] = () => {
@@ -5195,7 +5198,7 @@ var require_writablestream = __commonJS({
       [SymbolToStringTag]: getNonWritablePropertyDescriptor(WritableStreamDefaultController.name)
     });
     function InternalWritableStream(start, write, close, abort, highWaterMark, size) {
-      ObjectSetPrototypeOf(this, WritableStream.prototype);
+      ObjectSetPrototypeOf(this, WritableStream2.prototype);
       markTransferMode(this, false, true);
       this[kType] = "WritableStream";
       this[kState] = createWritableStreamState();
@@ -5212,11 +5215,11 @@ var require_writablestream = __commonJS({
         size
       );
     }
-    ObjectSetPrototypeOf(InternalWritableStream.prototype, WritableStream.prototype);
-    ObjectSetPrototypeOf(InternalWritableStream, WritableStream);
+    ObjectSetPrototypeOf(InternalWritableStream.prototype, WritableStream2.prototype);
+    ObjectSetPrototypeOf(InternalWritableStream, WritableStream2);
     function createWritableStream(start, write, close, abort, highWaterMark = 1, size = () => 1) {
       const stream = new InternalWritableStream(start, write, close, abort, highWaterMark, size);
-      stream.constructor = WritableStream;
+      stream.constructor = WritableStream2;
       return stream;
     }
     var isWritableStream = isBrandCheck("WritableStream");
@@ -5917,7 +5920,7 @@ var require_writablestream = __commonJS({
       );
     }
     module.exports = {
-      WritableStream,
+      WritableStream: WritableStream2,
       WritableStreamDefaultWriter,
       WritableStreamDefaultController,
       TransferredWritableStream,
@@ -5994,7 +5997,7 @@ var require_transfer = __commonJS({
       readableStreamPipeTo
     } = require_readablestream();
     var {
-      WritableStream,
+      WritableStream: WritableStream2,
       writableStreamDefaultControllerErrorIfNeeded
     } = require_writablestream();
     var assert = require_assert();
@@ -6233,7 +6236,7 @@ var require_transfer = __commonJS({
       };
     }
     function newCrossRealmWritableSink(readable, port) {
-      const writable = new WritableStream(new CrossRealmTransformWritableSink(port, false));
+      const writable = new WritableStream2(new CrossRealmTransformWritableSink(port, false));
       const promise = readableStreamPipeTo(readable, writable, false, false, false);
       setPromiseHandled(promise);
       return {
@@ -9563,7 +9566,7 @@ var require_adapters = __commonJS({
       isReadableStream
     } = require_readablestream();
     var {
-      WritableStream,
+      WritableStream: WritableStream2,
       isWritableStream
     } = require_writablestream();
     var {
@@ -9648,7 +9651,7 @@ var require_adapters = __commonJS({
         );
       }
       if (isDestroyed(streamWritable) || !isWritable(streamWritable)) {
-        const writable = new WritableStream();
+        const writable = new WritableStream2();
         writable.close();
         return writable;
       }
@@ -9686,7 +9689,7 @@ var require_adapters = __commonJS({
         controller = void 0;
       });
       streamWritable.on("drain", onDrain);
-      return new WritableStream({
+      return new WritableStream2({
         start(c) {
           controller = c;
         },
@@ -9991,13 +9994,13 @@ var require_adapters = __commonJS({
         throw new ERR_INVALID_ARG_TYPE("duplex", "stream.Duplex", duplex);
       }
       if (isDestroyed(duplex)) {
-        const writable2 = new WritableStream();
+        const writable2 = new WritableStream2();
         const readable2 = new ReadableStream2();
         writable2.close();
         readable2.cancel();
         return { readable: readable2, writable: writable2 };
       }
-      const writable = isWritable(duplex) ? newWritableStreamFromStreamWritable(duplex) : new WritableStream();
+      const writable = isWritable(duplex) ? newWritableStreamFromStreamWritable(duplex) : new WritableStream2();
       if (!isWritable(duplex))
         writable.close();
       const readable = isReadable(duplex) ? newReadableStreamFromStreamReadable(duplex) : new ReadableStream2();
@@ -10234,7 +10237,7 @@ var require_adapters = __commonJS({
           promise.resolve();
         return promise.promise;
       }
-      return new WritableStream({
+      return new WritableStream2({
         write(chunk, controller) {
           current = current !== void 0 ? PromisePrototypeThen(
             current,
@@ -13280,7 +13283,7 @@ var require_utils3 = __commonJS({
       deprecate,
       isWindows
     } = require_util5();
-    var { toPathIfFileURL } = require_url();
+    var { toPathIfFileURL } = require_url2();
     var {
       validateAbortSignal,
       validateBoolean,
@@ -18462,7 +18465,7 @@ var require_streams = __commonJS({
       validatePath
     } = require_utils3();
     var { Readable, Writable, finished } = require_stream();
-    var { toPathIfFileURL } = require_url();
+    var { toPathIfFileURL } = require_url2();
     var kIoDone = Symbol2("kIoDone");
     var kIsPerformingIO = Symbol2("kIsPerformingIO");
     var kFs = Symbol2("kFs");
@@ -19093,7 +19096,7 @@ var require_promises3 = __commonJS({
     } = require_validators();
     var pathModule = require_path();
     var { isAbsolute } = pathModule;
-    var { toPathIfFileURL } = require_url();
+    var { toPathIfFileURL } = require_url2();
     var {
       getLazy,
       kEmptyObject,
@@ -20769,7 +20772,7 @@ var require_fs = __commonJS({
       FSReqCallback,
       statValues
     } = binding;
-    var { toPathIfFileURL } = require_url();
+    var { toPathIfFileURL } = require_url2();
     var {
       customPromisifyArgs: kCustomPromisifyArgsSymbol,
       getLazy,
@@ -24491,7 +24494,7 @@ var require_glob = __commonJS({
       hideStackFrames
     } = require_errors();
     var assert = require_assert();
-    var { toPathIfFileURL } = require_url();
+    var { toPathIfFileURL } = require_url2();
     var minimatch2;
     function lazyMinimatch() {
       minimatch2 ??= (init_minimatch(), __toCommonJS(minimatch_exports));
@@ -27233,7 +27236,7 @@ var require_prepare_stack_trace = __commonJS({
     var {
       kIsNodeError
     } = require_errors();
-    var { fileURLToPath } = require_url();
+    var { fileURLToPath } = require_url2();
     var { setGetSourceMapErrorSource } = internalBinding("errors");
     var kStackLineAt = "\n    at ";
     function prepareStackTraceWithSourceMaps(error, trace) {
@@ -27439,7 +27442,7 @@ var require_customization_hooks = __commonJS({
     } = require_errors().codes;
     var { validateFunction } = require_validators();
     var { isAbsolute } = require_path();
-    var { pathToFileURL, fileURLToPath } = require_url();
+    var { pathToFileURL, fileURLToPath } = require_url2();
     var debug = require_debuglog().debuglog("module_hooks", (fn) => {
       debug = fn;
     });
@@ -28497,7 +28500,7 @@ var require_get_format = __commonJS({
     var detectModule = getOptionValue("--experimental-detect-module");
     var { containsModuleSyntax } = internalBinding("contextify");
     var { getPackageScopeConfig, getPackageType } = require_package_json_reader();
-    var { fileURLToPath } = require_url();
+    var { fileURLToPath } = require_url2();
     var { ERR_UNKNOWN_FILE_EXTENSION } = require_errors().codes;
     var protocolHandlers = {
       "__proto__": null,
@@ -28674,7 +28677,7 @@ var require_resolve = __commonJS({
     var preserveSymlinks = getOptionValue("--preserve-symlinks");
     var preserveSymlinksMain = getOptionValue("--preserve-symlinks-main");
     var inputTypeFlag = getOptionValue("--input-type");
-    var { URL: URL2, pathToFileURL, fileURLToPath, isURL, URLParse } = require_url();
+    var { URL: URL2, pathToFileURL, fileURLToPath, isURL, URLParse } = require_url2();
     var { getCWDURL, setOwnProperty } = require_util5();
     var { canParse: URLCanParse } = internalBinding("url");
     var { legacyMainResolve: FSLegacyMainResolve } = internalBinding("fs");
@@ -29470,7 +29473,7 @@ var require_package_json_reader = __commonJS({
       isURL,
       pathToFileURL,
       URL: URL2
-    } = require_url();
+    } = require_url2();
     var { canParse: URLCanParse } = internalBinding("url");
     var {
       codes: {
@@ -30762,7 +30765,7 @@ var require_load = __commonJS({
     var { validateAttributes, emitImportAssertionWarning } = require_assert2();
     var { readFileSync } = require_fs();
     var { Buffer: { from: BufferFrom } } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
-    var { URL: URL2 } = require_url();
+    var { URL: URL2 } = require_url2();
     var {
       ERR_INVALID_URL,
       ERR_UNKNOWN_MODULE_FORMAT,
@@ -32266,7 +32269,7 @@ var require_translators = __commonJS({
       loadSourceForCJSWithHooks,
       populateCJSExportsFromESM
     } = require_loader2();
-    var { fileURLToPath, pathToFileURL, URL: URL2 } = require_url();
+    var { fileURLToPath, pathToFileURL, URL: URL2 } = require_url2();
     var debug = require_debuglog().debuglog("esm", (fn) => {
       debug = fn;
     });
@@ -33988,7 +33991,7 @@ var require_hooks = __commonJS({
       ERR_WORKER_UNSERIALIZABLE_ERROR
     } = require_errors().codes;
     var { exitCodes: { kUnsettledTopLevelAwait } } = internalBinding("errors");
-    var { URLParse } = require_url();
+    var { URLParse } = require_url2();
     var { canParse: URLCanParse } = internalBinding("url");
     var { receiveMessageOnPort } = require_worker_threads();
     var {
@@ -34581,7 +34584,7 @@ var require_loader = __commonJS({
       ERR_UNKNOWN_MODULE_FORMAT
     } = require_errors().codes;
     var { getOptionValue } = require_options();
-    var { isURL, pathToFileURL, URLParse } = require_url();
+    var { isURL, pathToFileURL, URLParse } = require_url2();
     var { kEmptyObject } = require_util5();
     var {
       compileSourceTextModule,
@@ -36957,7 +36960,7 @@ var require_execution = __commonJS({
         ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET
       }
     } = require_errors();
-    var { pathToFileURL } = require_url();
+    var { pathToFileURL } = require_url2();
     var { exitCodes: { kGenericUserError } } = internalBinding("errors");
     var {
       kSourcePhase,
@@ -37272,7 +37275,7 @@ var require_run_main = __commonJS({
     var { getNearestParentPackageJSONType } = internalBinding("modules");
     var { getOptionValue } = require_options();
     var path2 = require_path();
-    var { pathToFileURL, URL: URL2 } = require_url();
+    var { pathToFileURL, URL: URL2 } = require_url2();
     var { kEmptyObject, getCWDURL } = require_util5();
     var {
       hasUncaughtExceptionCaptureCallback
@@ -37478,7 +37481,7 @@ var require_loader2 = __commonJS({
     var {
       maybeCacheSourceMap
     } = require_source_map_cache();
-    var { pathToFileURL, fileURLToPath, isURL } = require_url();
+    var { pathToFileURL, fileURLToPath, isURL } = require_url2();
     var {
       pendingDeprecate,
       emitExperimentalWarning,
@@ -38826,7 +38829,7 @@ var require_helpers = __commonJS({
     var fs = require_fs();
     var internalFS = require_utils3();
     var path2 = require_path();
-    var { pathToFileURL, fileURLToPath, URL: URL2 } = require_url();
+    var { pathToFileURL, fileURLToPath, URL: URL2 } = require_url2();
     var assert = require_assert();
     var { getOptionValue } = require_options();
     var { setOwnProperty, getLazy } = require_util5();
@@ -39392,7 +39395,7 @@ var require_source_map_cache = __commonJS({
     var kSourceMappingURLMagicComment = /\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/g;
     var kSourceURLMagicComment = /\/[*/]#\s+sourceURL=(?<sourceURL>[^\s]+)/g;
     var { isAbsolute } = require_path();
-    var { fileURLToPath, pathToFileURL, URL: URL2, URLParse } = require_url();
+    var { fileURLToPath, pathToFileURL, URL: URL2, URLParse } = require_url2();
     var SourceMap;
     var sourceMapsSupport = ObjectFreeze({
       __proto__: null,
@@ -45543,7 +45546,7 @@ var require_comparisons = __commonJS({
     } = primordials;
     var { compare } = internalBinding("buffer");
     var assert = require_assert();
-    var { isURL } = require_url();
+    var { isURL } = require_url2();
     var { isError } = require_util5();
     var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
     var wellKnownConstructors = new SafeSet().add(Array2).add(ArrayBuffer2).add(BigInt2).add(BigInt64Array).add(BigUint64Array).add(Boolean2).add(Buffer2).add(DataView2).add(Date2).add(Error2).add(Float32Array).add(Float64Array).add(Function2).add(Int16Array).add(Int32Array).add(Int8Array).add(Map2).add(Number2).add(Object2).add(Promise2).add(RegExp2).add(Set2).add(String2).add(Symbol2).add(Uint16Array).add(Uint32Array).add(Uint8Array2).add(Uint8ClampedArray).add(WeakMap2).add(WeakSet);
@@ -47564,7 +47567,7 @@ var require_worker = __commonJS({
     } = workerIo;
     var { createMainThreadPort, destroyMainThreadPort } = require_messaging();
     var { deserializeError } = require_error_serdes();
-    var { fileURLToPath, isURL, pathToFileURL } = require_url();
+    var { fileURLToPath, isURL, pathToFileURL } = require_url2();
     var { kEmptyObject } = require_util5();
     var { validateArray, validateString, validateObject, validateNumber } = require_validators();
     var {
@@ -49792,7 +49795,7 @@ var require_random = __commonJS({
 });
 
 // ../lib/internal/url.js
-var require_url = __commonJS({
+var require_url2 = __commonJS({
   "../lib/internal/url.js"(exports2, module) {
     "use strict";
     var {
@@ -51269,7 +51272,7 @@ var require_blob = __commonJS({
       TextDecoder: TextDecoder2,
       TextEncoder: TextEncoder2
     } = require_encoding();
-    var { URL: URL2 } = require_url();
+    var { URL: URL2 } = require_url2();
     var {
       markTransferMode,
       kClone,
@@ -56685,6 +56688,3338 @@ Emitted 'error' event${ctorInfo} at:
   }
 });
 
+// node_modules/stream-http/lib/capability.js
+var require_capability = __commonJS({
+  "node_modules/stream-http/lib/capability.js"(exports2) {
+    exports2.fetch = isFunction(global.fetch) && isFunction(global.ReadableStream);
+    exports2.writableStream = isFunction(global.WritableStream);
+    exports2.abortController = isFunction(global.AbortController);
+    var xhr;
+    function getXHR() {
+      if (xhr !== void 0) return xhr;
+      if (global.XMLHttpRequest) {
+        xhr = new global.XMLHttpRequest();
+        try {
+          xhr.open("GET", global.XDomainRequest ? "/" : "https://example.com");
+        } catch (e) {
+          xhr = null;
+        }
+      } else {
+        xhr = null;
+      }
+      return xhr;
+    }
+    function checkTypeSupport(type) {
+      var xhr2 = getXHR();
+      if (!xhr2) return false;
+      try {
+        xhr2.responseType = type;
+        return xhr2.responseType === type;
+      } catch (e) {
+      }
+      return false;
+    }
+    exports2.arraybuffer = exports2.fetch || checkTypeSupport("arraybuffer");
+    exports2.msstream = !exports2.fetch && checkTypeSupport("ms-stream");
+    exports2.mozchunkedarraybuffer = !exports2.fetch && checkTypeSupport("moz-chunked-arraybuffer");
+    exports2.overrideMimeType = exports2.fetch || (getXHR() ? isFunction(getXHR().overrideMimeType) : false);
+    function isFunction(value) {
+      return typeof value === "function";
+    }
+    xhr = null;
+  }
+});
+
+// node_modules/inherits/inherits_browser.js
+var require_inherits_browser = __commonJS({
+  "node_modules/inherits/inherits_browser.js"(exports2, module) {
+    if (typeof Object.create === "function") {
+      module.exports = function inherits(ctor, superCtor) {
+        if (superCtor) {
+          ctor.super_ = superCtor;
+          ctor.prototype = Object.create(superCtor.prototype, {
+            constructor: {
+              value: ctor,
+              enumerable: false,
+              writable: true,
+              configurable: true
+            }
+          });
+        }
+      };
+    } else {
+      module.exports = function inherits(ctor, superCtor) {
+        if (superCtor) {
+          ctor.super_ = superCtor;
+          var TempCtor = function() {
+          };
+          TempCtor.prototype = superCtor.prototype;
+          ctor.prototype = new TempCtor();
+          ctor.prototype.constructor = ctor;
+        }
+      };
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/stream-browser.js
+var require_stream_browser = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/stream-browser.js"(exports2, module) {
+    module.exports = require_events().EventEmitter;
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/buffer_list.js
+var require_buffer_list = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/buffer_list.js"(exports2, module) {
+    "use strict";
+    function ownKeys(object, enumerableOnly) {
+      var keys = Object.keys(object);
+      if (Object.getOwnPropertySymbols) {
+        var symbols = Object.getOwnPropertySymbols(object);
+        enumerableOnly && (symbols = symbols.filter(function(sym) {
+          return Object.getOwnPropertyDescriptor(object, sym).enumerable;
+        })), keys.push.apply(keys, symbols);
+      }
+      return keys;
+    }
+    function _objectSpread(target) {
+      for (var i = 1; i < arguments.length; i++) {
+        var source = null != arguments[i] ? arguments[i] : {};
+        i % 2 ? ownKeys(Object(source), true).forEach(function(key) {
+          _defineProperty(target, key, source[key]);
+        }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function(key) {
+          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
+        });
+      }
+      return target;
+    }
+    function _defineProperty(obj, key, value) {
+      key = _toPropertyKey(key);
+      if (key in obj) {
+        Object.defineProperty(obj, key, { value, enumerable: true, configurable: true, writable: true });
+      } else {
+        obj[key] = value;
+      }
+      return obj;
+    }
+    function _classCallCheck(instance, Constructor) {
+      if (!(instance instanceof Constructor)) {
+        throw new TypeError("Cannot call a class as a function");
+      }
+    }
+    function _defineProperties(target, props) {
+      for (var i = 0; i < props.length; i++) {
+        var descriptor = props[i];
+        descriptor.enumerable = descriptor.enumerable || false;
+        descriptor.configurable = true;
+        if ("value" in descriptor) descriptor.writable = true;
+        Object.defineProperty(target, _toPropertyKey(descriptor.key), descriptor);
+      }
+    }
+    function _createClass(Constructor, protoProps, staticProps) {
+      if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+      if (staticProps) _defineProperties(Constructor, staticProps);
+      Object.defineProperty(Constructor, "prototype", { writable: false });
+      return Constructor;
+    }
+    function _toPropertyKey(arg) {
+      var key = _toPrimitive(arg, "string");
+      return typeof key === "symbol" ? key : String(key);
+    }
+    function _toPrimitive(input, hint) {
+      if (typeof input !== "object" || input === null) return input;
+      var prim = input[Symbol.toPrimitive];
+      if (prim !== void 0) {
+        var res = prim.call(input, hint || "default");
+        if (typeof res !== "object") return res;
+        throw new TypeError("@@toPrimitive must return a primitive value.");
+      }
+      return (hint === "string" ? String : Number)(input);
+    }
+    var _require = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
+    var Buffer2 = _require.Buffer;
+    var _require2 = require_util2();
+    var inspect = _require2.inspect;
+    var custom = inspect && inspect.custom || "inspect";
+    function copyBuffer(src, target, offset) {
+      Buffer2.prototype.copy.call(src, target, offset);
+    }
+    module.exports = /* @__PURE__ */ (function() {
+      function BufferList() {
+        _classCallCheck(this, BufferList);
+        this.head = null;
+        this.tail = null;
+        this.length = 0;
+      }
+      _createClass(BufferList, [{
+        key: "push",
+        value: function push(v) {
+          var entry = {
+            data: v,
+            next: null
+          };
+          if (this.length > 0) this.tail.next = entry;
+          else this.head = entry;
+          this.tail = entry;
+          ++this.length;
+        }
+      }, {
+        key: "unshift",
+        value: function unshift(v) {
+          var entry = {
+            data: v,
+            next: this.head
+          };
+          if (this.length === 0) this.tail = entry;
+          this.head = entry;
+          ++this.length;
+        }
+      }, {
+        key: "shift",
+        value: function shift() {
+          if (this.length === 0) return;
+          var ret = this.head.data;
+          if (this.length === 1) this.head = this.tail = null;
+          else this.head = this.head.next;
+          --this.length;
+          return ret;
+        }
+      }, {
+        key: "clear",
+        value: function clear() {
+          this.head = this.tail = null;
+          this.length = 0;
+        }
+      }, {
+        key: "join",
+        value: function join(s) {
+          if (this.length === 0) return "";
+          var p = this.head;
+          var ret = "" + p.data;
+          while (p = p.next) ret += s + p.data;
+          return ret;
+        }
+      }, {
+        key: "concat",
+        value: function concat(n) {
+          if (this.length === 0) return Buffer2.alloc(0);
+          var ret = Buffer2.allocUnsafe(n >>> 0);
+          var p = this.head;
+          var i = 0;
+          while (p) {
+            copyBuffer(p.data, ret, i);
+            i += p.data.length;
+            p = p.next;
+          }
+          return ret;
+        }
+        // Consumes a specified amount of bytes or characters from the buffered data.
+      }, {
+        key: "consume",
+        value: function consume(n, hasStrings) {
+          var ret;
+          if (n < this.head.data.length) {
+            ret = this.head.data.slice(0, n);
+            this.head.data = this.head.data.slice(n);
+          } else if (n === this.head.data.length) {
+            ret = this.shift();
+          } else {
+            ret = hasStrings ? this._getString(n) : this._getBuffer(n);
+          }
+          return ret;
+        }
+      }, {
+        key: "first",
+        value: function first() {
+          return this.head.data;
+        }
+        // Consumes a specified amount of characters from the buffered data.
+      }, {
+        key: "_getString",
+        value: function _getString(n) {
+          var p = this.head;
+          var c = 1;
+          var ret = p.data;
+          n -= ret.length;
+          while (p = p.next) {
+            var str = p.data;
+            var nb = n > str.length ? str.length : n;
+            if (nb === str.length) ret += str;
+            else ret += str.slice(0, n);
+            n -= nb;
+            if (n === 0) {
+              if (nb === str.length) {
+                ++c;
+                if (p.next) this.head = p.next;
+                else this.head = this.tail = null;
+              } else {
+                this.head = p;
+                p.data = str.slice(nb);
+              }
+              break;
+            }
+            ++c;
+          }
+          this.length -= c;
+          return ret;
+        }
+        // Consumes a specified amount of bytes from the buffered data.
+      }, {
+        key: "_getBuffer",
+        value: function _getBuffer(n) {
+          var ret = Buffer2.allocUnsafe(n);
+          var p = this.head;
+          var c = 1;
+          p.data.copy(ret);
+          n -= p.data.length;
+          while (p = p.next) {
+            var buf = p.data;
+            var nb = n > buf.length ? buf.length : n;
+            buf.copy(ret, ret.length - n, 0, nb);
+            n -= nb;
+            if (n === 0) {
+              if (nb === buf.length) {
+                ++c;
+                if (p.next) this.head = p.next;
+                else this.head = this.tail = null;
+              } else {
+                this.head = p;
+                p.data = buf.slice(nb);
+              }
+              break;
+            }
+            ++c;
+          }
+          this.length -= c;
+          return ret;
+        }
+        // Make sure the linked list only shows the minimal necessary information.
+      }, {
+        key: custom,
+        value: function value(_, options) {
+          return inspect(this, _objectSpread(_objectSpread({}, options), {}, {
+            // Only inspect one level.
+            depth: 0,
+            // It should not recurse.
+            customInspect: false
+          }));
+        }
+      }]);
+      return BufferList;
+    })();
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/destroy.js
+var require_destroy2 = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/destroy.js"(exports2, module) {
+    "use strict";
+    function destroy(err, cb) {
+      var _this = this;
+      var readableDestroyed = this._readableState && this._readableState.destroyed;
+      var writableDestroyed = this._writableState && this._writableState.destroyed;
+      if (readableDestroyed || writableDestroyed) {
+        if (cb) {
+          cb(err);
+        } else if (err) {
+          if (!this._writableState) {
+            globalThis.process.nextTick(emitErrorNT, this, err);
+          } else if (!this._writableState.errorEmitted) {
+            this._writableState.errorEmitted = true;
+            globalThis.process.nextTick(emitErrorNT, this, err);
+          }
+        }
+        return this;
+      }
+      if (this._readableState) {
+        this._readableState.destroyed = true;
+      }
+      if (this._writableState) {
+        this._writableState.destroyed = true;
+      }
+      this._destroy(err || null, function(err2) {
+        if (!cb && err2) {
+          if (!_this._writableState) {
+            globalThis.process.nextTick(emitErrorAndCloseNT, _this, err2);
+          } else if (!_this._writableState.errorEmitted) {
+            _this._writableState.errorEmitted = true;
+            globalThis.process.nextTick(emitErrorAndCloseNT, _this, err2);
+          } else {
+            globalThis.process.nextTick(emitCloseNT, _this);
+          }
+        } else if (cb) {
+          globalThis.process.nextTick(emitCloseNT, _this);
+          cb(err2);
+        } else {
+          globalThis.process.nextTick(emitCloseNT, _this);
+        }
+      });
+      return this;
+    }
+    function emitErrorAndCloseNT(self2, err) {
+      emitErrorNT(self2, err);
+      emitCloseNT(self2);
+    }
+    function emitCloseNT(self2) {
+      if (self2._writableState && !self2._writableState.emitClose) return;
+      if (self2._readableState && !self2._readableState.emitClose) return;
+      self2.emit("close");
+    }
+    function undestroy() {
+      if (this._readableState) {
+        this._readableState.destroyed = false;
+        this._readableState.reading = false;
+        this._readableState.ended = false;
+        this._readableState.endEmitted = false;
+      }
+      if (this._writableState) {
+        this._writableState.destroyed = false;
+        this._writableState.ended = false;
+        this._writableState.ending = false;
+        this._writableState.finalCalled = false;
+        this._writableState.prefinished = false;
+        this._writableState.finished = false;
+        this._writableState.errorEmitted = false;
+      }
+    }
+    function emitErrorNT(self2, err) {
+      self2.emit("error", err);
+    }
+    function errorOrDestroy(stream, err) {
+      var rState = stream._readableState;
+      var wState = stream._writableState;
+      if (rState && rState.autoDestroy || wState && wState.autoDestroy) stream.destroy(err);
+      else stream.emit("error", err);
+    }
+    module.exports = {
+      destroy,
+      undestroy,
+      errorOrDestroy
+    };
+  }
+});
+
+// node_modules/readable-stream/errors-browser.js
+var require_errors_browser = __commonJS({
+  "node_modules/readable-stream/errors-browser.js"(exports2, module) {
+    "use strict";
+    function _inheritsLoose(subClass, superClass) {
+      subClass.prototype = Object.create(superClass.prototype);
+      subClass.prototype.constructor = subClass;
+      subClass.__proto__ = superClass;
+    }
+    var codes = {};
+    function createErrorType(code, message, Base) {
+      if (!Base) {
+        Base = Error;
+      }
+      function getMessage(arg1, arg2, arg3) {
+        if (typeof message === "string") {
+          return message;
+        } else {
+          return message(arg1, arg2, arg3);
+        }
+      }
+      var NodeError = /* @__PURE__ */ (function(_Base) {
+        _inheritsLoose(NodeError2, _Base);
+        function NodeError2(arg1, arg2, arg3) {
+          return _Base.call(this, getMessage(arg1, arg2, arg3)) || this;
+        }
+        return NodeError2;
+      })(Base);
+      NodeError.prototype.name = Base.name;
+      NodeError.prototype.code = code;
+      codes[code] = NodeError;
+    }
+    function oneOf(expected, thing) {
+      if (Array.isArray(expected)) {
+        var len = expected.length;
+        expected = expected.map(function(i) {
+          return String(i);
+        });
+        if (len > 2) {
+          return "one of ".concat(thing, " ").concat(expected.slice(0, len - 1).join(", "), ", or ") + expected[len - 1];
+        } else if (len === 2) {
+          return "one of ".concat(thing, " ").concat(expected[0], " or ").concat(expected[1]);
+        } else {
+          return "of ".concat(thing, " ").concat(expected[0]);
+        }
+      } else {
+        return "of ".concat(thing, " ").concat(String(expected));
+      }
+    }
+    function startsWith(str, search, pos) {
+      return str.substr(!pos || pos < 0 ? 0 : +pos, search.length) === search;
+    }
+    function endsWith(str, search, this_len) {
+      if (this_len === void 0 || this_len > str.length) {
+        this_len = str.length;
+      }
+      return str.substring(this_len - search.length, this_len) === search;
+    }
+    function includes(str, search, start) {
+      if (typeof start !== "number") {
+        start = 0;
+      }
+      if (start + search.length > str.length) {
+        return false;
+      } else {
+        return str.indexOf(search, start) !== -1;
+      }
+    }
+    createErrorType("ERR_INVALID_OPT_VALUE", function(name, value) {
+      return 'The value "' + value + '" is invalid for option "' + name + '"';
+    }, TypeError);
+    createErrorType("ERR_INVALID_ARG_TYPE", function(name, expected, actual) {
+      var determiner;
+      if (typeof expected === "string" && startsWith(expected, "not ")) {
+        determiner = "must not be";
+        expected = expected.replace(/^not /, "");
+      } else {
+        determiner = "must be";
+      }
+      var msg;
+      if (endsWith(name, " argument")) {
+        msg = "The ".concat(name, " ").concat(determiner, " ").concat(oneOf(expected, "type"));
+      } else {
+        var type = includes(name, ".") ? "property" : "argument";
+        msg = 'The "'.concat(name, '" ').concat(type, " ").concat(determiner, " ").concat(oneOf(expected, "type"));
+      }
+      msg += ". Received type ".concat(typeof actual);
+      return msg;
+    }, TypeError);
+    createErrorType("ERR_STREAM_PUSH_AFTER_EOF", "stream.push() after EOF");
+    createErrorType("ERR_METHOD_NOT_IMPLEMENTED", function(name) {
+      return "The " + name + " method is not implemented";
+    });
+    createErrorType("ERR_STREAM_PREMATURE_CLOSE", "Premature close");
+    createErrorType("ERR_STREAM_DESTROYED", function(name) {
+      return "Cannot call " + name + " after a stream was destroyed";
+    });
+    createErrorType("ERR_MULTIPLE_CALLBACK", "Callback called multiple times");
+    createErrorType("ERR_STREAM_CANNOT_PIPE", "Cannot pipe, not readable");
+    createErrorType("ERR_STREAM_WRITE_AFTER_END", "write after end");
+    createErrorType("ERR_STREAM_NULL_VALUES", "May not write null values to stream", TypeError);
+    createErrorType("ERR_UNKNOWN_ENCODING", function(arg) {
+      return "Unknown encoding: " + arg;
+    }, TypeError);
+    createErrorType("ERR_STREAM_UNSHIFT_AFTER_END_EVENT", "stream.unshift() after end event");
+    module.exports.codes = codes;
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/state.js
+var require_state2 = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/state.js"(exports2, module) {
+    "use strict";
+    var ERR_INVALID_OPT_VALUE = require_errors_browser().codes.ERR_INVALID_OPT_VALUE;
+    function highWaterMarkFrom(options, isDuplex, duplexKey) {
+      return options.highWaterMark != null ? options.highWaterMark : isDuplex ? options[duplexKey] : null;
+    }
+    function getHighWaterMark(state, options, duplexKey, isDuplex) {
+      var hwm = highWaterMarkFrom(options, isDuplex, duplexKey);
+      if (hwm != null) {
+        if (!(isFinite(hwm) && Math.floor(hwm) === hwm) || hwm < 0) {
+          var name = isDuplex ? duplexKey : "highWaterMark";
+          throw new ERR_INVALID_OPT_VALUE(name, hwm);
+        }
+        return Math.floor(hwm);
+      }
+      return state.objectMode ? 16 : 16 * 1024;
+    }
+    module.exports = {
+      getHighWaterMark
+    };
+  }
+});
+
+// node_modules/util-deprecate/browser.js
+var require_browser = __commonJS({
+  "node_modules/util-deprecate/browser.js"(exports2, module) {
+    module.exports = deprecate;
+    function deprecate(fn, msg) {
+      if (config("noDeprecation")) {
+        return fn;
+      }
+      var warned = false;
+      function deprecated() {
+        if (!warned) {
+          if (config("throwDeprecation")) {
+            throw new Error(msg);
+          } else if (config("traceDeprecation")) {
+            console.trace(msg);
+          } else {
+            console.warn(msg);
+          }
+          warned = true;
+        }
+        return fn.apply(this, arguments);
+      }
+      return deprecated;
+    }
+    function config(name) {
+      try {
+        if (!global.localStorage) return false;
+      } catch (_) {
+        return false;
+      }
+      var val = global.localStorage[name];
+      if (null == val) return false;
+      return String(val).toLowerCase() === "true";
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_writable.js
+var require_stream_writable = __commonJS({
+  "node_modules/readable-stream/lib/_stream_writable.js"(exports2, module) {
+    "use strict";
+    module.exports = Writable;
+    function CorkedRequest(state) {
+      var _this = this;
+      this.next = null;
+      this.entry = null;
+      this.finish = function() {
+        onCorkedFinish(_this, state);
+      };
+    }
+    var Duplex;
+    Writable.WritableState = WritableState;
+    var internalUtil = {
+      deprecate: require_browser()
+    };
+    var Stream = require_stream_browser();
+    var Buffer2 = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports)).Buffer;
+    var OurUint8Array = (typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : {}).Uint8Array || function() {
+    };
+    function _uint8ArrayToBuffer(chunk) {
+      return Buffer2.from(chunk);
+    }
+    function _isUint8Array(obj) {
+      return Buffer2.isBuffer(obj) || obj instanceof OurUint8Array;
+    }
+    var destroyImpl = require_destroy2();
+    var _require = require_state2();
+    var getHighWaterMark = _require.getHighWaterMark;
+    var _require$codes = require_errors_browser().codes;
+    var ERR_INVALID_ARG_TYPE = _require$codes.ERR_INVALID_ARG_TYPE;
+    var ERR_METHOD_NOT_IMPLEMENTED = _require$codes.ERR_METHOD_NOT_IMPLEMENTED;
+    var ERR_MULTIPLE_CALLBACK = _require$codes.ERR_MULTIPLE_CALLBACK;
+    var ERR_STREAM_CANNOT_PIPE = _require$codes.ERR_STREAM_CANNOT_PIPE;
+    var ERR_STREAM_DESTROYED = _require$codes.ERR_STREAM_DESTROYED;
+    var ERR_STREAM_NULL_VALUES = _require$codes.ERR_STREAM_NULL_VALUES;
+    var ERR_STREAM_WRITE_AFTER_END = _require$codes.ERR_STREAM_WRITE_AFTER_END;
+    var ERR_UNKNOWN_ENCODING = _require$codes.ERR_UNKNOWN_ENCODING;
+    var errorOrDestroy = destroyImpl.errorOrDestroy;
+    require_inherits_browser()(Writable, Stream);
+    function nop() {
+    }
+    function WritableState(options, stream, isDuplex) {
+      Duplex = Duplex || require_stream_duplex();
+      options = options || {};
+      if (typeof isDuplex !== "boolean") isDuplex = stream instanceof Duplex;
+      this.objectMode = !!options.objectMode;
+      if (isDuplex) this.objectMode = this.objectMode || !!options.writableObjectMode;
+      this.highWaterMark = getHighWaterMark(this, options, "writableHighWaterMark", isDuplex);
+      this.finalCalled = false;
+      this.needDrain = false;
+      this.ending = false;
+      this.ended = false;
+      this.finished = false;
+      this.destroyed = false;
+      var noDecode = options.decodeStrings === false;
+      this.decodeStrings = !noDecode;
+      this.defaultEncoding = options.defaultEncoding || "utf8";
+      this.length = 0;
+      this.writing = false;
+      this.corked = 0;
+      this.sync = true;
+      this.bufferProcessing = false;
+      this.onwrite = function(er) {
+        onwrite(stream, er);
+      };
+      this.writecb = null;
+      this.writelen = 0;
+      this.bufferedRequest = null;
+      this.lastBufferedRequest = null;
+      this.pendingcb = 0;
+      this.prefinished = false;
+      this.errorEmitted = false;
+      this.emitClose = options.emitClose !== false;
+      this.autoDestroy = !!options.autoDestroy;
+      this.bufferedRequestCount = 0;
+      this.corkedRequestsFree = new CorkedRequest(this);
+    }
+    WritableState.prototype.getBuffer = function getBuffer() {
+      var current = this.bufferedRequest;
+      var out = [];
+      while (current) {
+        out.push(current);
+        current = current.next;
+      }
+      return out;
+    };
+    (function() {
+      try {
+        Object.defineProperty(WritableState.prototype, "buffer", {
+          get: internalUtil.deprecate(function writableStateBufferGetter() {
+            return this.getBuffer();
+          }, "_writableState.buffer is deprecated. Use _writableState.getBuffer instead.", "DEP0003")
+        });
+      } catch (_) {
+      }
+    })();
+    var realHasInstance;
+    if (typeof Symbol === "function" && Symbol.hasInstance && typeof Function.prototype[Symbol.hasInstance] === "function") {
+      realHasInstance = Function.prototype[Symbol.hasInstance];
+      Object.defineProperty(Writable, Symbol.hasInstance, {
+        value: function value(object) {
+          if (realHasInstance.call(this, object)) return true;
+          if (this !== Writable) return false;
+          return object && object._writableState instanceof WritableState;
+        }
+      });
+    } else {
+      realHasInstance = function realHasInstance2(object) {
+        return object instanceof this;
+      };
+    }
+    function Writable(options) {
+      Duplex = Duplex || require_stream_duplex();
+      var isDuplex = this instanceof Duplex;
+      if (!isDuplex && !realHasInstance.call(Writable, this)) return new Writable(options);
+      this._writableState = new WritableState(options, this, isDuplex);
+      this.writable = true;
+      if (options) {
+        if (typeof options.write === "function") this._write = options.write;
+        if (typeof options.writev === "function") this._writev = options.writev;
+        if (typeof options.destroy === "function") this._destroy = options.destroy;
+        if (typeof options.final === "function") this._final = options.final;
+      }
+      Stream.call(this);
+    }
+    Writable.prototype.pipe = function() {
+      errorOrDestroy(this, new ERR_STREAM_CANNOT_PIPE());
+    };
+    function writeAfterEnd(stream, cb) {
+      var er = new ERR_STREAM_WRITE_AFTER_END();
+      errorOrDestroy(stream, er);
+      globalThis.process.nextTick(cb, er);
+    }
+    function validChunk(stream, state, chunk, cb) {
+      var er;
+      if (chunk === null) {
+        er = new ERR_STREAM_NULL_VALUES();
+      } else if (typeof chunk !== "string" && !state.objectMode) {
+        er = new ERR_INVALID_ARG_TYPE("chunk", ["string", "Buffer"], chunk);
+      }
+      if (er) {
+        errorOrDestroy(stream, er);
+        globalThis.process.nextTick(cb, er);
+        return false;
+      }
+      return true;
+    }
+    Writable.prototype.write = function(chunk, encoding, cb) {
+      var state = this._writableState;
+      var ret = false;
+      var isBuf = !state.objectMode && _isUint8Array(chunk);
+      if (isBuf && !Buffer2.isBuffer(chunk)) {
+        chunk = _uint8ArrayToBuffer(chunk);
+      }
+      if (typeof encoding === "function") {
+        cb = encoding;
+        encoding = null;
+      }
+      if (isBuf) encoding = "buffer";
+      else if (!encoding) encoding = state.defaultEncoding;
+      if (typeof cb !== "function") cb = nop;
+      if (state.ending) writeAfterEnd(this, cb);
+      else if (isBuf || validChunk(this, state, chunk, cb)) {
+        state.pendingcb++;
+        ret = writeOrBuffer(this, state, isBuf, chunk, encoding, cb);
+      }
+      return ret;
+    };
+    Writable.prototype.cork = function() {
+      this._writableState.corked++;
+    };
+    Writable.prototype.uncork = function() {
+      var state = this._writableState;
+      if (state.corked) {
+        state.corked--;
+        if (!state.writing && !state.corked && !state.bufferProcessing && state.bufferedRequest) clearBuffer(this, state);
+      }
+    };
+    Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
+      if (typeof encoding === "string") encoding = encoding.toLowerCase();
+      if (!(["hex", "utf8", "utf-8", "ascii", "binary", "base64", "ucs2", "ucs-2", "utf16le", "utf-16le", "raw"].indexOf((encoding + "").toLowerCase()) > -1)) throw new ERR_UNKNOWN_ENCODING(encoding);
+      this._writableState.defaultEncoding = encoding;
+      return this;
+    };
+    Object.defineProperty(Writable.prototype, "writableBuffer", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._writableState && this._writableState.getBuffer();
+      }
+    });
+    function decodeChunk(state, chunk, encoding) {
+      if (!state.objectMode && state.decodeStrings !== false && typeof chunk === "string") {
+        chunk = Buffer2.from(chunk, encoding);
+      }
+      return chunk;
+    }
+    Object.defineProperty(Writable.prototype, "writableHighWaterMark", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._writableState.highWaterMark;
+      }
+    });
+    function writeOrBuffer(stream, state, isBuf, chunk, encoding, cb) {
+      if (!isBuf) {
+        var newChunk = decodeChunk(state, chunk, encoding);
+        if (chunk !== newChunk) {
+          isBuf = true;
+          encoding = "buffer";
+          chunk = newChunk;
+        }
+      }
+      var len = state.objectMode ? 1 : chunk.length;
+      state.length += len;
+      var ret = state.length < state.highWaterMark;
+      if (!ret) state.needDrain = true;
+      if (state.writing || state.corked) {
+        var last = state.lastBufferedRequest;
+        state.lastBufferedRequest = {
+          chunk,
+          encoding,
+          isBuf,
+          callback: cb,
+          next: null
+        };
+        if (last) {
+          last.next = state.lastBufferedRequest;
+        } else {
+          state.bufferedRequest = state.lastBufferedRequest;
+        }
+        state.bufferedRequestCount += 1;
+      } else {
+        doWrite(stream, state, false, len, chunk, encoding, cb);
+      }
+      return ret;
+    }
+    function doWrite(stream, state, writev, len, chunk, encoding, cb) {
+      state.writelen = len;
+      state.writecb = cb;
+      state.writing = true;
+      state.sync = true;
+      if (state.destroyed) state.onwrite(new ERR_STREAM_DESTROYED("write"));
+      else if (writev) stream._writev(chunk, state.onwrite);
+      else stream._write(chunk, encoding, state.onwrite);
+      state.sync = false;
+    }
+    function onwriteError(stream, state, sync, er, cb) {
+      --state.pendingcb;
+      if (sync) {
+        globalThis.process.nextTick(cb, er);
+        globalThis.process.nextTick(finishMaybe, stream, state);
+        stream._writableState.errorEmitted = true;
+        errorOrDestroy(stream, er);
+      } else {
+        cb(er);
+        stream._writableState.errorEmitted = true;
+        errorOrDestroy(stream, er);
+        finishMaybe(stream, state);
+      }
+    }
+    function onwriteStateUpdate(state) {
+      state.writing = false;
+      state.writecb = null;
+      state.length -= state.writelen;
+      state.writelen = 0;
+    }
+    function onwrite(stream, er) {
+      var state = stream._writableState;
+      var sync = state.sync;
+      var cb = state.writecb;
+      if (typeof cb !== "function") throw new ERR_MULTIPLE_CALLBACK();
+      onwriteStateUpdate(state);
+      if (er) onwriteError(stream, state, sync, er, cb);
+      else {
+        var finished = needFinish(state) || stream.destroyed;
+        if (!finished && !state.corked && !state.bufferProcessing && state.bufferedRequest) {
+          clearBuffer(stream, state);
+        }
+        if (sync) {
+          globalThis.process.nextTick(afterWrite, stream, state, finished, cb);
+        } else {
+          afterWrite(stream, state, finished, cb);
+        }
+      }
+    }
+    function afterWrite(stream, state, finished, cb) {
+      if (!finished) onwriteDrain(stream, state);
+      state.pendingcb--;
+      cb();
+      finishMaybe(stream, state);
+    }
+    function onwriteDrain(stream, state) {
+      if (state.length === 0 && state.needDrain) {
+        state.needDrain = false;
+        stream.emit("drain");
+      }
+    }
+    function clearBuffer(stream, state) {
+      state.bufferProcessing = true;
+      var entry = state.bufferedRequest;
+      if (stream._writev && entry && entry.next) {
+        var l = state.bufferedRequestCount;
+        var buffer = new Array(l);
+        var holder = state.corkedRequestsFree;
+        holder.entry = entry;
+        var count = 0;
+        var allBuffers = true;
+        while (entry) {
+          buffer[count] = entry;
+          if (!entry.isBuf) allBuffers = false;
+          entry = entry.next;
+          count += 1;
+        }
+        buffer.allBuffers = allBuffers;
+        doWrite(stream, state, true, state.length, buffer, "", holder.finish);
+        state.pendingcb++;
+        state.lastBufferedRequest = null;
+        if (holder.next) {
+          state.corkedRequestsFree = holder.next;
+          holder.next = null;
+        } else {
+          state.corkedRequestsFree = new CorkedRequest(state);
+        }
+        state.bufferedRequestCount = 0;
+      } else {
+        while (entry) {
+          var chunk = entry.chunk;
+          var encoding = entry.encoding;
+          var cb = entry.callback;
+          var len = state.objectMode ? 1 : chunk.length;
+          doWrite(stream, state, false, len, chunk, encoding, cb);
+          entry = entry.next;
+          state.bufferedRequestCount--;
+          if (state.writing) {
+            break;
+          }
+        }
+        if (entry === null) state.lastBufferedRequest = null;
+      }
+      state.bufferedRequest = entry;
+      state.bufferProcessing = false;
+    }
+    Writable.prototype._write = function(chunk, encoding, cb) {
+      cb(new ERR_METHOD_NOT_IMPLEMENTED("_write()"));
+    };
+    Writable.prototype._writev = null;
+    Writable.prototype.end = function(chunk, encoding, cb) {
+      var state = this._writableState;
+      if (typeof chunk === "function") {
+        cb = chunk;
+        chunk = null;
+        encoding = null;
+      } else if (typeof encoding === "function") {
+        cb = encoding;
+        encoding = null;
+      }
+      if (chunk !== null && chunk !== void 0) this.write(chunk, encoding);
+      if (state.corked) {
+        state.corked = 1;
+        this.uncork();
+      }
+      if (!state.ending) endWritable(this, state, cb);
+      return this;
+    };
+    Object.defineProperty(Writable.prototype, "writableLength", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._writableState.length;
+      }
+    });
+    function needFinish(state) {
+      return state.ending && state.length === 0 && state.bufferedRequest === null && !state.finished && !state.writing;
+    }
+    function callFinal(stream, state) {
+      stream._final(function(err) {
+        state.pendingcb--;
+        if (err) {
+          errorOrDestroy(stream, err);
+        }
+        state.prefinished = true;
+        stream.emit("prefinish");
+        finishMaybe(stream, state);
+      });
+    }
+    function prefinish(stream, state) {
+      if (!state.prefinished && !state.finalCalled) {
+        if (typeof stream._final === "function" && !state.destroyed) {
+          state.pendingcb++;
+          state.finalCalled = true;
+          globalThis.process.nextTick(callFinal, stream, state);
+        } else {
+          state.prefinished = true;
+          stream.emit("prefinish");
+        }
+      }
+    }
+    function finishMaybe(stream, state) {
+      var need = needFinish(state);
+      if (need) {
+        prefinish(stream, state);
+        if (state.pendingcb === 0) {
+          state.finished = true;
+          stream.emit("finish");
+          if (state.autoDestroy) {
+            var rState = stream._readableState;
+            if (!rState || rState.autoDestroy && rState.endEmitted) {
+              stream.destroy();
+            }
+          }
+        }
+      }
+      return need;
+    }
+    function endWritable(stream, state, cb) {
+      state.ending = true;
+      finishMaybe(stream, state);
+      if (cb) {
+        if (state.finished) globalThis.process.nextTick(cb);
+        else stream.once("finish", cb);
+      }
+      state.ended = true;
+      stream.writable = false;
+    }
+    function onCorkedFinish(corkReq, state, err) {
+      var entry = corkReq.entry;
+      corkReq.entry = null;
+      while (entry) {
+        var cb = entry.callback;
+        state.pendingcb--;
+        cb(err);
+        entry = entry.next;
+      }
+      state.corkedRequestsFree.next = corkReq;
+    }
+    Object.defineProperty(Writable.prototype, "destroyed", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        if (this._writableState === void 0) {
+          return false;
+        }
+        return this._writableState.destroyed;
+      },
+      set: function set(value) {
+        if (!this._writableState) {
+          return;
+        }
+        this._writableState.destroyed = value;
+      }
+    });
+    Writable.prototype.destroy = destroyImpl.destroy;
+    Writable.prototype._undestroy = destroyImpl.undestroy;
+    Writable.prototype._destroy = function(err, cb) {
+      cb(err);
+    };
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_duplex.js
+var require_stream_duplex = __commonJS({
+  "node_modules/readable-stream/lib/_stream_duplex.js"(exports2, module) {
+    "use strict";
+    var objectKeys = Object.keys || function(obj) {
+      var keys2 = [];
+      for (var key in obj) keys2.push(key);
+      return keys2;
+    };
+    module.exports = Duplex;
+    var Readable = require_stream_readable();
+    var Writable = require_stream_writable();
+    require_inherits_browser()(Duplex, Readable);
+    {
+      keys = objectKeys(Writable.prototype);
+      for (v = 0; v < keys.length; v++) {
+        method = keys[v];
+        if (!Duplex.prototype[method]) Duplex.prototype[method] = Writable.prototype[method];
+      }
+    }
+    var keys;
+    var method;
+    var v;
+    function Duplex(options) {
+      if (!(this instanceof Duplex)) return new Duplex(options);
+      Readable.call(this, options);
+      Writable.call(this, options);
+      this.allowHalfOpen = true;
+      if (options) {
+        if (options.readable === false) this.readable = false;
+        if (options.writable === false) this.writable = false;
+        if (options.allowHalfOpen === false) {
+          this.allowHalfOpen = false;
+          this.once("end", onend);
+        }
+      }
+    }
+    Object.defineProperty(Duplex.prototype, "writableHighWaterMark", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._writableState.highWaterMark;
+      }
+    });
+    Object.defineProperty(Duplex.prototype, "writableBuffer", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._writableState && this._writableState.getBuffer();
+      }
+    });
+    Object.defineProperty(Duplex.prototype, "writableLength", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._writableState.length;
+      }
+    });
+    function onend() {
+      if (this._writableState.ended) return;
+      globalThis.process.nextTick(onEndNT, this);
+    }
+    function onEndNT(self2) {
+      self2.end();
+    }
+    Object.defineProperty(Duplex.prototype, "destroyed", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        if (this._readableState === void 0 || this._writableState === void 0) {
+          return false;
+        }
+        return this._readableState.destroyed && this._writableState.destroyed;
+      },
+      set: function set(value) {
+        if (this._readableState === void 0 || this._writableState === void 0) {
+          return;
+        }
+        this._readableState.destroyed = value;
+        this._writableState.destroyed = value;
+      }
+    });
+  }
+});
+
+// node_modules/safe-buffer/index.js
+var require_safe_buffer = __commonJS({
+  "node_modules/safe-buffer/index.js"(exports2, module) {
+    var buffer = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
+    var Buffer2 = buffer.Buffer;
+    function copyProps(src, dst) {
+      for (var key in src) {
+        dst[key] = src[key];
+      }
+    }
+    if (Buffer2.from && Buffer2.alloc && Buffer2.allocUnsafe && Buffer2.allocUnsafeSlow) {
+      module.exports = buffer;
+    } else {
+      copyProps(buffer, exports2);
+      exports2.Buffer = SafeBuffer;
+    }
+    function SafeBuffer(arg, encodingOrOffset, length) {
+      return Buffer2(arg, encodingOrOffset, length);
+    }
+    SafeBuffer.prototype = Object.create(Buffer2.prototype);
+    copyProps(Buffer2, SafeBuffer);
+    SafeBuffer.from = function(arg, encodingOrOffset, length) {
+      if (typeof arg === "number") {
+        throw new TypeError("Argument must not be a number");
+      }
+      return Buffer2(arg, encodingOrOffset, length);
+    };
+    SafeBuffer.alloc = function(size, fill, encoding) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      var buf = Buffer2(size);
+      if (fill !== void 0) {
+        if (typeof encoding === "string") {
+          buf.fill(fill, encoding);
+        } else {
+          buf.fill(fill);
+        }
+      } else {
+        buf.fill(0);
+      }
+      return buf;
+    };
+    SafeBuffer.allocUnsafe = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return Buffer2(size);
+    };
+    SafeBuffer.allocUnsafeSlow = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return buffer.SlowBuffer(size);
+    };
+  }
+});
+
+// node_modules/string_decoder/lib/string_decoder.js
+var require_string_decoder2 = __commonJS({
+  "node_modules/string_decoder/lib/string_decoder.js"(exports2) {
+    "use strict";
+    var Buffer2 = require_safe_buffer().Buffer;
+    var isEncoding = Buffer2.isEncoding || function(encoding) {
+      encoding = "" + encoding;
+      switch (encoding && encoding.toLowerCase()) {
+        case "hex":
+        case "utf8":
+        case "utf-8":
+        case "ascii":
+        case "binary":
+        case "base64":
+        case "ucs2":
+        case "ucs-2":
+        case "utf16le":
+        case "utf-16le":
+        case "raw":
+          return true;
+        default:
+          return false;
+      }
+    };
+    function _normalizeEncoding(enc) {
+      if (!enc) return "utf8";
+      var retried;
+      while (true) {
+        switch (enc) {
+          case "utf8":
+          case "utf-8":
+            return "utf8";
+          case "ucs2":
+          case "ucs-2":
+          case "utf16le":
+          case "utf-16le":
+            return "utf16le";
+          case "latin1":
+          case "binary":
+            return "latin1";
+          case "base64":
+          case "ascii":
+          case "hex":
+            return enc;
+          default:
+            if (retried) return;
+            enc = ("" + enc).toLowerCase();
+            retried = true;
+        }
+      }
+    }
+    function normalizeEncoding(enc) {
+      var nenc = _normalizeEncoding(enc);
+      if (typeof nenc !== "string" && (Buffer2.isEncoding === isEncoding || !isEncoding(enc))) throw new Error("Unknown encoding: " + enc);
+      return nenc || enc;
+    }
+    exports2.StringDecoder = StringDecoder;
+    function StringDecoder(encoding) {
+      this.encoding = normalizeEncoding(encoding);
+      var nb;
+      switch (this.encoding) {
+        case "utf16le":
+          this.text = utf16Text;
+          this.end = utf16End;
+          nb = 4;
+          break;
+        case "utf8":
+          this.fillLast = utf8FillLast;
+          nb = 4;
+          break;
+        case "base64":
+          this.text = base64Text;
+          this.end = base64End;
+          nb = 3;
+          break;
+        default:
+          this.write = simpleWrite;
+          this.end = simpleEnd;
+          return;
+      }
+      this.lastNeed = 0;
+      this.lastTotal = 0;
+      this.lastChar = Buffer2.allocUnsafe(nb);
+    }
+    StringDecoder.prototype.write = function(buf) {
+      if (buf.length === 0) return "";
+      var r;
+      var i;
+      if (this.lastNeed) {
+        r = this.fillLast(buf);
+        if (r === void 0) return "";
+        i = this.lastNeed;
+        this.lastNeed = 0;
+      } else {
+        i = 0;
+      }
+      if (i < buf.length) return r ? r + this.text(buf, i) : this.text(buf, i);
+      return r || "";
+    };
+    StringDecoder.prototype.end = utf8End;
+    StringDecoder.prototype.text = utf8Text;
+    StringDecoder.prototype.fillLast = function(buf) {
+      if (this.lastNeed <= buf.length) {
+        buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, this.lastNeed);
+        return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+      }
+      buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, buf.length);
+      this.lastNeed -= buf.length;
+    };
+    function utf8CheckByte(byte) {
+      if (byte <= 127) return 0;
+      else if (byte >> 5 === 6) return 2;
+      else if (byte >> 4 === 14) return 3;
+      else if (byte >> 3 === 30) return 4;
+      return byte >> 6 === 2 ? -1 : -2;
+    }
+    function utf8CheckIncomplete(self2, buf, i) {
+      var j = buf.length - 1;
+      if (j < i) return 0;
+      var nb = utf8CheckByte(buf[j]);
+      if (nb >= 0) {
+        if (nb > 0) self2.lastNeed = nb - 1;
+        return nb;
+      }
+      if (--j < i || nb === -2) return 0;
+      nb = utf8CheckByte(buf[j]);
+      if (nb >= 0) {
+        if (nb > 0) self2.lastNeed = nb - 2;
+        return nb;
+      }
+      if (--j < i || nb === -2) return 0;
+      nb = utf8CheckByte(buf[j]);
+      if (nb >= 0) {
+        if (nb > 0) {
+          if (nb === 2) nb = 0;
+          else self2.lastNeed = nb - 3;
+        }
+        return nb;
+      }
+      return 0;
+    }
+    function utf8CheckExtraBytes(self2, buf, p) {
+      if ((buf[0] & 192) !== 128) {
+        self2.lastNeed = 0;
+        return "\uFFFD";
+      }
+      if (self2.lastNeed > 1 && buf.length > 1) {
+        if ((buf[1] & 192) !== 128) {
+          self2.lastNeed = 1;
+          return "\uFFFD";
+        }
+        if (self2.lastNeed > 2 && buf.length > 2) {
+          if ((buf[2] & 192) !== 128) {
+            self2.lastNeed = 2;
+            return "\uFFFD";
+          }
+        }
+      }
+    }
+    function utf8FillLast(buf) {
+      var p = this.lastTotal - this.lastNeed;
+      var r = utf8CheckExtraBytes(this, buf, p);
+      if (r !== void 0) return r;
+      if (this.lastNeed <= buf.length) {
+        buf.copy(this.lastChar, p, 0, this.lastNeed);
+        return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+      }
+      buf.copy(this.lastChar, p, 0, buf.length);
+      this.lastNeed -= buf.length;
+    }
+    function utf8Text(buf, i) {
+      var total = utf8CheckIncomplete(this, buf, i);
+      if (!this.lastNeed) return buf.toString("utf8", i);
+      this.lastTotal = total;
+      var end = buf.length - (total - this.lastNeed);
+      buf.copy(this.lastChar, 0, end);
+      return buf.toString("utf8", i, end);
+    }
+    function utf8End(buf) {
+      var r = buf && buf.length ? this.write(buf) : "";
+      if (this.lastNeed) return r + "\uFFFD";
+      return r;
+    }
+    function utf16Text(buf, i) {
+      if ((buf.length - i) % 2 === 0) {
+        var r = buf.toString("utf16le", i);
+        if (r) {
+          var c = r.charCodeAt(r.length - 1);
+          if (c >= 55296 && c <= 56319) {
+            this.lastNeed = 2;
+            this.lastTotal = 4;
+            this.lastChar[0] = buf[buf.length - 2];
+            this.lastChar[1] = buf[buf.length - 1];
+            return r.slice(0, -1);
+          }
+        }
+        return r;
+      }
+      this.lastNeed = 1;
+      this.lastTotal = 2;
+      this.lastChar[0] = buf[buf.length - 1];
+      return buf.toString("utf16le", i, buf.length - 1);
+    }
+    function utf16End(buf) {
+      var r = buf && buf.length ? this.write(buf) : "";
+      if (this.lastNeed) {
+        var end = this.lastTotal - this.lastNeed;
+        return r + this.lastChar.toString("utf16le", 0, end);
+      }
+      return r;
+    }
+    function base64Text(buf, i) {
+      var n = (buf.length - i) % 3;
+      if (n === 0) return buf.toString("base64", i);
+      this.lastNeed = 3 - n;
+      this.lastTotal = 3;
+      if (n === 1) {
+        this.lastChar[0] = buf[buf.length - 1];
+      } else {
+        this.lastChar[0] = buf[buf.length - 2];
+        this.lastChar[1] = buf[buf.length - 1];
+      }
+      return buf.toString("base64", i, buf.length - n);
+    }
+    function base64End(buf) {
+      var r = buf && buf.length ? this.write(buf) : "";
+      if (this.lastNeed) return r + this.lastChar.toString("base64", 0, 3 - this.lastNeed);
+      return r;
+    }
+    function simpleWrite(buf) {
+      return buf.toString(this.encoding);
+    }
+    function simpleEnd(buf) {
+      return buf && buf.length ? this.write(buf) : "";
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/end-of-stream.js
+var require_end_of_stream2 = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/end-of-stream.js"(exports2, module) {
+    "use strict";
+    var ERR_STREAM_PREMATURE_CLOSE = require_errors_browser().codes.ERR_STREAM_PREMATURE_CLOSE;
+    function once(callback) {
+      var called = false;
+      return function() {
+        if (called) return;
+        called = true;
+        for (var _len = arguments.length, args = new Array(_len), _key = 0; _key < _len; _key++) {
+          args[_key] = arguments[_key];
+        }
+        callback.apply(this, args);
+      };
+    }
+    function noop() {
+    }
+    function isRequest(stream) {
+      return stream.setHeader && typeof stream.abort === "function";
+    }
+    function eos(stream, opts, callback) {
+      if (typeof opts === "function") return eos(stream, null, opts);
+      if (!opts) opts = {};
+      callback = once(callback || noop);
+      var readable = opts.readable || opts.readable !== false && stream.readable;
+      var writable = opts.writable || opts.writable !== false && stream.writable;
+      var onlegacyfinish = function onlegacyfinish2() {
+        if (!stream.writable) onfinish();
+      };
+      var writableEnded = stream._writableState && stream._writableState.finished;
+      var onfinish = function onfinish2() {
+        writable = false;
+        writableEnded = true;
+        if (!readable) callback.call(stream);
+      };
+      var readableEnded = stream._readableState && stream._readableState.endEmitted;
+      var onend = function onend2() {
+        readable = false;
+        readableEnded = true;
+        if (!writable) callback.call(stream);
+      };
+      var onerror = function onerror2(err) {
+        callback.call(stream, err);
+      };
+      var onclose = function onclose2() {
+        var err;
+        if (readable && !readableEnded) {
+          if (!stream._readableState || !stream._readableState.ended) err = new ERR_STREAM_PREMATURE_CLOSE();
+          return callback.call(stream, err);
+        }
+        if (writable && !writableEnded) {
+          if (!stream._writableState || !stream._writableState.ended) err = new ERR_STREAM_PREMATURE_CLOSE();
+          return callback.call(stream, err);
+        }
+      };
+      var onrequest = function onrequest2() {
+        stream.req.on("finish", onfinish);
+      };
+      if (isRequest(stream)) {
+        stream.on("complete", onfinish);
+        stream.on("abort", onclose);
+        if (stream.req) onrequest();
+        else stream.on("request", onrequest);
+      } else if (writable && !stream._writableState) {
+        stream.on("end", onlegacyfinish);
+        stream.on("close", onlegacyfinish);
+      }
+      stream.on("end", onend);
+      stream.on("finish", onfinish);
+      if (opts.error !== false) stream.on("error", onerror);
+      stream.on("close", onclose);
+      return function() {
+        stream.removeListener("complete", onfinish);
+        stream.removeListener("abort", onclose);
+        stream.removeListener("request", onrequest);
+        if (stream.req) stream.req.removeListener("finish", onfinish);
+        stream.removeListener("end", onlegacyfinish);
+        stream.removeListener("close", onlegacyfinish);
+        stream.removeListener("finish", onfinish);
+        stream.removeListener("end", onend);
+        stream.removeListener("error", onerror);
+        stream.removeListener("close", onclose);
+      };
+    }
+    module.exports = eos;
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/async_iterator.js
+var require_async_iterator = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/async_iterator.js"(exports2, module) {
+    "use strict";
+    var _Object$setPrototypeO;
+    function _defineProperty(obj, key, value) {
+      key = _toPropertyKey(key);
+      if (key in obj) {
+        Object.defineProperty(obj, key, { value, enumerable: true, configurable: true, writable: true });
+      } else {
+        obj[key] = value;
+      }
+      return obj;
+    }
+    function _toPropertyKey(arg) {
+      var key = _toPrimitive(arg, "string");
+      return typeof key === "symbol" ? key : String(key);
+    }
+    function _toPrimitive(input, hint) {
+      if (typeof input !== "object" || input === null) return input;
+      var prim = input[Symbol.toPrimitive];
+      if (prim !== void 0) {
+        var res = prim.call(input, hint || "default");
+        if (typeof res !== "object") return res;
+        throw new TypeError("@@toPrimitive must return a primitive value.");
+      }
+      return (hint === "string" ? String : Number)(input);
+    }
+    var finished = require_end_of_stream2();
+    var kLastResolve = Symbol("lastResolve");
+    var kLastReject = Symbol("lastReject");
+    var kError = Symbol("error");
+    var kEnded = Symbol("ended");
+    var kLastPromise = Symbol("lastPromise");
+    var kHandlePromise = Symbol("handlePromise");
+    var kStream = Symbol("stream");
+    function createIterResult(value, done) {
+      return {
+        value,
+        done
+      };
+    }
+    function readAndResolve(iter) {
+      var resolve = iter[kLastResolve];
+      if (resolve !== null) {
+        var data = iter[kStream].read();
+        if (data !== null) {
+          iter[kLastPromise] = null;
+          iter[kLastResolve] = null;
+          iter[kLastReject] = null;
+          resolve(createIterResult(data, false));
+        }
+      }
+    }
+    function onReadable(iter) {
+      globalThis.process.nextTick(readAndResolve, iter);
+    }
+    function wrapForNext(lastPromise, iter) {
+      return function(resolve, reject) {
+        lastPromise.then(function() {
+          if (iter[kEnded]) {
+            resolve(createIterResult(void 0, true));
+            return;
+          }
+          iter[kHandlePromise](resolve, reject);
+        }, reject);
+      };
+    }
+    var AsyncIteratorPrototype = Object.getPrototypeOf(function() {
+    });
+    var ReadableStreamAsyncIteratorPrototype = Object.setPrototypeOf((_Object$setPrototypeO = {
+      get stream() {
+        return this[kStream];
+      },
+      next: function next() {
+        var _this = this;
+        var error = this[kError];
+        if (error !== null) {
+          return Promise.reject(error);
+        }
+        if (this[kEnded]) {
+          return Promise.resolve(createIterResult(void 0, true));
+        }
+        if (this[kStream].destroyed) {
+          return new Promise(function(resolve, reject) {
+            globalThis.process.nextTick(function() {
+              if (_this[kError]) {
+                reject(_this[kError]);
+              } else {
+                resolve(createIterResult(void 0, true));
+              }
+            });
+          });
+        }
+        var lastPromise = this[kLastPromise];
+        var promise;
+        if (lastPromise) {
+          promise = new Promise(wrapForNext(lastPromise, this));
+        } else {
+          var data = this[kStream].read();
+          if (data !== null) {
+            return Promise.resolve(createIterResult(data, false));
+          }
+          promise = new Promise(this[kHandlePromise]);
+        }
+        this[kLastPromise] = promise;
+        return promise;
+      }
+    }, _defineProperty(_Object$setPrototypeO, Symbol.asyncIterator, function() {
+      return this;
+    }), _defineProperty(_Object$setPrototypeO, "return", function _return() {
+      var _this2 = this;
+      return new Promise(function(resolve, reject) {
+        _this2[kStream].destroy(null, function(err) {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(createIterResult(void 0, true));
+        });
+      });
+    }), _Object$setPrototypeO), AsyncIteratorPrototype);
+    var createReadableStreamAsyncIterator = function createReadableStreamAsyncIterator2(stream) {
+      var _Object$create;
+      var iterator = Object.create(ReadableStreamAsyncIteratorPrototype, (_Object$create = {}, _defineProperty(_Object$create, kStream, {
+        value: stream,
+        writable: true
+      }), _defineProperty(_Object$create, kLastResolve, {
+        value: null,
+        writable: true
+      }), _defineProperty(_Object$create, kLastReject, {
+        value: null,
+        writable: true
+      }), _defineProperty(_Object$create, kError, {
+        value: null,
+        writable: true
+      }), _defineProperty(_Object$create, kEnded, {
+        value: stream._readableState.endEmitted,
+        writable: true
+      }), _defineProperty(_Object$create, kHandlePromise, {
+        value: function value(resolve, reject) {
+          var data = iterator[kStream].read();
+          if (data) {
+            iterator[kLastPromise] = null;
+            iterator[kLastResolve] = null;
+            iterator[kLastReject] = null;
+            resolve(createIterResult(data, false));
+          } else {
+            iterator[kLastResolve] = resolve;
+            iterator[kLastReject] = reject;
+          }
+        },
+        writable: true
+      }), _Object$create));
+      iterator[kLastPromise] = null;
+      finished(stream, function(err) {
+        if (err && err.code !== "ERR_STREAM_PREMATURE_CLOSE") {
+          var reject = iterator[kLastReject];
+          if (reject !== null) {
+            iterator[kLastPromise] = null;
+            iterator[kLastResolve] = null;
+            iterator[kLastReject] = null;
+            reject(err);
+          }
+          iterator[kError] = err;
+          return;
+        }
+        var resolve = iterator[kLastResolve];
+        if (resolve !== null) {
+          iterator[kLastPromise] = null;
+          iterator[kLastResolve] = null;
+          iterator[kLastReject] = null;
+          resolve(createIterResult(void 0, true));
+        }
+        iterator[kEnded] = true;
+      });
+      stream.on("readable", onReadable.bind(null, iterator));
+      return iterator;
+    };
+    module.exports = createReadableStreamAsyncIterator;
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/from-browser.js
+var require_from_browser = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/from-browser.js"(exports2, module) {
+    module.exports = function() {
+      throw new Error("Readable.from is not available in the browser");
+    };
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_readable.js
+var require_stream_readable = __commonJS({
+  "node_modules/readable-stream/lib/_stream_readable.js"(exports2, module) {
+    "use strict";
+    module.exports = Readable;
+    var Duplex;
+    Readable.ReadableState = ReadableState;
+    var EE = require_events().EventEmitter;
+    var EElistenerCount = function EElistenerCount2(emitter, type) {
+      return emitter.listeners(type).length;
+    };
+    var Stream = require_stream_browser();
+    var Buffer2 = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports)).Buffer;
+    var OurUint8Array = (typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : {}).Uint8Array || function() {
+    };
+    function _uint8ArrayToBuffer(chunk) {
+      return Buffer2.from(chunk);
+    }
+    function _isUint8Array(obj) {
+      return Buffer2.isBuffer(obj) || obj instanceof OurUint8Array;
+    }
+    var debugUtil = require_util2();
+    var debug;
+    if (debugUtil && debugUtil.debuglog) {
+      debug = debugUtil.debuglog("stream");
+    } else {
+      debug = function debug2() {
+      };
+    }
+    var BufferList = require_buffer_list();
+    var destroyImpl = require_destroy2();
+    var _require = require_state2();
+    var getHighWaterMark = _require.getHighWaterMark;
+    var _require$codes = require_errors_browser().codes;
+    var ERR_INVALID_ARG_TYPE = _require$codes.ERR_INVALID_ARG_TYPE;
+    var ERR_STREAM_PUSH_AFTER_EOF = _require$codes.ERR_STREAM_PUSH_AFTER_EOF;
+    var ERR_METHOD_NOT_IMPLEMENTED = _require$codes.ERR_METHOD_NOT_IMPLEMENTED;
+    var ERR_STREAM_UNSHIFT_AFTER_END_EVENT = _require$codes.ERR_STREAM_UNSHIFT_AFTER_END_EVENT;
+    var StringDecoder;
+    var createReadableStreamAsyncIterator;
+    var from;
+    require_inherits_browser()(Readable, Stream);
+    var errorOrDestroy = destroyImpl.errorOrDestroy;
+    var kProxyEvents = ["error", "close", "destroy", "pause", "resume"];
+    function prependListener(emitter, event, fn) {
+      if (typeof emitter.prependListener === "function") return emitter.prependListener(event, fn);
+      if (!emitter._events || !emitter._events[event]) emitter.on(event, fn);
+      else if (Array.isArray(emitter._events[event])) emitter._events[event].unshift(fn);
+      else emitter._events[event] = [fn, emitter._events[event]];
+    }
+    function ReadableState(options, stream, isDuplex) {
+      Duplex = Duplex || require_stream_duplex();
+      options = options || {};
+      if (typeof isDuplex !== "boolean") isDuplex = stream instanceof Duplex;
+      this.objectMode = !!options.objectMode;
+      if (isDuplex) this.objectMode = this.objectMode || !!options.readableObjectMode;
+      this.highWaterMark = getHighWaterMark(this, options, "readableHighWaterMark", isDuplex);
+      this.buffer = new BufferList();
+      this.length = 0;
+      this.pipes = null;
+      this.pipesCount = 0;
+      this.flowing = null;
+      this.ended = false;
+      this.endEmitted = false;
+      this.reading = false;
+      this.sync = true;
+      this.needReadable = false;
+      this.emittedReadable = false;
+      this.readableListening = false;
+      this.resumeScheduled = false;
+      this.paused = true;
+      this.emitClose = options.emitClose !== false;
+      this.autoDestroy = !!options.autoDestroy;
+      this.destroyed = false;
+      this.defaultEncoding = options.defaultEncoding || "utf8";
+      this.awaitDrain = 0;
+      this.readingMore = false;
+      this.decoder = null;
+      this.encoding = null;
+      if (options.encoding) {
+        if (!StringDecoder) StringDecoder = require_string_decoder2().StringDecoder;
+        this.decoder = new StringDecoder(options.encoding);
+        this.encoding = options.encoding;
+      }
+    }
+    function Readable(options) {
+      Duplex = Duplex || require_stream_duplex();
+      if (!(this instanceof Readable)) return new Readable(options);
+      var isDuplex = this instanceof Duplex;
+      this._readableState = new ReadableState(options, this, isDuplex);
+      this.readable = true;
+      if (options) {
+        if (typeof options.read === "function") this._read = options.read;
+        if (typeof options.destroy === "function") this._destroy = options.destroy;
+      }
+      Stream.call(this);
+    }
+    Object.defineProperty(Readable.prototype, "destroyed", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        if (this._readableState === void 0) {
+          return false;
+        }
+        return this._readableState.destroyed;
+      },
+      set: function set(value) {
+        if (!this._readableState) {
+          return;
+        }
+        this._readableState.destroyed = value;
+      }
+    });
+    Readable.prototype.destroy = destroyImpl.destroy;
+    Readable.prototype._undestroy = destroyImpl.undestroy;
+    Readable.prototype._destroy = function(err, cb) {
+      cb(err);
+    };
+    Readable.prototype.push = function(chunk, encoding) {
+      var state = this._readableState;
+      var skipChunkCheck;
+      if (!state.objectMode) {
+        if (typeof chunk === "string") {
+          encoding = encoding || state.defaultEncoding;
+          if (encoding !== state.encoding) {
+            chunk = Buffer2.from(chunk, encoding);
+            encoding = "";
+          }
+          skipChunkCheck = true;
+        }
+      } else {
+        skipChunkCheck = true;
+      }
+      return readableAddChunk(this, chunk, encoding, false, skipChunkCheck);
+    };
+    Readable.prototype.unshift = function(chunk) {
+      return readableAddChunk(this, chunk, null, true, false);
+    };
+    function readableAddChunk(stream, chunk, encoding, addToFront, skipChunkCheck) {
+      debug("readableAddChunk", chunk);
+      var state = stream._readableState;
+      if (chunk === null) {
+        state.reading = false;
+        onEofChunk(stream, state);
+      } else {
+        var er;
+        if (!skipChunkCheck) er = chunkInvalid(state, chunk);
+        if (er) {
+          errorOrDestroy(stream, er);
+        } else if (state.objectMode || chunk && chunk.length > 0) {
+          if (typeof chunk !== "string" && !state.objectMode && Object.getPrototypeOf(chunk) !== Buffer2.prototype) {
+            chunk = _uint8ArrayToBuffer(chunk);
+          }
+          if (addToFront) {
+            if (state.endEmitted) errorOrDestroy(stream, new ERR_STREAM_UNSHIFT_AFTER_END_EVENT());
+            else addChunk(stream, state, chunk, true);
+          } else if (state.ended) {
+            errorOrDestroy(stream, new ERR_STREAM_PUSH_AFTER_EOF());
+          } else if (state.destroyed) {
+            return false;
+          } else {
+            state.reading = false;
+            if (state.decoder && !encoding) {
+              chunk = state.decoder.write(chunk);
+              if (state.objectMode || chunk.length !== 0) addChunk(stream, state, chunk, false);
+              else maybeReadMore(stream, state);
+            } else {
+              addChunk(stream, state, chunk, false);
+            }
+          }
+        } else if (!addToFront) {
+          state.reading = false;
+          maybeReadMore(stream, state);
+        }
+      }
+      return !state.ended && (state.length < state.highWaterMark || state.length === 0);
+    }
+    function addChunk(stream, state, chunk, addToFront) {
+      if (state.flowing && state.length === 0 && !state.sync) {
+        state.awaitDrain = 0;
+        stream.emit("data", chunk);
+      } else {
+        state.length += state.objectMode ? 1 : chunk.length;
+        if (addToFront) state.buffer.unshift(chunk);
+        else state.buffer.push(chunk);
+        if (state.needReadable) emitReadable(stream);
+      }
+      maybeReadMore(stream, state);
+    }
+    function chunkInvalid(state, chunk) {
+      var er;
+      if (!_isUint8Array(chunk) && typeof chunk !== "string" && chunk !== void 0 && !state.objectMode) {
+        er = new ERR_INVALID_ARG_TYPE("chunk", ["string", "Buffer", "Uint8Array"], chunk);
+      }
+      return er;
+    }
+    Readable.prototype.isPaused = function() {
+      return this._readableState.flowing === false;
+    };
+    Readable.prototype.setEncoding = function(enc) {
+      if (!StringDecoder) StringDecoder = require_string_decoder2().StringDecoder;
+      var decoder = new StringDecoder(enc);
+      this._readableState.decoder = decoder;
+      this._readableState.encoding = this._readableState.decoder.encoding;
+      var p = this._readableState.buffer.head;
+      var content = "";
+      while (p !== null) {
+        content += decoder.write(p.data);
+        p = p.next;
+      }
+      this._readableState.buffer.clear();
+      if (content !== "") this._readableState.buffer.push(content);
+      this._readableState.length = content.length;
+      return this;
+    };
+    var MAX_HWM = 1073741824;
+    function computeNewHighWaterMark(n) {
+      if (n >= MAX_HWM) {
+        n = MAX_HWM;
+      } else {
+        n--;
+        n |= n >>> 1;
+        n |= n >>> 2;
+        n |= n >>> 4;
+        n |= n >>> 8;
+        n |= n >>> 16;
+        n++;
+      }
+      return n;
+    }
+    function howMuchToRead(n, state) {
+      if (n <= 0 || state.length === 0 && state.ended) return 0;
+      if (state.objectMode) return 1;
+      if (n !== n) {
+        if (state.flowing && state.length) return state.buffer.head.data.length;
+        else return state.length;
+      }
+      if (n > state.highWaterMark) state.highWaterMark = computeNewHighWaterMark(n);
+      if (n <= state.length) return n;
+      if (!state.ended) {
+        state.needReadable = true;
+        return 0;
+      }
+      return state.length;
+    }
+    Readable.prototype.read = function(n) {
+      debug("read", n);
+      n = parseInt(n, 10);
+      var state = this._readableState;
+      var nOrig = n;
+      if (n !== 0) state.emittedReadable = false;
+      if (n === 0 && state.needReadable && ((state.highWaterMark !== 0 ? state.length >= state.highWaterMark : state.length > 0) || state.ended)) {
+        debug("read: emitReadable", state.length, state.ended);
+        if (state.length === 0 && state.ended) endReadable(this);
+        else emitReadable(this);
+        return null;
+      }
+      n = howMuchToRead(n, state);
+      if (n === 0 && state.ended) {
+        if (state.length === 0) endReadable(this);
+        return null;
+      }
+      var doRead = state.needReadable;
+      debug("need readable", doRead);
+      if (state.length === 0 || state.length - n < state.highWaterMark) {
+        doRead = true;
+        debug("length less than watermark", doRead);
+      }
+      if (state.ended || state.reading) {
+        doRead = false;
+        debug("reading or ended", doRead);
+      } else if (doRead) {
+        debug("do read");
+        state.reading = true;
+        state.sync = true;
+        if (state.length === 0) state.needReadable = true;
+        this._read(state.highWaterMark);
+        state.sync = false;
+        if (!state.reading) n = howMuchToRead(nOrig, state);
+      }
+      var ret;
+      if (n > 0) ret = fromList(n, state);
+      else ret = null;
+      if (ret === null) {
+        state.needReadable = state.length <= state.highWaterMark;
+        n = 0;
+      } else {
+        state.length -= n;
+        state.awaitDrain = 0;
+      }
+      if (state.length === 0) {
+        if (!state.ended) state.needReadable = true;
+        if (nOrig !== n && state.ended) endReadable(this);
+      }
+      if (ret !== null) this.emit("data", ret);
+      return ret;
+    };
+    function onEofChunk(stream, state) {
+      debug("onEofChunk");
+      if (state.ended) return;
+      if (state.decoder) {
+        var chunk = state.decoder.end();
+        if (chunk && chunk.length) {
+          state.buffer.push(chunk);
+          state.length += state.objectMode ? 1 : chunk.length;
+        }
+      }
+      state.ended = true;
+      if (state.sync) {
+        emitReadable(stream);
+      } else {
+        state.needReadable = false;
+        if (!state.emittedReadable) {
+          state.emittedReadable = true;
+          emitReadable_(stream);
+        }
+      }
+    }
+    function emitReadable(stream) {
+      var state = stream._readableState;
+      debug("emitReadable", state.needReadable, state.emittedReadable);
+      state.needReadable = false;
+      if (!state.emittedReadable) {
+        debug("emitReadable", state.flowing);
+        state.emittedReadable = true;
+        globalThis.process.nextTick(emitReadable_, stream);
+      }
+    }
+    function emitReadable_(stream) {
+      var state = stream._readableState;
+      debug("emitReadable_", state.destroyed, state.length, state.ended);
+      if (!state.destroyed && (state.length || state.ended)) {
+        stream.emit("readable");
+        state.emittedReadable = false;
+      }
+      state.needReadable = !state.flowing && !state.ended && state.length <= state.highWaterMark;
+      flow(stream);
+    }
+    function maybeReadMore(stream, state) {
+      if (!state.readingMore) {
+        state.readingMore = true;
+        globalThis.process.nextTick(maybeReadMore_, stream, state);
+      }
+    }
+    function maybeReadMore_(stream, state) {
+      while (!state.reading && !state.ended && (state.length < state.highWaterMark || state.flowing && state.length === 0)) {
+        var len = state.length;
+        debug("maybeReadMore read 0");
+        stream.read(0);
+        if (len === state.length)
+          break;
+      }
+      state.readingMore = false;
+    }
+    Readable.prototype._read = function(n) {
+      errorOrDestroy(this, new ERR_METHOD_NOT_IMPLEMENTED("_read()"));
+    };
+    Readable.prototype.pipe = function(dest, pipeOpts) {
+      var src = this;
+      var state = this._readableState;
+      switch (state.pipesCount) {
+        case 0:
+          state.pipes = dest;
+          break;
+        case 1:
+          state.pipes = [state.pipes, dest];
+          break;
+        default:
+          state.pipes.push(dest);
+          break;
+      }
+      state.pipesCount += 1;
+      debug("pipe count=%d opts=%j", state.pipesCount, pipeOpts);
+      var doEnd = (!pipeOpts || pipeOpts.end !== false) && dest !== globalThis.process.stdout && dest !== globalThis.process.stderr;
+      var endFn = doEnd ? onend : unpipe;
+      if (state.endEmitted) globalThis.process.nextTick(endFn);
+      else src.once("end", endFn);
+      dest.on("unpipe", onunpipe);
+      function onunpipe(readable, unpipeInfo) {
+        debug("onunpipe");
+        if (readable === src) {
+          if (unpipeInfo && unpipeInfo.hasUnpiped === false) {
+            unpipeInfo.hasUnpiped = true;
+            cleanup();
+          }
+        }
+      }
+      function onend() {
+        debug("onend");
+        dest.end();
+      }
+      var ondrain = pipeOnDrain(src);
+      dest.on("drain", ondrain);
+      var cleanedUp = false;
+      function cleanup() {
+        debug("cleanup");
+        dest.removeListener("close", onclose);
+        dest.removeListener("finish", onfinish);
+        dest.removeListener("drain", ondrain);
+        dest.removeListener("error", onerror);
+        dest.removeListener("unpipe", onunpipe);
+        src.removeListener("end", onend);
+        src.removeListener("end", unpipe);
+        src.removeListener("data", ondata);
+        cleanedUp = true;
+        if (state.awaitDrain && (!dest._writableState || dest._writableState.needDrain)) ondrain();
+      }
+      src.on("data", ondata);
+      function ondata(chunk) {
+        debug("ondata");
+        var ret = dest.write(chunk);
+        debug("dest.write", ret);
+        if (ret === false) {
+          if ((state.pipesCount === 1 && state.pipes === dest || state.pipesCount > 1 && indexOf(state.pipes, dest) !== -1) && !cleanedUp) {
+            debug("false write response, pause", state.awaitDrain);
+            state.awaitDrain++;
+          }
+          src.pause();
+        }
+      }
+      function onerror(er) {
+        debug("onerror", er);
+        unpipe();
+        dest.removeListener("error", onerror);
+        if (EElistenerCount(dest, "error") === 0) errorOrDestroy(dest, er);
+      }
+      prependListener(dest, "error", onerror);
+      function onclose() {
+        dest.removeListener("finish", onfinish);
+        unpipe();
+      }
+      dest.once("close", onclose);
+      function onfinish() {
+        debug("onfinish");
+        dest.removeListener("close", onclose);
+        unpipe();
+      }
+      dest.once("finish", onfinish);
+      function unpipe() {
+        debug("unpipe");
+        src.unpipe(dest);
+      }
+      dest.emit("pipe", src);
+      if (!state.flowing) {
+        debug("pipe resume");
+        src.resume();
+      }
+      return dest;
+    };
+    function pipeOnDrain(src) {
+      return function pipeOnDrainFunctionResult() {
+        var state = src._readableState;
+        debug("pipeOnDrain", state.awaitDrain);
+        if (state.awaitDrain) state.awaitDrain--;
+        if (state.awaitDrain === 0 && EElistenerCount(src, "data")) {
+          state.flowing = true;
+          flow(src);
+        }
+      };
+    }
+    Readable.prototype.unpipe = function(dest) {
+      var state = this._readableState;
+      var unpipeInfo = {
+        hasUnpiped: false
+      };
+      if (state.pipesCount === 0) return this;
+      if (state.pipesCount === 1) {
+        if (dest && dest !== state.pipes) return this;
+        if (!dest) dest = state.pipes;
+        state.pipes = null;
+        state.pipesCount = 0;
+        state.flowing = false;
+        if (dest) dest.emit("unpipe", this, unpipeInfo);
+        return this;
+      }
+      if (!dest) {
+        var dests = state.pipes;
+        var len = state.pipesCount;
+        state.pipes = null;
+        state.pipesCount = 0;
+        state.flowing = false;
+        for (var i = 0; i < len; i++) dests[i].emit("unpipe", this, {
+          hasUnpiped: false
+        });
+        return this;
+      }
+      var index = indexOf(state.pipes, dest);
+      if (index === -1) return this;
+      state.pipes.splice(index, 1);
+      state.pipesCount -= 1;
+      if (state.pipesCount === 1) state.pipes = state.pipes[0];
+      dest.emit("unpipe", this, unpipeInfo);
+      return this;
+    };
+    Readable.prototype.on = function(ev, fn) {
+      var res = Stream.prototype.on.call(this, ev, fn);
+      var state = this._readableState;
+      if (ev === "data") {
+        state.readableListening = this.listenerCount("readable") > 0;
+        if (state.flowing !== false) this.resume();
+      } else if (ev === "readable") {
+        if (!state.endEmitted && !state.readableListening) {
+          state.readableListening = state.needReadable = true;
+          state.flowing = false;
+          state.emittedReadable = false;
+          debug("on readable", state.length, state.reading);
+          if (state.length) {
+            emitReadable(this);
+          } else if (!state.reading) {
+            globalThis.process.nextTick(nReadingNextTick, this);
+          }
+        }
+      }
+      return res;
+    };
+    Readable.prototype.addListener = Readable.prototype.on;
+    Readable.prototype.removeListener = function(ev, fn) {
+      var res = Stream.prototype.removeListener.call(this, ev, fn);
+      if (ev === "readable") {
+        globalThis.process.nextTick(updateReadableListening, this);
+      }
+      return res;
+    };
+    Readable.prototype.removeAllListeners = function(ev) {
+      var res = Stream.prototype.removeAllListeners.apply(this, arguments);
+      if (ev === "readable" || ev === void 0) {
+        globalThis.process.nextTick(updateReadableListening, this);
+      }
+      return res;
+    };
+    function updateReadableListening(self2) {
+      var state = self2._readableState;
+      state.readableListening = self2.listenerCount("readable") > 0;
+      if (state.resumeScheduled && !state.paused) {
+        state.flowing = true;
+      } else if (self2.listenerCount("data") > 0) {
+        self2.resume();
+      }
+    }
+    function nReadingNextTick(self2) {
+      debug("readable nexttick read 0");
+      self2.read(0);
+    }
+    Readable.prototype.resume = function() {
+      var state = this._readableState;
+      if (!state.flowing) {
+        debug("resume");
+        state.flowing = !state.readableListening;
+        resume(this, state);
+      }
+      state.paused = false;
+      return this;
+    };
+    function resume(stream, state) {
+      if (!state.resumeScheduled) {
+        state.resumeScheduled = true;
+        globalThis.process.nextTick(resume_, stream, state);
+      }
+    }
+    function resume_(stream, state) {
+      debug("resume", state.reading);
+      if (!state.reading) {
+        stream.read(0);
+      }
+      state.resumeScheduled = false;
+      stream.emit("resume");
+      flow(stream);
+      if (state.flowing && !state.reading) stream.read(0);
+    }
+    Readable.prototype.pause = function() {
+      debug("call pause flowing=%j", this._readableState.flowing);
+      if (this._readableState.flowing !== false) {
+        debug("pause");
+        this._readableState.flowing = false;
+        this.emit("pause");
+      }
+      this._readableState.paused = true;
+      return this;
+    };
+    function flow(stream) {
+      var state = stream._readableState;
+      debug("flow", state.flowing);
+      while (state.flowing && stream.read() !== null) ;
+    }
+    Readable.prototype.wrap = function(stream) {
+      var _this = this;
+      var state = this._readableState;
+      var paused = false;
+      stream.on("end", function() {
+        debug("wrapped end");
+        if (state.decoder && !state.ended) {
+          var chunk = state.decoder.end();
+          if (chunk && chunk.length) _this.push(chunk);
+        }
+        _this.push(null);
+      });
+      stream.on("data", function(chunk) {
+        debug("wrapped data");
+        if (state.decoder) chunk = state.decoder.write(chunk);
+        if (state.objectMode && (chunk === null || chunk === void 0)) return;
+        else if (!state.objectMode && (!chunk || !chunk.length)) return;
+        var ret = _this.push(chunk);
+        if (!ret) {
+          paused = true;
+          stream.pause();
+        }
+      });
+      for (var i in stream) {
+        if (this[i] === void 0 && typeof stream[i] === "function") {
+          this[i] = /* @__PURE__ */ (function methodWrap(method) {
+            return function methodWrapReturnFunction() {
+              return stream[method].apply(stream, arguments);
+            };
+          })(i);
+        }
+      }
+      for (var n = 0; n < kProxyEvents.length; n++) {
+        stream.on(kProxyEvents[n], this.emit.bind(this, kProxyEvents[n]));
+      }
+      this._read = function(n2) {
+        debug("wrapped _read", n2);
+        if (paused) {
+          paused = false;
+          stream.resume();
+        }
+      };
+      return this;
+    };
+    if (typeof Symbol === "function") {
+      Readable.prototype[Symbol.asyncIterator] = function() {
+        if (createReadableStreamAsyncIterator === void 0) {
+          createReadableStreamAsyncIterator = require_async_iterator();
+        }
+        return createReadableStreamAsyncIterator(this);
+      };
+    }
+    Object.defineProperty(Readable.prototype, "readableHighWaterMark", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._readableState.highWaterMark;
+      }
+    });
+    Object.defineProperty(Readable.prototype, "readableBuffer", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._readableState && this._readableState.buffer;
+      }
+    });
+    Object.defineProperty(Readable.prototype, "readableFlowing", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._readableState.flowing;
+      },
+      set: function set(state) {
+        if (this._readableState) {
+          this._readableState.flowing = state;
+        }
+      }
+    });
+    Readable._fromList = fromList;
+    Object.defineProperty(Readable.prototype, "readableLength", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function get() {
+        return this._readableState.length;
+      }
+    });
+    function fromList(n, state) {
+      if (state.length === 0) return null;
+      var ret;
+      if (state.objectMode) ret = state.buffer.shift();
+      else if (!n || n >= state.length) {
+        if (state.decoder) ret = state.buffer.join("");
+        else if (state.buffer.length === 1) ret = state.buffer.first();
+        else ret = state.buffer.concat(state.length);
+        state.buffer.clear();
+      } else {
+        ret = state.buffer.consume(n, state.decoder);
+      }
+      return ret;
+    }
+    function endReadable(stream) {
+      var state = stream._readableState;
+      debug("endReadable", state.endEmitted);
+      if (!state.endEmitted) {
+        state.ended = true;
+        globalThis.process.nextTick(endReadableNT, state, stream);
+      }
+    }
+    function endReadableNT(state, stream) {
+      debug("endReadableNT", state.endEmitted, state.length);
+      if (!state.endEmitted && state.length === 0) {
+        state.endEmitted = true;
+        stream.readable = false;
+        stream.emit("end");
+        if (state.autoDestroy) {
+          var wState = stream._writableState;
+          if (!wState || wState.autoDestroy && wState.finished) {
+            stream.destroy();
+          }
+        }
+      }
+    }
+    if (typeof Symbol === "function") {
+      Readable.from = function(iterable, opts) {
+        if (from === void 0) {
+          from = require_from_browser();
+        }
+        return from(Readable, iterable, opts);
+      };
+    }
+    function indexOf(xs, x) {
+      for (var i = 0, l = xs.length; i < l; i++) {
+        if (xs[i] === x) return i;
+      }
+      return -1;
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_transform.js
+var require_stream_transform = __commonJS({
+  "node_modules/readable-stream/lib/_stream_transform.js"(exports2, module) {
+    "use strict";
+    module.exports = Transform;
+    var _require$codes = require_errors_browser().codes;
+    var ERR_METHOD_NOT_IMPLEMENTED = _require$codes.ERR_METHOD_NOT_IMPLEMENTED;
+    var ERR_MULTIPLE_CALLBACK = _require$codes.ERR_MULTIPLE_CALLBACK;
+    var ERR_TRANSFORM_ALREADY_TRANSFORMING = _require$codes.ERR_TRANSFORM_ALREADY_TRANSFORMING;
+    var ERR_TRANSFORM_WITH_LENGTH_0 = _require$codes.ERR_TRANSFORM_WITH_LENGTH_0;
+    var Duplex = require_stream_duplex();
+    require_inherits_browser()(Transform, Duplex);
+    function afterTransform(er, data) {
+      var ts = this._transformState;
+      ts.transforming = false;
+      var cb = ts.writecb;
+      if (cb === null) {
+        return this.emit("error", new ERR_MULTIPLE_CALLBACK());
+      }
+      ts.writechunk = null;
+      ts.writecb = null;
+      if (data != null)
+        this.push(data);
+      cb(er);
+      var rs = this._readableState;
+      rs.reading = false;
+      if (rs.needReadable || rs.length < rs.highWaterMark) {
+        this._read(rs.highWaterMark);
+      }
+    }
+    function Transform(options) {
+      if (!(this instanceof Transform)) return new Transform(options);
+      Duplex.call(this, options);
+      this._transformState = {
+        afterTransform: afterTransform.bind(this),
+        needTransform: false,
+        transforming: false,
+        writecb: null,
+        writechunk: null,
+        writeencoding: null
+      };
+      this._readableState.needReadable = true;
+      this._readableState.sync = false;
+      if (options) {
+        if (typeof options.transform === "function") this._transform = options.transform;
+        if (typeof options.flush === "function") this._flush = options.flush;
+      }
+      this.on("prefinish", prefinish);
+    }
+    function prefinish() {
+      var _this = this;
+      if (typeof this._flush === "function" && !this._readableState.destroyed) {
+        this._flush(function(er, data) {
+          done(_this, er, data);
+        });
+      } else {
+        done(this, null, null);
+      }
+    }
+    Transform.prototype.push = function(chunk, encoding) {
+      this._transformState.needTransform = false;
+      return Duplex.prototype.push.call(this, chunk, encoding);
+    };
+    Transform.prototype._transform = function(chunk, encoding, cb) {
+      cb(new ERR_METHOD_NOT_IMPLEMENTED("_transform()"));
+    };
+    Transform.prototype._write = function(chunk, encoding, cb) {
+      var ts = this._transformState;
+      ts.writecb = cb;
+      ts.writechunk = chunk;
+      ts.writeencoding = encoding;
+      if (!ts.transforming) {
+        var rs = this._readableState;
+        if (ts.needTransform || rs.needReadable || rs.length < rs.highWaterMark) this._read(rs.highWaterMark);
+      }
+    };
+    Transform.prototype._read = function(n) {
+      var ts = this._transformState;
+      if (ts.writechunk !== null && !ts.transforming) {
+        ts.transforming = true;
+        this._transform(ts.writechunk, ts.writeencoding, ts.afterTransform);
+      } else {
+        ts.needTransform = true;
+      }
+    };
+    Transform.prototype._destroy = function(err, cb) {
+      Duplex.prototype._destroy.call(this, err, function(err2) {
+        cb(err2);
+      });
+    };
+    function done(stream, er, data) {
+      if (er) return stream.emit("error", er);
+      if (data != null)
+        stream.push(data);
+      if (stream._writableState.length) throw new ERR_TRANSFORM_WITH_LENGTH_0();
+      if (stream._transformState.transforming) throw new ERR_TRANSFORM_ALREADY_TRANSFORMING();
+      return stream.push(null);
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_passthrough.js
+var require_stream_passthrough = __commonJS({
+  "node_modules/readable-stream/lib/_stream_passthrough.js"(exports2, module) {
+    "use strict";
+    module.exports = PassThrough2;
+    var Transform = require_stream_transform();
+    require_inherits_browser()(PassThrough2, Transform);
+    function PassThrough2(options) {
+      if (!(this instanceof PassThrough2)) return new PassThrough2(options);
+      Transform.call(this, options);
+    }
+    PassThrough2.prototype._transform = function(chunk, encoding, cb) {
+      cb(null, chunk);
+    };
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/pipeline.js
+var require_pipeline2 = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/pipeline.js"(exports2, module) {
+    "use strict";
+    var eos;
+    function once(callback) {
+      var called = false;
+      return function() {
+        if (called) return;
+        called = true;
+        callback.apply(void 0, arguments);
+      };
+    }
+    var _require$codes = require_errors_browser().codes;
+    var ERR_MISSING_ARGS = _require$codes.ERR_MISSING_ARGS;
+    var ERR_STREAM_DESTROYED = _require$codes.ERR_STREAM_DESTROYED;
+    function noop(err) {
+      if (err) throw err;
+    }
+    function isRequest(stream) {
+      return stream.setHeader && typeof stream.abort === "function";
+    }
+    function destroyer(stream, reading, writing, callback) {
+      callback = once(callback);
+      var closed = false;
+      stream.on("close", function() {
+        closed = true;
+      });
+      if (eos === void 0) eos = require_end_of_stream2();
+      eos(stream, {
+        readable: reading,
+        writable: writing
+      }, function(err) {
+        if (err) return callback(err);
+        closed = true;
+        callback();
+      });
+      var destroyed = false;
+      return function(err) {
+        if (closed) return;
+        if (destroyed) return;
+        destroyed = true;
+        if (isRequest(stream)) return stream.abort();
+        if (typeof stream.destroy === "function") return stream.destroy();
+        callback(err || new ERR_STREAM_DESTROYED("pipe"));
+      };
+    }
+    function call(fn) {
+      fn();
+    }
+    function pipe(from, to) {
+      return from.pipe(to);
+    }
+    function popCallback(streams) {
+      if (!streams.length) return noop;
+      if (typeof streams[streams.length - 1] !== "function") return noop;
+      return streams.pop();
+    }
+    function pipeline() {
+      for (var _len = arguments.length, streams = new Array(_len), _key = 0; _key < _len; _key++) {
+        streams[_key] = arguments[_key];
+      }
+      var callback = popCallback(streams);
+      if (Array.isArray(streams[0])) streams = streams[0];
+      if (streams.length < 2) {
+        throw new ERR_MISSING_ARGS("streams");
+      }
+      var error;
+      var destroys = streams.map(function(stream, i) {
+        var reading = i < streams.length - 1;
+        var writing = i > 0;
+        return destroyer(stream, reading, writing, function(err) {
+          if (!error) error = err;
+          if (err) destroys.forEach(call);
+          if (reading) return;
+          destroys.forEach(call);
+          callback(error);
+        });
+      });
+      return streams.reduce(pipe);
+    }
+    module.exports = pipeline;
+  }
+});
+
+// node_modules/readable-stream/readable-browser.js
+var require_readable_browser = __commonJS({
+  "node_modules/readable-stream/readable-browser.js"(exports2, module) {
+    exports2 = module.exports = require_stream_readable();
+    exports2.Stream = exports2;
+    exports2.Readable = exports2;
+    exports2.Writable = require_stream_writable();
+    exports2.Duplex = require_stream_duplex();
+    exports2.Transform = require_stream_transform();
+    exports2.PassThrough = require_stream_passthrough();
+    exports2.finished = require_end_of_stream2();
+    exports2.pipeline = require_pipeline2();
+  }
+});
+
+// node_modules/stream-http/lib/response.js
+var require_response = __commonJS({
+  "node_modules/stream-http/lib/response.js"(exports2) {
+    var capability = require_capability();
+    var inherits = require_inherits_browser();
+    var stream = require_readable_browser();
+    var rStates = exports2.readyStates = {
+      UNSENT: 0,
+      OPENED: 1,
+      HEADERS_RECEIVED: 2,
+      LOADING: 3,
+      DONE: 4
+    };
+    var IncomingMessage = exports2.IncomingMessage = function(xhr, response, mode, resetTimers) {
+      var self2 = this;
+      stream.Readable.call(self2);
+      self2._mode = mode;
+      self2.headers = {};
+      self2.rawHeaders = [];
+      self2.trailers = {};
+      self2.rawTrailers = [];
+      self2.on("end", function() {
+        globalThis.process.nextTick(function() {
+          self2.emit("close");
+        });
+      });
+      if (mode === "fetch") {
+        let read2 = function() {
+          reader.read().then(function(result) {
+            if (self2._destroyed)
+              return;
+            resetTimers(result.done);
+            if (result.done) {
+              self2.push(null);
+              return;
+            }
+            self2.push(Buffer.from(result.value));
+            read2();
+          }).catch(function(err) {
+            resetTimers(true);
+            if (!self2._destroyed)
+              self2.emit("error", err);
+          });
+        };
+        var read = read2;
+        self2._fetchResponse = response;
+        self2.url = response.url;
+        self2.statusCode = response.status;
+        self2.statusMessage = response.statusText;
+        response.headers.forEach(function(header, key) {
+          self2.headers[key.toLowerCase()] = header;
+          self2.rawHeaders.push(key, header);
+        });
+        if (capability.writableStream) {
+          var writable = new WritableStream({
+            write: function(chunk) {
+              resetTimers(false);
+              return new Promise(function(resolve, reject) {
+                if (self2._destroyed) {
+                  reject();
+                } else if (self2.push(Buffer.from(chunk))) {
+                  resolve();
+                } else {
+                  self2._resumeFetch = resolve;
+                }
+              });
+            },
+            close: function() {
+              resetTimers(true);
+              if (!self2._destroyed)
+                self2.push(null);
+            },
+            abort: function(err) {
+              resetTimers(true);
+              if (!self2._destroyed)
+                self2.emit("error", err);
+            }
+          });
+          try {
+            response.body.pipeTo(writable).catch(function(err) {
+              resetTimers(true);
+              if (!self2._destroyed)
+                self2.emit("error", err);
+            });
+            return;
+          } catch (e) {
+          }
+        }
+        var reader = response.body.getReader();
+        read2();
+      } else {
+        self2._xhr = xhr;
+        self2._pos = 0;
+        self2.url = xhr.responseURL;
+        self2.statusCode = xhr.status;
+        self2.statusMessage = xhr.statusText;
+        var headers = xhr.getAllResponseHeaders().split(/\r?\n/);
+        headers.forEach(function(header) {
+          var matches = header.match(/^([^:]+):\s*(.*)/);
+          if (matches) {
+            var key = matches[1].toLowerCase();
+            if (key === "set-cookie") {
+              if (self2.headers[key] === void 0) {
+                self2.headers[key] = [];
+              }
+              self2.headers[key].push(matches[2]);
+            } else if (self2.headers[key] !== void 0) {
+              self2.headers[key] += ", " + matches[2];
+            } else {
+              self2.headers[key] = matches[2];
+            }
+            self2.rawHeaders.push(matches[1], matches[2]);
+          }
+        });
+        self2._charset = "x-user-defined";
+        if (!capability.overrideMimeType) {
+          var mimeType = self2.rawHeaders["mime-type"];
+          if (mimeType) {
+            var charsetMatch = mimeType.match(/;\s*charset=([^;])(;|$)/);
+            if (charsetMatch) {
+              self2._charset = charsetMatch[1].toLowerCase();
+            }
+          }
+          if (!self2._charset)
+            self2._charset = "utf-8";
+        }
+      }
+    };
+    inherits(IncomingMessage, stream.Readable);
+    IncomingMessage.prototype._read = function() {
+      var self2 = this;
+      var resolve = self2._resumeFetch;
+      if (resolve) {
+        self2._resumeFetch = null;
+        resolve();
+      }
+    };
+    IncomingMessage.prototype._onXHRProgress = function(resetTimers) {
+      var self2 = this;
+      var xhr = self2._xhr;
+      var response = null;
+      switch (self2._mode) {
+        case "text":
+          response = xhr.responseText;
+          if (response.length > self2._pos) {
+            var newData = response.substr(self2._pos);
+            if (self2._charset === "x-user-defined") {
+              var buffer = Buffer.alloc(newData.length);
+              for (var i = 0; i < newData.length; i++)
+                buffer[i] = newData.charCodeAt(i) & 255;
+              self2.push(buffer);
+            } else {
+              self2.push(newData, self2._charset);
+            }
+            self2._pos = response.length;
+          }
+          break;
+        case "arraybuffer":
+          if (xhr.readyState !== rStates.DONE || !xhr.response)
+            break;
+          response = xhr.response;
+          self2.push(Buffer.from(new Uint8Array(response)));
+          break;
+        case "moz-chunked-arraybuffer":
+          response = xhr.response;
+          if (xhr.readyState !== rStates.LOADING || !response)
+            break;
+          self2.push(Buffer.from(new Uint8Array(response)));
+          break;
+        case "ms-stream":
+          response = xhr.response;
+          if (xhr.readyState !== rStates.LOADING)
+            break;
+          var reader = new global.MSStreamReader();
+          reader.onprogress = function() {
+            if (reader.result.byteLength > self2._pos) {
+              self2.push(Buffer.from(new Uint8Array(reader.result.slice(self2._pos))));
+              self2._pos = reader.result.byteLength;
+            }
+          };
+          reader.onload = function() {
+            resetTimers(true);
+            self2.push(null);
+          };
+          reader.readAsArrayBuffer(response);
+          break;
+      }
+      if (self2._xhr.readyState === rStates.DONE && self2._mode !== "ms-stream") {
+        resetTimers(true);
+        self2.push(null);
+      }
+    };
+  }
+});
+
+// node_modules/stream-http/lib/request.js
+var require_request = __commonJS({
+  "node_modules/stream-http/lib/request.js"(exports2, module) {
+    var capability = require_capability();
+    var inherits = require_inherits_browser();
+    var response = require_response();
+    var stream = require_readable_browser();
+    var IncomingMessage = response.IncomingMessage;
+    var rStates = response.readyStates;
+    function decideMode(preferBinary, useFetch) {
+      if (capability.fetch && useFetch) {
+        return "fetch";
+      } else if (capability.mozchunkedarraybuffer) {
+        return "moz-chunked-arraybuffer";
+      } else if (capability.msstream) {
+        return "ms-stream";
+      } else if (capability.arraybuffer && preferBinary) {
+        return "arraybuffer";
+      } else {
+        return "text";
+      }
+    }
+    var ClientRequest = module.exports = function(opts) {
+      var self2 = this;
+      stream.Writable.call(self2);
+      self2._opts = opts;
+      self2._body = [];
+      self2._headers = {};
+      if (opts.auth)
+        self2.setHeader("Authorization", "Basic " + Buffer.from(opts.auth).toString("base64"));
+      Object.keys(opts.headers).forEach(function(name) {
+        self2.setHeader(name, opts.headers[name]);
+      });
+      var preferBinary;
+      var useFetch = true;
+      if (opts.mode === "disable-fetch" || "requestTimeout" in opts && !capability.abortController) {
+        useFetch = false;
+        preferBinary = true;
+      } else if (opts.mode === "prefer-streaming") {
+        preferBinary = false;
+      } else if (opts.mode === "allow-wrong-content-type") {
+        preferBinary = !capability.overrideMimeType;
+      } else if (!opts.mode || opts.mode === "default" || opts.mode === "prefer-fast") {
+        preferBinary = true;
+      } else {
+        throw new Error("Invalid value for opts.mode");
+      }
+      self2._mode = decideMode(preferBinary, useFetch);
+      self2._fetchTimer = null;
+      self2._socketTimeout = null;
+      self2._socketTimer = null;
+      self2.on("finish", function() {
+        self2._onFinish();
+      });
+    };
+    inherits(ClientRequest, stream.Writable);
+    ClientRequest.prototype.setHeader = function(name, value) {
+      var self2 = this;
+      var lowerName = name.toLowerCase();
+      if (unsafeHeaders.indexOf(lowerName) !== -1)
+        return;
+      self2._headers[lowerName] = {
+        name,
+        value
+      };
+    };
+    ClientRequest.prototype.getHeader = function(name) {
+      var header = this._headers[name.toLowerCase()];
+      if (header)
+        return header.value;
+      return null;
+    };
+    ClientRequest.prototype.removeHeader = function(name) {
+      var self2 = this;
+      delete self2._headers[name.toLowerCase()];
+    };
+    ClientRequest.prototype._onFinish = function() {
+      var self2 = this;
+      if (self2._destroyed)
+        return;
+      var opts = self2._opts;
+      if ("timeout" in opts && opts.timeout !== 0) {
+        self2.setTimeout(opts.timeout);
+      }
+      var headersObj = self2._headers;
+      var body = null;
+      if (opts.method !== "GET" && opts.method !== "HEAD") {
+        body = new Blob(self2._body, {
+          type: (headersObj["content-type"] || {}).value || ""
+        });
+      }
+      var headersList = [];
+      Object.keys(headersObj).forEach(function(keyName) {
+        var name = headersObj[keyName].name;
+        var value = headersObj[keyName].value;
+        if (Array.isArray(value)) {
+          value.forEach(function(v) {
+            headersList.push([name, v]);
+          });
+        } else {
+          headersList.push([name, value]);
+        }
+      });
+      if (self2._mode === "fetch") {
+        var signal = null;
+        if (capability.abortController) {
+          var controller = new AbortController();
+          signal = controller.signal;
+          self2._fetchAbortController = controller;
+          if ("requestTimeout" in opts && opts.requestTimeout !== 0) {
+            self2._fetchTimer = global.setTimeout(function() {
+              self2.emit("requestTimeout");
+              if (self2._fetchAbortController)
+                self2._fetchAbortController.abort();
+            }, opts.requestTimeout);
+          }
+        }
+        global.fetch(self2._opts.url, {
+          method: self2._opts.method,
+          headers: headersList,
+          body: body || void 0,
+          mode: "cors",
+          credentials: opts.withCredentials ? "include" : "same-origin",
+          signal
+        }).then(function(response2) {
+          self2._fetchResponse = response2;
+          self2._resetTimers(false);
+          self2._connect();
+        }, function(reason) {
+          self2._resetTimers(true);
+          if (!self2._destroyed)
+            self2.emit("error", reason);
+        });
+      } else {
+        var xhr = self2._xhr = new global.XMLHttpRequest();
+        try {
+          xhr.open(self2._opts.method, self2._opts.url, true);
+        } catch (err) {
+          globalThis.process.nextTick(function() {
+            self2.emit("error", err);
+          });
+          return;
+        }
+        if ("responseType" in xhr)
+          xhr.responseType = self2._mode;
+        if ("withCredentials" in xhr)
+          xhr.withCredentials = !!opts.withCredentials;
+        if (self2._mode === "text" && "overrideMimeType" in xhr)
+          xhr.overrideMimeType("text/plain; charset=x-user-defined");
+        if ("requestTimeout" in opts) {
+          xhr.timeout = opts.requestTimeout;
+          xhr.ontimeout = function() {
+            self2.emit("requestTimeout");
+          };
+        }
+        headersList.forEach(function(header) {
+          xhr.setRequestHeader(header[0], header[1]);
+        });
+        self2._response = null;
+        xhr.onreadystatechange = function() {
+          switch (xhr.readyState) {
+            case rStates.LOADING:
+            case rStates.DONE:
+              self2._onXHRProgress();
+              break;
+          }
+        };
+        if (self2._mode === "moz-chunked-arraybuffer") {
+          xhr.onprogress = function() {
+            self2._onXHRProgress();
+          };
+        }
+        xhr.onerror = function() {
+          if (self2._destroyed)
+            return;
+          self2._resetTimers(true);
+          self2.emit("error", new Error("XHR error"));
+        };
+        try {
+          xhr.send(body);
+        } catch (err) {
+          globalThis.process.nextTick(function() {
+            self2.emit("error", err);
+          });
+          return;
+        }
+      }
+    };
+    function statusValid(xhr) {
+      try {
+        var status = xhr.status;
+        return status !== null && status !== 0;
+      } catch (e) {
+        return false;
+      }
+    }
+    ClientRequest.prototype._onXHRProgress = function() {
+      var self2 = this;
+      self2._resetTimers(false);
+      if (!statusValid(self2._xhr) || self2._destroyed)
+        return;
+      if (!self2._response)
+        self2._connect();
+      self2._response._onXHRProgress(self2._resetTimers.bind(self2));
+    };
+    ClientRequest.prototype._connect = function() {
+      var self2 = this;
+      if (self2._destroyed)
+        return;
+      self2._response = new IncomingMessage(self2._xhr, self2._fetchResponse, self2._mode, self2._resetTimers.bind(self2));
+      self2._response.on("error", function(err) {
+        self2.emit("error", err);
+      });
+      self2.emit("response", self2._response);
+    };
+    ClientRequest.prototype._write = function(chunk, encoding, cb) {
+      var self2 = this;
+      self2._body.push(chunk);
+      cb();
+    };
+    ClientRequest.prototype._resetTimers = function(done) {
+      var self2 = this;
+      global.clearTimeout(self2._socketTimer);
+      self2._socketTimer = null;
+      if (done) {
+        global.clearTimeout(self2._fetchTimer);
+        self2._fetchTimer = null;
+      } else if (self2._socketTimeout) {
+        self2._socketTimer = global.setTimeout(function() {
+          self2.emit("timeout");
+        }, self2._socketTimeout);
+      }
+    };
+    ClientRequest.prototype.abort = ClientRequest.prototype.destroy = function(err) {
+      var self2 = this;
+      self2._destroyed = true;
+      self2._resetTimers(true);
+      if (self2._response)
+        self2._response._destroyed = true;
+      if (self2._xhr)
+        self2._xhr.abort();
+      else if (self2._fetchAbortController)
+        self2._fetchAbortController.abort();
+      if (err)
+        self2.emit("error", err);
+    };
+    ClientRequest.prototype.end = function(data, encoding, cb) {
+      var self2 = this;
+      if (typeof data === "function") {
+        cb = data;
+        data = void 0;
+      }
+      stream.Writable.prototype.end.call(self2, data, encoding, cb);
+    };
+    ClientRequest.prototype.setTimeout = function(timeout, cb) {
+      var self2 = this;
+      if (cb)
+        self2.once("timeout", cb);
+      self2._socketTimeout = timeout;
+      self2._resetTimers(false);
+    };
+    ClientRequest.prototype.flushHeaders = function() {
+    };
+    ClientRequest.prototype.setNoDelay = function() {
+    };
+    ClientRequest.prototype.setSocketKeepAlive = function() {
+    };
+    var unsafeHeaders = [
+      "accept-charset",
+      "accept-encoding",
+      "access-control-request-headers",
+      "access-control-request-method",
+      "connection",
+      "content-length",
+      "cookie",
+      "cookie2",
+      "date",
+      "dnt",
+      "expect",
+      "host",
+      "keep-alive",
+      "origin",
+      "referer",
+      "te",
+      "trailer",
+      "transfer-encoding",
+      "upgrade",
+      "via"
+    ];
+  }
+});
+
+// node_modules/xtend/immutable.js
+var require_immutable = __commonJS({
+  "node_modules/xtend/immutable.js"(exports2, module) {
+    module.exports = extend;
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    function extend() {
+      var target = {};
+      for (var i = 0; i < arguments.length; i++) {
+        var source = arguments[i];
+        for (var key in source) {
+          if (hasOwnProperty.call(source, key)) {
+            target[key] = source[key];
+          }
+        }
+      }
+      return target;
+    }
+  }
+});
+
+// node_modules/builtin-status-codes/browser.js
+var require_browser2 = __commonJS({
+  "node_modules/builtin-status-codes/browser.js"(exports2, module) {
+    module.exports = {
+      "100": "Continue",
+      "101": "Switching Protocols",
+      "102": "Processing",
+      "200": "OK",
+      "201": "Created",
+      "202": "Accepted",
+      "203": "Non-Authoritative Information",
+      "204": "No Content",
+      "205": "Reset Content",
+      "206": "Partial Content",
+      "207": "Multi-Status",
+      "208": "Already Reported",
+      "226": "IM Used",
+      "300": "Multiple Choices",
+      "301": "Moved Permanently",
+      "302": "Found",
+      "303": "See Other",
+      "304": "Not Modified",
+      "305": "Use Proxy",
+      "307": "Temporary Redirect",
+      "308": "Permanent Redirect",
+      "400": "Bad Request",
+      "401": "Unauthorized",
+      "402": "Payment Required",
+      "403": "Forbidden",
+      "404": "Not Found",
+      "405": "Method Not Allowed",
+      "406": "Not Acceptable",
+      "407": "Proxy Authentication Required",
+      "408": "Request Timeout",
+      "409": "Conflict",
+      "410": "Gone",
+      "411": "Length Required",
+      "412": "Precondition Failed",
+      "413": "Payload Too Large",
+      "414": "URI Too Long",
+      "415": "Unsupported Media Type",
+      "416": "Range Not Satisfiable",
+      "417": "Expectation Failed",
+      "418": "I'm a teapot",
+      "421": "Misdirected Request",
+      "422": "Unprocessable Entity",
+      "423": "Locked",
+      "424": "Failed Dependency",
+      "425": "Unordered Collection",
+      "426": "Upgrade Required",
+      "428": "Precondition Required",
+      "429": "Too Many Requests",
+      "431": "Request Header Fields Too Large",
+      "451": "Unavailable For Legal Reasons",
+      "500": "Internal Server Error",
+      "501": "Not Implemented",
+      "502": "Bad Gateway",
+      "503": "Service Unavailable",
+      "504": "Gateway Timeout",
+      "505": "HTTP Version Not Supported",
+      "506": "Variant Also Negotiates",
+      "507": "Insufficient Storage",
+      "508": "Loop Detected",
+      "509": "Bandwidth Limit Exceeded",
+      "510": "Not Extended",
+      "511": "Network Authentication Required"
+    };
+  }
+});
+
+// node_modules/stream-http/index.js
+var require_stream_http = __commonJS({
+  "node_modules/stream-http/index.js"(exports2) {
+    var ClientRequest = require_request();
+    var response = require_response();
+    var extend = require_immutable();
+    var statusCodes = require_browser2();
+    var url = require_url();
+    var http = exports2;
+    http.request = function(opts, cb) {
+      if (typeof opts === "string")
+        opts = url.parse(opts);
+      else
+        opts = extend(opts);
+      var defaultProtocol = global.location.protocol.search(/^https?:$/) === -1 ? "http:" : "";
+      var protocol = opts.protocol || defaultProtocol;
+      var host = opts.hostname || opts.host;
+      var port = opts.port;
+      var path2 = opts.path || "/";
+      if (host && host.indexOf(":") !== -1)
+        host = "[" + host + "]";
+      opts.url = (host ? protocol + "//" + host : "") + (port ? ":" + port : "") + path2;
+      opts.method = (opts.method || "GET").toUpperCase();
+      opts.headers = opts.headers || {};
+      var req = new ClientRequest(opts);
+      if (cb)
+        req.on("response", cb);
+      return req;
+    };
+    http.get = function get(opts, cb) {
+      var req = http.request(opts, cb);
+      req.end();
+      return req;
+    };
+    http.ClientRequest = ClientRequest;
+    http.IncomingMessage = response.IncomingMessage;
+    http.Agent = function() {
+    };
+    http.Agent.defaultMaxSockets = 4;
+    http.globalAgent = new http.Agent();
+    http.STATUS_CODES = statusCodes;
+    http.METHODS = [
+      "CHECKOUT",
+      "CONNECT",
+      "COPY",
+      "DELETE",
+      "GET",
+      "HEAD",
+      "LOCK",
+      "M-SEARCH",
+      "MERGE",
+      "MKACTIVITY",
+      "MKCOL",
+      "MOVE",
+      "NOTIFY",
+      "OPTIONS",
+      "PATCH",
+      "POST",
+      "PROPFIND",
+      "PROPPATCH",
+      "PURGE",
+      "PUT",
+      "REPORT",
+      "SEARCH",
+      "SUBSCRIBE",
+      "TRACE",
+      "UNLOCK",
+      "UNSUBSCRIBE"
+    ];
+  }
+});
+
+// to-modularize/http.js
+var require_http = __commonJS({
+  "to-modularize/http.js"(exports2, module) {
+    module.exports = require_stream_http();
+    module.exports.ours = true;
+  }
+});
+
 // ../lib/internal/perf/performance_entry.js
 var require_performance_entry = __commonJS({
   "../lib/internal/perf/performance_entry.js"(exports2, module) {
@@ -58096,7 +61431,7 @@ var require_socketaddress = __commonJS({
       kClone,
       kDeserialize
     } = require_js_transferable();
-    var { URL: URL2 } = require_url();
+    var { URL: URL2 } = require_url2();
     var kHandle = Symbol2("kHandle");
     var kDetail = Symbol2("kDetail");
     var SocketAddress = class _SocketAddress2 {
@@ -60443,178 +63778,6 @@ var require_net2 = __commonJS({
       setDefaultAutoSelectFamily,
       getDefaultAutoSelectFamilyAttemptTimeout,
       setDefaultAutoSelectFamilyAttemptTimeout
-    };
-  }
-});
-
-// ../lib/internal/http.js
-var require_http = __commonJS({
-  "../lib/internal/http.js"(exports2, module) {
-    "use strict";
-    var {
-      Date: Date2,
-      Number: Number2,
-      NumberParseInt,
-      Symbol: Symbol2,
-      decodeURIComponent: decodeURIComponent2
-    } = primordials;
-    var { setUnrefTimeout } = require_timers();
-    var { getCategoryEnabledBuffer, trace } = internalBinding("trace_events");
-    var {
-      CHAR_LOWERCASE_B,
-      CHAR_LOWERCASE_E
-    } = require_constants();
-    var { URL: URL2 } = require_url();
-    var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
-    var { isIPv4 } = require_net();
-    var { ERR_PROXY_INVALID_CONFIG } = require_errors().codes;
-    var utcCache;
-    function utcDate() {
-      if (!utcCache) cache();
-      return utcCache;
-    }
-    function cache() {
-      const d = new Date2();
-      utcCache = d.toUTCString();
-      setUnrefTimeout(resetCache, 1e3 - d.getMilliseconds());
-    }
-    function resetCache() {
-      utcCache = void 0;
-    }
-    var traceEventId = 0;
-    function getNextTraceEventId() {
-      return ++traceEventId;
-    }
-    var httpEnabled = getCategoryEnabledBuffer("node.http");
-    function isTraceHTTPEnabled() {
-      return httpEnabled[0] > 0;
-    }
-    var traceEventCategory = "node,node.http";
-    function traceBegin(...args) {
-      trace(CHAR_LOWERCASE_B, traceEventCategory, ...args);
-    }
-    function traceEnd(...args) {
-      trace(CHAR_LOWERCASE_E, traceEventCategory, ...args);
-    }
-    function ipToInt(ip) {
-      const octets = ip.split(".");
-      let result = 0;
-      for (let i = 0; i < octets.length; i++) {
-        result = (result << 8) + NumberParseInt(octets[i]);
-      }
-      return result >>> 0;
-    }
-    var ProxyConfig = class {
-      constructor(proxyUrl, keepAlive, noProxyList) {
-        let parsedURL;
-        try {
-          parsedURL = new URL2(proxyUrl);
-        } catch {
-          throw new ERR_PROXY_INVALID_CONFIG(`Invalid proxy URL: ${proxyUrl}`);
-        }
-        const { hostname, port, protocol, username, password } = parsedURL;
-        this.href = proxyUrl;
-        this.protocol = protocol;
-        if (username || password) {
-          const auth = `${decodeURIComponent2(username)}:${decodeURIComponent2(password)}`;
-          this.auth = `Basic ${Buffer2.from(auth).toString("base64")}`;
-        }
-        if (noProxyList) {
-          this.bypassList = noProxyList.split(",").map((entry) => entry.trim().toLowerCase());
-        } else {
-          this.bypassList = [];
-        }
-        this.proxyConnectionOptions = {
-          // The host name comes from parsed URL so if it starts with '[' it must be an IPv6 address
-          // ending with ']'. Remove the brackets for net.connect().
-          host: hostname[0] === "[" ? hostname.slice(1, -1) : hostname,
-          // The port comes from parsed URL so it is either '' or a valid number string.
-          port: port ? Number2(port) : protocol === "https:" ? 443 : 80
-        };
-      }
-      // See: https://about.gitlab.com/blog/we-need-to-talk-no-proxy
-      // TODO(joyeecheung): share code with undici.
-      shouldUseProxy(hostname, port) {
-        const bypassList = this.bypassList;
-        if (this.bypassList.length === 0) {
-          return true;
-        }
-        const host = hostname.toLowerCase();
-        const hostWithPort = port ? `${host}:${port}` : host;
-        for (let i = 0; i < bypassList.length; i++) {
-          const entry = bypassList[i];
-          if (entry === "*") return false;
-          if (entry === host || entry === hostWithPort) return false;
-          if (entry.startsWith(".")) {
-            const suffix = entry.substring(1);
-            if (host.endsWith(suffix)) return false;
-          }
-          if (entry.startsWith("*.") && host.endsWith(entry.substring(1))) return false;
-          if (entry.includes("-") && isIPv4(host)) {
-            let { 0: startIP, 1: endIP } = entry.split("-");
-            startIP = startIP.trim();
-            endIP = endIP.trim();
-            if (startIP && endIP && isIPv4(startIP) && isIPv4(endIP)) {
-              const hostInt = ipToInt(host);
-              const startInt = ipToInt(startIP);
-              const endInt = ipToInt(endIP);
-              if (hostInt >= startInt && hostInt <= endInt) return false;
-            }
-          }
-        }
-        return true;
-      }
-    };
-    function parseProxyConfigFromEnv(env, protocol, keepAlive) {
-      if (protocol !== "http:" && protocol !== "https:") {
-        return null;
-      }
-      const proxyUrl = protocol === "https:" ? env.https_proxy || env.HTTPS_PROXY : env.http_proxy || env.HTTP_PROXY;
-      if (!proxyUrl) {
-        return null;
-      }
-      if (proxyUrl.includes("\r") || proxyUrl.includes("\n")) {
-        throw new ERR_PROXY_INVALID_CONFIG(`Invalid proxy URL: ${proxyUrl}`);
-      }
-      if (!proxyUrl.startsWith("http://") && !proxyUrl.startsWith("https://")) {
-        return null;
-      }
-      const noProxyList = env.no_proxy || env.NO_PROXY;
-      return new ProxyConfig(proxyUrl, keepAlive, noProxyList);
-    }
-    function checkShouldUseProxy(proxyConfig, reqOptions) {
-      if (!proxyConfig) {
-        return false;
-      }
-      if (reqOptions.socketPath) {
-        return false;
-      }
-      return proxyConfig.shouldUseProxy(reqOptions.host || "localhost", reqOptions.port);
-    }
-    function filterEnvForProxies(env) {
-      return {
-        __proto__: null,
-        http_proxy: env.http_proxy,
-        HTTP_PROXY: env.HTTP_PROXY,
-        https_proxy: env.https_proxy,
-        HTTPS_PROXY: env.HTTPS_PROXY,
-        no_proxy: env.no_proxy,
-        NO_PROXY: env.NO_PROXY
-      };
-    }
-    module.exports = {
-      kOutHeaders: Symbol2("kOutHeaders"),
-      kNeedDrain: Symbol2("kNeedDrain"),
-      kProxyConfig: Symbol2("kProxyConfig"),
-      kWaitForProxyTunnel: Symbol2("kWaitForProxyTunnel"),
-      checkShouldUseProxy,
-      parseProxyConfigFromEnv,
-      utcDate,
-      traceBegin,
-      traceEnd,
-      getNextTraceEventId,
-      isTraceHTTPEnabled,
-      filterEnvForProxies
     };
   }
 });
@@ -70666,4163 +73829,6 @@ var require_tls = __commonJS({
   }
 });
 
-// ../lib/_http_agent.js
-var require_http_agent = __commonJS({
-  "../lib/_http_agent.js"(exports2, module) {
-    "use strict";
-    var {
-      NumberIsFinite,
-      NumberParseInt,
-      ObjectKeys,
-      ObjectSetPrototypeOf,
-      ObjectValues,
-      Symbol: Symbol2
-    } = primordials;
-    var net = require_net2();
-    var EventEmitter2 = require_events();
-    var debug = require_debuglog().debuglog("http", (fn) => {
-      debug = fn;
-    });
-    var {
-      parseProxyConfigFromEnv,
-      kProxyConfig,
-      checkShouldUseProxy,
-      kWaitForProxyTunnel,
-      filterEnvForProxies
-    } = require_http();
-    var { AsyncResource } = require_async_hooks();
-    var { async_id_symbol } = require_async_hooks().symbols;
-    var {
-      getLazy,
-      kEmptyObject,
-      once
-    } = require_util5();
-    var {
-      validateNumber,
-      validateOneOf,
-      validateString
-    } = require_validators();
-    var assert = require_assert();
-    var { getOptionValue } = require_options();
-    var kOnKeylog = Symbol2("onkeylog");
-    var kRequestOptions = Symbol2("requestOptions");
-    var kRequestAsyncResource = Symbol2("requestAsyncResource");
-    var ReusedHandle = class {
-      constructor(type, handle) {
-        this.type = type;
-        this.handle = handle;
-      }
-    };
-    function freeSocketErrorListener(err) {
-      const socket = this;
-      debug("SOCKET ERROR on FREE socket:", err.message, err.stack);
-      socket.destroy();
-      socket.emit("agentRemove");
-    }
-    function Agent(options) {
-      if (!(this instanceof Agent))
-        return new Agent(options);
-      EventEmitter2.call(this);
-      this.options = { __proto__: null, ...options };
-      this.defaultPort = this.options.defaultPort || 80;
-      this.protocol = this.options.protocol || "http:";
-      if (this.options.noDelay === void 0)
-        this.options.noDelay = true;
-      this.options.path = null;
-      this.requests = { __proto__: null };
-      this.sockets = { __proto__: null };
-      this.freeSockets = { __proto__: null };
-      this.keepAliveMsecs = this.options.keepAliveMsecs || 1e3;
-      this.keepAlive = this.options.keepAlive || false;
-      this.maxSockets = this.options.maxSockets || Agent.defaultMaxSockets;
-      this.maxFreeSockets = this.options.maxFreeSockets || 256;
-      this.scheduling = this.options.scheduling || "lifo";
-      this.maxTotalSockets = this.options.maxTotalSockets;
-      this.totalSocketCount = 0;
-      this.agentKeepAliveTimeoutBuffer = typeof this.options.agentKeepAliveTimeoutBuffer === "number" && this.options.agentKeepAliveTimeoutBuffer >= 0 && NumberIsFinite(this.options.agentKeepAliveTimeoutBuffer) ? this.options.agentKeepAliveTimeoutBuffer : 1e3;
-      const proxyEnv = this.options.proxyEnv;
-      if (typeof proxyEnv === "object" && proxyEnv !== null) {
-        this[kProxyConfig] = parseProxyConfigFromEnv(proxyEnv, this.protocol, this.keepAlive);
-        debug(`new ${this.protocol} agent with proxy config`, this[kProxyConfig]);
-      }
-      validateOneOf(this.scheduling, "scheduling", ["fifo", "lifo"]);
-      if (this.maxTotalSockets !== void 0) {
-        validateNumber(this.maxTotalSockets, "maxTotalSockets", 1);
-      } else {
-        this.maxTotalSockets = Infinity;
-      }
-      this.on("free", (socket, options2) => {
-        const name = this.getName(options2);
-        debug("agent.on(free)", name);
-        if (!socket.writable) {
-          socket.destroy();
-          return;
-        }
-        const requests = this.requests[name];
-        if (requests?.length) {
-          const req2 = requests.shift();
-          const reqAsyncRes = req2[kRequestAsyncResource];
-          if (reqAsyncRes) {
-            reqAsyncRes.runInAsyncScope(() => {
-              asyncResetHandle(socket);
-              setRequestSocket(this, req2, socket);
-            });
-            req2[kRequestAsyncResource] = null;
-          } else {
-            setRequestSocket(this, req2, socket);
-          }
-          if (requests.length === 0) {
-            delete this.requests[name];
-          }
-          return;
-        }
-        const req = socket._httpMessage;
-        if (!req || !req.shouldKeepAlive || !this.keepAlive) {
-          socket.destroy();
-          return;
-        }
-        const freeSockets = this.freeSockets[name] || [];
-        const freeLen = freeSockets.length;
-        let count = freeLen;
-        if (this.sockets[name])
-          count += this.sockets[name].length;
-        if (this.totalSocketCount > this.maxTotalSockets || count > this.maxSockets || freeLen >= this.maxFreeSockets || !this.keepSocketAlive(socket)) {
-          socket.destroy();
-          return;
-        }
-        this.freeSockets[name] = freeSockets;
-        socket[async_id_symbol] = -1;
-        socket._httpMessage = null;
-        this.removeSocket(socket, options2);
-        socket.once("error", freeSocketErrorListener);
-        freeSockets.push(socket);
-      });
-      this.on("newListener", maybeEnableKeylog);
-    }
-    ObjectSetPrototypeOf(Agent.prototype, EventEmitter2.prototype);
-    ObjectSetPrototypeOf(Agent, EventEmitter2);
-    function maybeEnableKeylog(eventName) {
-      if (eventName === "keylog") {
-        this.removeListener("newListener", maybeEnableKeylog);
-        const agent = this;
-        this[kOnKeylog] = function onkeylog(keylog) {
-          agent.emit("keylog", keylog, this);
-        };
-        const sockets = ObjectValues(this.sockets);
-        for (let i = 0; i < sockets.length; i++) {
-          sockets[i].on("keylog", this[kOnKeylog]);
-        }
-      }
-    }
-    var lazyTLS = getLazy(() => require_tls());
-    Agent.defaultMaxSockets = Infinity;
-    Agent.prototype.createConnection = function createConnection(...args) {
-      const normalized = net._normalizeArgs(args);
-      const options = normalized[0];
-      const cb = normalized[1];
-      const shouldUseProxy = checkShouldUseProxy(this[kProxyConfig], options);
-      debug(`http createConnection should use proxy for ${options.host}:${options.port}:`, shouldUseProxy);
-      if (!shouldUseProxy) {
-        return net.createConnection(...args);
-      }
-      const connectOptions = {
-        ...this[kProxyConfig].proxyConnectionOptions
-      };
-      const proxyProtocol = this[kProxyConfig].protocol;
-      if (proxyProtocol === "http:") {
-        return net.connect(connectOptions, cb);
-      } else if (proxyProtocol === "https:") {
-        return lazyTLS().connect(connectOptions, cb);
-      }
-      assert.fail(`Unexpected proxy protocol ${proxyProtocol}`);
-    };
-    Agent.prototype.getName = function getName(options = kEmptyObject) {
-      let name = options.host || "localhost";
-      name += ":";
-      if (options.port)
-        name += options.port;
-      name += ":";
-      if (options.localAddress)
-        name += options.localAddress;
-      if (options.family === 4 || options.family === 6)
-        name += `:${options.family}`;
-      if (options.socketPath)
-        name += `:${options.socketPath}`;
-      return name;
-    };
-    function handleSocketAfterProxy(err, req) {
-      if (err.code === "ERR_PROXY_TUNNEL") {
-        if (err.proxyTunnelTimeout) {
-          req.emit("timeout");
-        } else {
-          req.emit("error", err);
-        }
-      }
-    }
-    Agent.prototype.addRequest = function addRequest(req, options, port, localAddress) {
-      if (typeof options === "string") {
-        options = {
-          __proto__: null,
-          host: options,
-          port,
-          localAddress
-        };
-      }
-      options = { __proto__: null, ...options, ...this.options };
-      if (options.socketPath)
-        options.path = options.socketPath;
-      normalizeServerName(options, req);
-      const name = this.getName(options);
-      this.sockets[name] ||= [];
-      const freeSockets = this.freeSockets[name];
-      let socket;
-      if (freeSockets) {
-        while (freeSockets.length && freeSockets[0].destroyed) {
-          freeSockets.shift();
-        }
-        socket = this.scheduling === "fifo" ? freeSockets.shift() : freeSockets.pop();
-        if (!freeSockets.length)
-          delete this.freeSockets[name];
-      }
-      const freeLen = freeSockets ? freeSockets.length : 0;
-      const sockLen = freeLen + this.sockets[name].length;
-      if (socket) {
-        asyncResetHandle(socket);
-        this.reuseSocket(socket, req);
-        setRequestSocket(this, req, socket);
-        this.sockets[name].push(socket);
-      } else if (sockLen < this.maxSockets && this.totalSocketCount < this.maxTotalSockets) {
-        this.createSocket(req, options, (err, socket2) => {
-          if (err) {
-            handleSocketAfterProxy(err, req);
-            debug("call onSocket", sockLen, freeLen);
-            req.onSocket(socket2, err);
-            return;
-          }
-          setRequestSocket(this, req, socket2);
-        });
-      } else {
-        debug("wait for socket");
-        this.requests[name] ||= [];
-        req[kRequestOptions] = options;
-        req[kRequestAsyncResource] = new AsyncResource("QueuedRequest");
-        this.requests[name].push(req);
-      }
-    };
-    Agent.prototype.createSocket = function createSocket(req, options, cb) {
-      options = { __proto__: null, ...options, ...this.options };
-      if (options.socketPath)
-        options.path = options.socketPath;
-      normalizeServerName(options, req);
-      const timeout = req.timeout || this.options.timeout || void 0;
-      if (timeout) {
-        options.timeout = timeout;
-      }
-      const name = this.getName(options);
-      options._agentKey = name;
-      debug("createConnection", name);
-      options.encoding = null;
-      const oncreate = once((err, s) => {
-        if (err)
-          return cb(err);
-        this.sockets[name] ||= [];
-        this.sockets[name].push(s);
-        this.totalSocketCount++;
-        debug("sockets", name, this.sockets[name].length, this.totalSocketCount);
-        installListeners(this, s, options);
-        cb(null, s);
-      });
-      if (this.keepAlive) {
-        options.keepAlive = this.keepAlive;
-        options.keepAliveInitialDelay = this.keepAliveMsecs;
-      }
-      const newSocket = this.createConnection(options, oncreate);
-      if (newSocket && !newSocket[kWaitForProxyTunnel])
-        oncreate(null, newSocket);
-    };
-    function normalizeServerName(options, req) {
-      if (!options.servername && options.servername !== "")
-        options.servername = calculateServerName(options, req);
-    }
-    function calculateServerName(options, req) {
-      let servername = options.host;
-      const hostHeader = req.getHeader("host");
-      if (hostHeader) {
-        validateString(hostHeader, "options.headers.host");
-        if (hostHeader[0] === "[") {
-          const index = hostHeader.indexOf("]");
-          if (index === -1) {
-            servername = hostHeader;
-          } else {
-            servername = hostHeader.substring(1, index);
-          }
-        } else {
-          servername = hostHeader.split(":", 1)[0];
-        }
-      }
-      if (net.isIP(servername))
-        servername = "";
-      return servername;
-    }
-    function installListeners(agent, s, options) {
-      function onFree() {
-        debug("CLIENT socket onFree");
-        agent.emit("free", s, options);
-      }
-      s.on("free", onFree);
-      function onClose(err) {
-        debug("CLIENT socket onClose");
-        agent.totalSocketCount--;
-        agent.removeSocket(s, options);
-      }
-      s.on("close", onClose);
-      function onTimeout() {
-        debug("CLIENT socket onTimeout");
-        const sockets = agent.freeSockets;
-        if (ObjectKeys(sockets).some((name) => sockets[name].includes(s))) {
-          return s.destroy();
-        }
-      }
-      s.on("timeout", onTimeout);
-      function onRemove() {
-        debug("CLIENT socket onRemove");
-        agent.totalSocketCount--;
-        agent.removeSocket(s, options);
-        s.removeListener("close", onClose);
-        s.removeListener("free", onFree);
-        s.removeListener("timeout", onTimeout);
-        s.removeListener("agentRemove", onRemove);
-      }
-      s.on("agentRemove", onRemove);
-      if (agent[kOnKeylog]) {
-        s.on("keylog", agent[kOnKeylog]);
-      }
-    }
-    Agent.prototype.removeSocket = function removeSocket(s, options) {
-      const name = this.getName(options);
-      debug("removeSocket", name, "writable:", s.writable);
-      const sets = [this.sockets];
-      if (!s.writable)
-        sets.push(this.freeSockets);
-      for (let sk = 0; sk < sets.length; sk++) {
-        const sockets = sets[sk];
-        if (sockets[name]) {
-          const index = sockets[name].indexOf(s);
-          if (index !== -1) {
-            sockets[name].splice(index, 1);
-            if (sockets[name].length === 0)
-              delete sockets[name];
-          }
-        }
-      }
-      let req;
-      if (this.requests[name]?.length) {
-        debug("removeSocket, have a request, make a socket");
-        req = this.requests[name][0];
-      } else {
-        const keys = ObjectKeys(this.requests);
-        for (let i = 0; i < keys.length; i++) {
-          const prop = keys[i];
-          if (this.sockets[prop]?.length) break;
-          debug("removeSocket, have a request with different origin, make a socket");
-          req = this.requests[prop][0];
-          options = req[kRequestOptions];
-          break;
-        }
-      }
-      if (req && options) {
-        req[kRequestOptions] = void 0;
-        this.createSocket(req, options, (err, socket) => {
-          if (err) {
-            handleSocketAfterProxy(err, req);
-            req.onSocket(null, err);
-            return;
-          }
-          socket.emit("free");
-        });
-      }
-    };
-    Agent.prototype.keepSocketAlive = function keepSocketAlive(socket) {
-      socket.setKeepAlive(true, this.keepAliveMsecs);
-      socket.unref();
-      let agentTimeout = this.options.timeout || 0;
-      let canKeepSocketAlive = true;
-      if (socket._httpMessage?.res) {
-        const keepAliveHint = socket._httpMessage.res.headers["keep-alive"];
-        if (keepAliveHint) {
-          const hint = /^timeout=(\d+)/.exec(keepAliveHint)?.[1];
-          if (hint) {
-            let serverHintTimeout = NumberParseInt(hint) * 1e3 - this.agentKeepAliveTimeoutBuffer;
-            serverHintTimeout = serverHintTimeout > 0 ? serverHintTimeout : 0;
-            if (serverHintTimeout === 0) {
-              canKeepSocketAlive = false;
-            } else if (serverHintTimeout < agentTimeout) {
-              agentTimeout = serverHintTimeout;
-            }
-          }
-        }
-      }
-      if (socket.timeout !== agentTimeout) {
-        socket.setTimeout(agentTimeout);
-      }
-      return canKeepSocketAlive;
-    };
-    Agent.prototype.reuseSocket = function reuseSocket(socket, req) {
-      debug("have free socket");
-      socket.removeListener("error", freeSocketErrorListener);
-      req.reusedSocket = true;
-      socket.ref();
-    };
-    Agent.prototype.destroy = function destroy() {
-      const sets = [this.freeSockets, this.sockets];
-      for (let s = 0; s < sets.length; s++) {
-        const set = sets[s];
-        const keys = ObjectKeys(set);
-        for (let v = 0; v < keys.length; v++) {
-          const setName = set[keys[v]];
-          for (let n = 0; n < setName.length; n++) {
-            setName[n].destroy();
-          }
-        }
-      }
-    };
-    function setRequestSocket(agent, req, socket) {
-      req.onSocket(socket);
-      const agentTimeout = agent.options.timeout || 0;
-      if (req.timeout === void 0 || req.timeout === agentTimeout) {
-        return;
-      }
-      socket.setTimeout(req.timeout);
-    }
-    function asyncResetHandle(socket) {
-      const handle = socket._handle;
-      if (handle && typeof handle.asyncReset === "function") {
-        handle.asyncReset(new ReusedHandle(handle.getProviderType(), handle));
-        socket[async_id_symbol] = handle.getAsyncId();
-      }
-    }
-    module.exports = {
-      Agent,
-      globalAgent: new Agent({
-        keepAlive: true,
-        scheduling: "lifo",
-        timeout: 5e3,
-        // This normalized from both --use-env-proxy and NODE_USE_ENV_PROXY settings.
-        proxyEnv: getOptionValue("--use-env-proxy") ? filterEnvForProxies(globalThis.process.env) : void 0
-      })
-    };
-  }
-});
-
-// ../lib/internal/freelist.js
-var require_freelist = __commonJS({
-  "../lib/internal/freelist.js"(exports2, module) {
-    "use strict";
-    var {
-      ReflectApply
-    } = primordials;
-    var FreeList = class {
-      constructor(name, max, ctor) {
-        this.name = name;
-        this.ctor = ctor;
-        this.max = max;
-        this.list = [];
-      }
-      alloc() {
-        return this.list.length > 0 ? this.list.pop() : ReflectApply(this.ctor, this, arguments);
-      }
-      free(obj) {
-        if (this.list.length < this.max) {
-          this.list.push(obj);
-          return true;
-        }
-        return false;
-      }
-    };
-    module.exports = FreeList;
-  }
-});
-
-// ../lib/_http_incoming.js
-var require_http_incoming = __commonJS({
-  "../lib/_http_incoming.js"(exports2, module) {
-    "use strict";
-    var {
-      ObjectDefineProperty,
-      ObjectSetPrototypeOf,
-      Symbol: Symbol2
-    } = primordials;
-    var { Readable, finished } = require_stream();
-    var kHeaders = Symbol2("kHeaders");
-    var kHeadersDistinct = Symbol2("kHeadersDistinct");
-    var kHeadersCount = Symbol2("kHeadersCount");
-    var kTrailers = Symbol2("kTrailers");
-    var kTrailersDistinct = Symbol2("kTrailersDistinct");
-    var kTrailersCount = Symbol2("kTrailersCount");
-    function readStart(socket) {
-      if (socket && !socket._paused && socket.readable)
-        socket.resume();
-    }
-    function readStop(socket) {
-      if (socket)
-        socket.pause();
-    }
-    function IncomingMessage(socket) {
-      let streamOptions;
-      if (socket) {
-        streamOptions = {
-          highWaterMark: socket.readableHighWaterMark
-        };
-      }
-      Readable.call(this, streamOptions);
-      this._readableState.readingMore = true;
-      this.socket = socket;
-      this.httpVersionMajor = null;
-      this.httpVersionMinor = null;
-      this.httpVersion = null;
-      this.complete = false;
-      this[kHeaders] = null;
-      this[kHeadersCount] = 0;
-      this.rawHeaders = [];
-      this[kTrailers] = null;
-      this[kTrailersCount] = 0;
-      this.rawTrailers = [];
-      this.joinDuplicateHeaders = false;
-      this.aborted = false;
-      this.upgrade = null;
-      this.url = "";
-      this.method = null;
-      this.statusCode = null;
-      this.statusMessage = null;
-      this.client = socket;
-      this._consuming = false;
-      this._dumped = false;
-    }
-    ObjectSetPrototypeOf(IncomingMessage.prototype, Readable.prototype);
-    ObjectSetPrototypeOf(IncomingMessage, Readable);
-    ObjectDefineProperty(IncomingMessage.prototype, "connection", {
-      __proto__: null,
-      get: function() {
-        return this.socket;
-      },
-      set: function(val) {
-        this.socket = val;
-      }
-    });
-    ObjectDefineProperty(IncomingMessage.prototype, "headers", {
-      __proto__: null,
-      get: function() {
-        if (!this[kHeaders]) {
-          this[kHeaders] = {};
-          const src = this.rawHeaders;
-          const dst = this[kHeaders];
-          for (let n = 0; n < this[kHeadersCount]; n += 2) {
-            this._addHeaderLine(src[n + 0], src[n + 1], dst);
-          }
-        }
-        return this[kHeaders];
-      },
-      set: function(val) {
-        this[kHeaders] = val;
-      }
-    });
-    ObjectDefineProperty(IncomingMessage.prototype, "headersDistinct", {
-      __proto__: null,
-      get: function() {
-        if (!this[kHeadersDistinct]) {
-          this[kHeadersDistinct] = {};
-          const src = this.rawHeaders;
-          const dst = this[kHeadersDistinct];
-          for (let n = 0; n < this[kHeadersCount]; n += 2) {
-            this._addHeaderLineDistinct(src[n + 0], src[n + 1], dst);
-          }
-        }
-        return this[kHeadersDistinct];
-      },
-      set: function(val) {
-        this[kHeadersDistinct] = val;
-      }
-    });
-    ObjectDefineProperty(IncomingMessage.prototype, "trailers", {
-      __proto__: null,
-      get: function() {
-        if (!this[kTrailers]) {
-          this[kTrailers] = {};
-          const src = this.rawTrailers;
-          const dst = this[kTrailers];
-          for (let n = 0; n < this[kTrailersCount]; n += 2) {
-            this._addHeaderLine(src[n + 0], src[n + 1], dst);
-          }
-        }
-        return this[kTrailers];
-      },
-      set: function(val) {
-        this[kTrailers] = val;
-      }
-    });
-    ObjectDefineProperty(IncomingMessage.prototype, "trailersDistinct", {
-      __proto__: null,
-      get: function() {
-        if (!this[kTrailersDistinct]) {
-          this[kTrailersDistinct] = {};
-          const src = this.rawTrailers;
-          const dst = this[kTrailersDistinct];
-          for (let n = 0; n < this[kTrailersCount]; n += 2) {
-            this._addHeaderLineDistinct(src[n + 0], src[n + 1], dst);
-          }
-        }
-        return this[kTrailersDistinct];
-      },
-      set: function(val) {
-        this[kTrailersDistinct] = val;
-      }
-    });
-    IncomingMessage.prototype.setTimeout = function setTimeout2(msecs, callback) {
-      if (callback)
-        this.on("timeout", callback);
-      this.socket.setTimeout(msecs);
-      return this;
-    };
-    IncomingMessage.prototype._read = function _read(n) {
-      if (!this._consuming) {
-        this._readableState.readingMore = false;
-        this._consuming = true;
-      }
-      if (this.socket.readable)
-        readStart(this.socket);
-    };
-    IncomingMessage.prototype._destroy = function _destroy(err, cb) {
-      if (!this.readableEnded || !this.complete) {
-        this.aborted = true;
-        this.emit("aborted");
-      }
-      if (this.socket && !this.socket.destroyed && this.aborted) {
-        this.socket.destroy(err);
-        const cleanup = finished(this.socket, (e) => {
-          if (e?.code === "ERR_STREAM_PREMATURE_CLOSE") {
-            e = null;
-          }
-          cleanup();
-          globalThis.process.nextTick(onError, this, e || err, cb);
-        });
-      } else {
-        globalThis.process.nextTick(onError, this, err, cb);
-      }
-    };
-    IncomingMessage.prototype._addHeaderLines = _addHeaderLines;
-    function _addHeaderLines(headers, n) {
-      if (headers?.length) {
-        let dest;
-        if (this.complete) {
-          this.rawTrailers = headers;
-          this[kTrailersCount] = n;
-          dest = this[kTrailers];
-        } else {
-          this.rawHeaders = headers;
-          this[kHeadersCount] = n;
-          dest = this[kHeaders];
-        }
-        if (dest) {
-          for (let i = 0; i < n; i += 2) {
-            this._addHeaderLine(headers[i], headers[i + 1], dest);
-          }
-        }
-      }
-    }
-    function matchKnownFields(field, lowercased) {
-      switch (field.length) {
-        case 3:
-          if (field === "Age" || field === "age") return "age";
-          break;
-        case 4:
-          if (field === "Host" || field === "host") return "host";
-          if (field === "From" || field === "from") return "from";
-          if (field === "ETag" || field === "etag") return "etag";
-          if (field === "Date" || field === "date") return "\0date";
-          if (field === "Vary" || field === "vary") return "\0vary";
-          break;
-        case 6:
-          if (field === "Server" || field === "server") return "server";
-          if (field === "Cookie" || field === "cookie") return "cookie";
-          if (field === "Origin" || field === "origin") return "\0origin";
-          if (field === "Expect" || field === "expect") return "\0expect";
-          if (field === "Accept" || field === "accept") return "\0accept";
-          break;
-        case 7:
-          if (field === "Referer" || field === "referer") return "referer";
-          if (field === "Expires" || field === "expires") return "expires";
-          if (field === "Upgrade" || field === "upgrade") return "\0upgrade";
-          break;
-        case 8:
-          if (field === "Location" || field === "location")
-            return "location";
-          if (field === "If-Match" || field === "if-match")
-            return "\0if-match";
-          break;
-        case 10:
-          if (field === "User-Agent" || field === "user-agent")
-            return "user-agent";
-          if (field === "Set-Cookie" || field === "set-cookie")
-            return "";
-          if (field === "Connection" || field === "connection")
-            return "\0connection";
-          break;
-        case 11:
-          if (field === "Retry-After" || field === "retry-after")
-            return "retry-after";
-          break;
-        case 12:
-          if (field === "Content-Type" || field === "content-type")
-            return "content-type";
-          if (field === "Max-Forwards" || field === "max-forwards")
-            return "max-forwards";
-          break;
-        case 13:
-          if (field === "Authorization" || field === "authorization")
-            return "authorization";
-          if (field === "Last-Modified" || field === "last-modified")
-            return "last-modified";
-          if (field === "Cache-Control" || field === "cache-control")
-            return "\0cache-control";
-          if (field === "If-None-Match" || field === "if-none-match")
-            return "\0if-none-match";
-          break;
-        case 14:
-          if (field === "Content-Length" || field === "content-length")
-            return "content-length";
-          break;
-        case 15:
-          if (field === "Accept-Encoding" || field === "accept-encoding")
-            return "\0accept-encoding";
-          if (field === "Accept-Language" || field === "accept-language")
-            return "\0accept-language";
-          if (field === "X-Forwarded-For" || field === "x-forwarded-for")
-            return "\0x-forwarded-for";
-          break;
-        case 16:
-          if (field === "Content-Encoding" || field === "content-encoding")
-            return "\0content-encoding";
-          if (field === "X-Forwarded-Host" || field === "x-forwarded-host")
-            return "\0x-forwarded-host";
-          break;
-        case 17:
-          if (field === "If-Modified-Since" || field === "if-modified-since")
-            return "if-modified-since";
-          if (field === "Transfer-Encoding" || field === "transfer-encoding")
-            return "\0transfer-encoding";
-          if (field === "X-Forwarded-Proto" || field === "x-forwarded-proto")
-            return "\0x-forwarded-proto";
-          break;
-        case 19:
-          if (field === "Proxy-Authorization" || field === "proxy-authorization")
-            return "proxy-authorization";
-          if (field === "If-Unmodified-Since" || field === "if-unmodified-since")
-            return "if-unmodified-since";
-          break;
-      }
-      if (lowercased) {
-        return "\0" + field;
-      }
-      return matchKnownFields(field.toLowerCase(), true);
-    }
-    IncomingMessage.prototype._addHeaderLine = _addHeaderLine;
-    function _addHeaderLine(field, value, dest) {
-      field = matchKnownFields(field);
-      const flag = field.charCodeAt(0);
-      if (flag === 0 || flag === 2) {
-        field = field.slice(1);
-        if (typeof dest[field] === "string") {
-          dest[field] += (flag === 0 ? ", " : "; ") + value;
-        } else {
-          dest[field] = value;
-        }
-      } else if (flag === 1) {
-        if (dest["set-cookie"] !== void 0) {
-          dest["set-cookie"].push(value);
-        } else {
-          dest["set-cookie"] = [value];
-        }
-      } else if (this.joinDuplicateHeaders) {
-        if (dest[field] === void 0) {
-          dest[field] = value;
-        } else {
-          dest[field] += ", " + value;
-        }
-      } else if (dest[field] === void 0) {
-        dest[field] = value;
-      }
-    }
-    IncomingMessage.prototype._addHeaderLineDistinct = _addHeaderLineDistinct;
-    function _addHeaderLineDistinct(field, value, dest) {
-      field = field.toLowerCase();
-      if (!dest[field]) {
-        dest[field] = [value];
-      } else {
-        dest[field].push(value);
-      }
-    }
-    IncomingMessage.prototype._dump = function _dump() {
-      if (!this._dumped) {
-        this._dumped = true;
-        this.removeAllListeners("data");
-        this.resume();
-      }
-    };
-    function onError(self2, error, cb) {
-      if (self2.listenerCount("error") === 0) {
-        cb();
-      } else {
-        cb(error);
-      }
-    }
-    module.exports = {
-      IncomingMessage,
-      readStart,
-      readStop
-    };
-  }
-});
-
-// ../lib/_http_common.js
-var require_http_common = __commonJS({
-  "../lib/_http_common.js"(exports2, module) {
-    "use strict";
-    var {
-      MathMin,
-      Symbol: Symbol2,
-      Uint8Array: Uint8Array2
-    } = primordials;
-    var { setImmediate: setImmediate2 } = require_timers2();
-    var { methods, allMethods, HTTPParser } = internalBinding("http_parser");
-    var { getOptionValue } = require_options();
-    var insecureHTTPParser = getOptionValue("--insecure-http-parser");
-    var FreeList = require_freelist();
-    var incoming = require_http_incoming();
-    var {
-      IncomingMessage,
-      readStart,
-      readStop
-    } = incoming;
-    var kIncomingMessage = Symbol2("IncomingMessage");
-    var kOnMessageBegin = HTTPParser.kOnMessageBegin | 0;
-    var kOnHeaders = HTTPParser.kOnHeaders | 0;
-    var kOnHeadersComplete = HTTPParser.kOnHeadersComplete | 0;
-    var kOnBody = HTTPParser.kOnBody | 0;
-    var kOnMessageComplete = HTTPParser.kOnMessageComplete | 0;
-    var kOnExecute = HTTPParser.kOnExecute | 0;
-    var kOnTimeout = HTTPParser.kOnTimeout | 0;
-    var MAX_HEADER_PAIRS = 2e3;
-    function parserOnHeaders(headers, url) {
-      if (this.maxHeaderPairs <= 0 || this._headers.length < this.maxHeaderPairs) {
-        this._headers.push(...headers);
-      }
-      this._url += url;
-    }
-    var HTTP_VERSION_1_1 = "1.1";
-    function parserOnHeadersComplete(versionMajor, versionMinor, headers, method, url, statusCode, statusMessage, upgrade, shouldKeepAlive) {
-      const parser = this;
-      const { socket } = parser;
-      if (headers === void 0) {
-        headers = parser._headers;
-        parser._headers = [];
-      }
-      if (url === void 0) {
-        url = parser._url;
-        parser._url = "";
-      }
-      const ParserIncomingMessage = socket?.server?.[kIncomingMessage] || IncomingMessage;
-      const incoming2 = parser.incoming = new ParserIncomingMessage(socket);
-      incoming2.httpVersionMajor = versionMajor;
-      incoming2.httpVersionMinor = versionMinor;
-      incoming2.httpVersion = versionMajor === 1 && versionMinor === 1 ? HTTP_VERSION_1_1 : `${versionMajor}.${versionMinor}`;
-      incoming2.joinDuplicateHeaders = socket?.server?.joinDuplicateHeaders || parser.joinDuplicateHeaders;
-      incoming2.url = url;
-      incoming2.upgrade = upgrade;
-      let n = headers.length;
-      if (parser.maxHeaderPairs > 0)
-        n = MathMin(n, parser.maxHeaderPairs);
-      incoming2._addHeaderLines(headers, n);
-      if (typeof method === "number") {
-        incoming2.method = allMethods[method];
-      } else {
-        incoming2.statusCode = statusCode;
-        incoming2.statusMessage = statusMessage;
-      }
-      return parser.onIncoming(incoming2, shouldKeepAlive);
-    }
-    function parserOnBody(b) {
-      const stream = this.incoming;
-      if (stream === null)
-        return;
-      if (!stream._dumped) {
-        const ret = stream.push(b);
-        if (!ret)
-          readStop(this.socket);
-      }
-    }
-    function parserOnMessageComplete() {
-      const parser = this;
-      const stream = parser.incoming;
-      if (stream !== null) {
-        stream.complete = true;
-        const headers = parser._headers;
-        if (headers.length) {
-          stream._addHeaderLines(headers, headers.length);
-          parser._headers = [];
-          parser._url = "";
-        }
-        stream.push(null);
-      }
-      readStart(parser.socket);
-    }
-    var parsers = new FreeList("parsers", 1e3, function parsersCb() {
-      const parser = new HTTPParser();
-      cleanParser(parser);
-      parser[kOnHeaders] = parserOnHeaders;
-      parser[kOnHeadersComplete] = parserOnHeadersComplete;
-      parser[kOnBody] = parserOnBody;
-      parser[kOnMessageComplete] = parserOnMessageComplete;
-      return parser;
-    });
-    function closeParserInstance(parser) {
-      parser.close();
-    }
-    function freeParser(parser, req, socket) {
-      if (parser) {
-        if (parser._consumed)
-          parser.unconsume();
-        cleanParser(parser);
-        parser.remove();
-        if (parsers.free(parser) === false) {
-          setImmediate2(closeParserInstance, parser);
-        } else {
-          parser.free();
-        }
-      }
-      if (req) {
-        req.parser = null;
-      }
-      if (socket) {
-        socket.parser = null;
-      }
-    }
-    var tokenRegExp = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
-    var validTokenChars = new Uint8Array2([
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 0-15
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 16-31
-      0,
-      1,
-      0,
-      1,
-      1,
-      1,
-      1,
-      1,
-      0,
-      0,
-      1,
-      1,
-      0,
-      1,
-      1,
-      0,
-      // 32-47 (!"#$%&'()*+,-./)
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 48-63 (0-9:;<=>?)
-      0,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      // 64-79 (@A-O)
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      0,
-      0,
-      0,
-      1,
-      1,
-      // 80-95 (P-Z[\]^_)
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      // 96-111 (`a-o)
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      1,
-      0,
-      1,
-      0,
-      1,
-      0,
-      // 112-127 (p-z{|}~)
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 128-143
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 144-159
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 160-175
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 176-191
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 192-207
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 208-223
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      // 224-239
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-      // 240-255
-    ]);
-    function checkIsHttpToken(val) {
-      if (val.length >= 10) {
-        return tokenRegExp.test(val);
-      }
-      if (val.length === 0) return false;
-      for (let i = 0; i < val.length; i++) {
-        if (!validTokenChars[val.charCodeAt(i)]) {
-          return false;
-        }
-      }
-      return true;
-    }
-    var headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
-    function checkInvalidHeaderChar(val) {
-      return headerCharRegex.test(val);
-    }
-    function cleanParser(parser) {
-      parser._headers = [];
-      parser._url = "";
-      parser.socket = null;
-      parser.incoming = null;
-      parser.outgoing = null;
-      parser.maxHeaderPairs = MAX_HEADER_PAIRS;
-      parser[kOnMessageBegin] = null;
-      parser[kOnExecute] = null;
-      parser[kOnTimeout] = null;
-      parser._consumed = false;
-      parser.onIncoming = null;
-      parser.joinDuplicateHeaders = null;
-    }
-    function prepareError(err, parser, rawPacket) {
-      err.rawPacket = rawPacket || parser.getCurrentBuffer();
-      if (typeof err.reason === "string")
-        err.message = `Parse Error: ${err.reason}`;
-    }
-    var warnedLenient = false;
-    function isLenient() {
-      if (insecureHTTPParser && !warnedLenient) {
-        warnedLenient = true;
-        globalThis.process.emitWarning("Using insecure HTTP parsing");
-      }
-      return insecureHTTPParser;
-    }
-    module.exports = {
-      _checkInvalidHeaderChar: checkInvalidHeaderChar,
-      _checkIsHttpToken: checkIsHttpToken,
-      chunkExpression: /(?:^|\W)chunked(?:$|\W)/i,
-      continueExpression: /(?:^|\W)100-continue(?:$|\W)/i,
-      CRLF: "\r\n",
-      // TODO: Deprecate this.
-      freeParser,
-      methods,
-      parsers,
-      kIncomingMessage,
-      HTTPParser,
-      isLenient,
-      prepareError
-    };
-  }
-});
-
-// ../lib/_http_outgoing.js
-var require_http_outgoing = __commonJS({
-  "../lib/_http_outgoing.js"(exports2, module) {
-    "use strict";
-    var {
-      Array: Array2,
-      ArrayIsArray,
-      MathFloor,
-      ObjectDefineProperty,
-      ObjectHasOwn,
-      ObjectKeys,
-      ObjectSetPrototypeOf,
-      ObjectValues,
-      SafeSet,
-      Symbol: Symbol2
-    } = primordials;
-    var { getDefaultHighWaterMark } = require_state();
-    var assert = require_assert();
-    var EE = require_events();
-    var Stream = require_stream();
-    var { kOutHeaders, utcDate, kNeedDrain } = require_http();
-    var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
-    var {
-      _checkIsHttpToken: checkIsHttpToken,
-      _checkInvalidHeaderChar: checkInvalidHeaderChar,
-      chunkExpression: RE_TE_CHUNKED
-    } = require_http_common();
-    var {
-      defaultTriggerAsyncIdScope,
-      symbols: { async_id_symbol }
-    } = require_async_hooks();
-    var {
-      codes: {
-        ERR_HTTP_BODY_NOT_ALLOWED,
-        ERR_HTTP_CONTENT_LENGTH_MISMATCH,
-        ERR_HTTP_HEADERS_SENT,
-        ERR_HTTP_INVALID_HEADER_VALUE,
-        ERR_HTTP_TRAILER_INVALID,
-        ERR_INVALID_ARG_TYPE,
-        ERR_INVALID_ARG_VALUE,
-        ERR_INVALID_CHAR,
-        ERR_INVALID_HTTP_TOKEN,
-        ERR_METHOD_NOT_IMPLEMENTED,
-        ERR_STREAM_ALREADY_FINISHED,
-        ERR_STREAM_CANNOT_PIPE,
-        ERR_STREAM_DESTROYED,
-        ERR_STREAM_NULL_VALUES,
-        ERR_STREAM_WRITE_AFTER_END
-      },
-      hideStackFrames
-    } = require_errors();
-    var { validateString } = require_validators();
-    var { assignFunctionName } = require_util5();
-    var { isUint8Array } = require_types();
-    var debug = require_debuglog().debuglog("http", (fn) => {
-      debug = fn;
-    });
-    var kCorked = Symbol2("corked");
-    var kSocket = Symbol2("kSocket");
-    var kChunkedBuffer = Symbol2("kChunkedBuffer");
-    var kChunkedLength = Symbol2("kChunkedLength");
-    var kUniqueHeaders = Symbol2("kUniqueHeaders");
-    var kBytesWritten = Symbol2("kBytesWritten");
-    var kErrored = Symbol2("errored");
-    var kHighWaterMark = Symbol2("kHighWaterMark");
-    var kRejectNonStandardBodyWrites = Symbol2("kRejectNonStandardBodyWrites");
-    var nop = () => {
-    };
-    var RE_CONN_CLOSE = /(?:^|\W)close(?:$|\W)/i;
-    function isCookieField(s) {
-      return s.length === 6 && s.toLowerCase() === "cookie";
-    }
-    function isContentDispositionField(s) {
-      return s.length === 19 && s.toLowerCase() === "content-disposition";
-    }
-    function OutgoingMessage(options) {
-      Stream.call(this);
-      this.outputData = [];
-      this.outputSize = 0;
-      this.writable = true;
-      this.destroyed = false;
-      this._last = false;
-      this.chunkedEncoding = false;
-      this.shouldKeepAlive = true;
-      this.maxRequestsOnConnectionReached = false;
-      this._defaultKeepAlive = true;
-      this.useChunkedEncodingByDefault = true;
-      this.sendDate = false;
-      this._removedConnection = false;
-      this._removedContLen = false;
-      this._removedTE = false;
-      this.strictContentLength = false;
-      this[kBytesWritten] = 0;
-      this._contentLength = null;
-      this._hasBody = true;
-      this._trailer = "";
-      this[kNeedDrain] = false;
-      this.finished = false;
-      this._headerSent = false;
-      this[kCorked] = 0;
-      this[kChunkedBuffer] = [];
-      this[kChunkedLength] = 0;
-      this._closed = false;
-      this[kSocket] = null;
-      this._header = null;
-      this[kOutHeaders] = null;
-      this._keepAliveTimeout = 0;
-      this._onPendingData = nop;
-      this[kErrored] = null;
-      this[kHighWaterMark] = options?.highWaterMark ?? getDefaultHighWaterMark();
-      this[kRejectNonStandardBodyWrites] = options?.rejectNonStandardBodyWrites ?? false;
-    }
-    ObjectSetPrototypeOf(OutgoingMessage.prototype, Stream.prototype);
-    ObjectSetPrototypeOf(OutgoingMessage, Stream);
-    ObjectDefineProperty(OutgoingMessage.prototype, "errored", {
-      __proto__: null,
-      get() {
-        return this[kErrored];
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "closed", {
-      __proto__: null,
-      get() {
-        return this._closed;
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableFinished", {
-      __proto__: null,
-      get() {
-        return this.finished && this.outputSize === 0 && (!this[kSocket] || this[kSocket].writableLength === 0);
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableObjectMode", {
-      __proto__: null,
-      get() {
-        return false;
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableLength", {
-      __proto__: null,
-      get() {
-        return this.outputSize + this[kChunkedLength] + (this[kSocket] ? this[kSocket].writableLength : 0);
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableHighWaterMark", {
-      __proto__: null,
-      get() {
-        return this[kSocket] ? this[kSocket].writableHighWaterMark : this[kHighWaterMark];
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableCorked", {
-      __proto__: null,
-      get() {
-        return this[kCorked];
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "connection", {
-      __proto__: null,
-      get: function() {
-        return this[kSocket];
-      },
-      set: function(val) {
-        this.socket = val;
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "socket", {
-      __proto__: null,
-      get: function() {
-        return this[kSocket];
-      },
-      set: function(val) {
-        for (let n = 0; n < this[kCorked]; n++) {
-          val?.cork();
-          this[kSocket]?.uncork();
-        }
-        this[kSocket] = val;
-      }
-    });
-    OutgoingMessage.prototype._renderHeaders = function _renderHeaders() {
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("render");
-      }
-      const headersMap = this[kOutHeaders];
-      const headers = {};
-      if (headersMap !== null) {
-        const keys = ObjectKeys(headersMap);
-        for (let i = 0, l = keys.length; i < l; i++) {
-          const key = keys[i];
-          headers[headersMap[key][0]] = headersMap[key][1];
-        }
-      }
-      return headers;
-    };
-    OutgoingMessage.prototype.cork = function cork() {
-      this[kCorked]++;
-      if (this[kSocket]) {
-        this[kSocket].cork();
-      }
-    };
-    OutgoingMessage.prototype.uncork = function uncork() {
-      this[kCorked]--;
-      if (this[kSocket]) {
-        this[kSocket].uncork();
-      }
-      if (this[kCorked] || this[kChunkedBuffer].length === 0) {
-        return;
-      }
-      const len = this[kChunkedLength];
-      const buf = this[kChunkedBuffer];
-      assert(this.chunkedEncoding);
-      let callbacks;
-      this._send(len.toString(16), "latin1", null);
-      this._send(crlf_buf, null, null);
-      for (let n = 0; n < buf.length; n += 3) {
-        this._send(buf[n + 0], buf[n + 1], null);
-        if (buf[n + 2]) {
-          callbacks ??= [];
-          callbacks.push(buf[n + 2]);
-        }
-      }
-      this._send(crlf_buf, null, callbacks.length ? (err) => {
-        for (const callback of callbacks) {
-          callback(err);
-        }
-      } : null);
-      this[kChunkedBuffer].length = 0;
-      this[kChunkedLength] = 0;
-    };
-    OutgoingMessage.prototype.setTimeout = function setTimeout2(msecs, callback) {
-      if (callback) {
-        this.on("timeout", callback);
-      }
-      if (!this[kSocket]) {
-        this.once("socket", function socketSetTimeoutOnConnect(socket) {
-          socket.setTimeout(msecs);
-        });
-      } else {
-        this[kSocket].setTimeout(msecs);
-      }
-      return this;
-    };
-    OutgoingMessage.prototype.destroy = function destroy(error) {
-      if (this.destroyed) {
-        return this;
-      }
-      this.destroyed = true;
-      this[kErrored] = error;
-      if (this[kSocket]) {
-        this[kSocket].destroy(error);
-      } else {
-        this.once("socket", function socketDestroyOnConnect(socket) {
-          socket.destroy(error);
-        });
-      }
-      return this;
-    };
-    OutgoingMessage.prototype._send = function _send(data, encoding, callback, byteLength) {
-      if (!this._headerSent && this._header !== null) {
-        if (typeof data === "string" && (encoding === "utf8" || encoding === "latin1" || !encoding)) {
-          data = this._header + data;
-        } else {
-          const header = this._header;
-          this.outputData.unshift({
-            data: header,
-            encoding: "latin1",
-            callback: null
-          });
-          this.outputSize += header.length;
-          this._onPendingData(header.length);
-        }
-        this._headerSent = true;
-      }
-      return this._writeRaw(data, encoding, callback, byteLength);
-    };
-    OutgoingMessage.prototype._writeRaw = _writeRaw;
-    function _writeRaw(data, encoding, callback, size) {
-      const conn = this[kSocket];
-      if (conn?.destroyed) {
-        return false;
-      }
-      if (typeof encoding === "function") {
-        callback = encoding;
-        encoding = null;
-      }
-      if (conn && conn._httpMessage === this && conn.writable) {
-        if (this.outputData.length) {
-          this._flushOutput(conn);
-        }
-        return conn.write(data, encoding, callback);
-      }
-      this.outputData.push({ data, encoding, callback });
-      this.outputSize += data.length;
-      this._onPendingData(data.length);
-      return this.outputSize < this[kHighWaterMark];
-    }
-    OutgoingMessage.prototype._storeHeader = _storeHeader;
-    function _storeHeader(firstLine, headers) {
-      const state = {
-        connection: false,
-        contLen: false,
-        te: false,
-        date: false,
-        expect: false,
-        trailer: false,
-        header: firstLine
-      };
-      if (headers) {
-        if (headers === this[kOutHeaders]) {
-          for (const key in headers) {
-            const entry = headers[key];
-            processHeader(this, state, entry[0], entry[1], false);
-          }
-        } else if (ArrayIsArray(headers)) {
-          if (headers.length && ArrayIsArray(headers[0])) {
-            for (let i = 0; i < headers.length; i++) {
-              const entry = headers[i];
-              processHeader(this, state, entry[0], entry[1], true);
-            }
-          } else {
-            if (headers.length % 2 !== 0) {
-              throw new ERR_INVALID_ARG_VALUE("headers", headers);
-            }
-            for (let n = 0; n < headers.length; n += 2) {
-              processHeader(this, state, headers[n + 0], headers[n + 1], true);
-            }
-          }
-        } else {
-          for (const key in headers) {
-            if (ObjectHasOwn(headers, key)) {
-              processHeader(this, state, key, headers[key], true);
-            }
-          }
-        }
-      }
-      let { header } = state;
-      if (this.sendDate && !state.date) {
-        header += "Date: " + utcDate() + "\r\n";
-      }
-      if (this.chunkedEncoding && (this.statusCode === 204 || this.statusCode === 304)) {
-        debug(this.statusCode + " response should not use chunked encoding, closing connection.");
-        this.chunkedEncoding = false;
-        this.shouldKeepAlive = false;
-      }
-      if (this._removedConnection) {
-        this._last = !this.shouldKeepAlive;
-      } else if (!state.connection) {
-        const shouldSendKeepAlive = this.shouldKeepAlive && (state.contLen || this.useChunkedEncodingByDefault || this.agent);
-        if (shouldSendKeepAlive && this.maxRequestsOnConnectionReached) {
-          header += "Connection: close\r\n";
-        } else if (shouldSendKeepAlive) {
-          header += "Connection: keep-alive\r\n";
-          if (this._keepAliveTimeout && this._defaultKeepAlive) {
-            const timeoutSeconds = MathFloor(this._keepAliveTimeout / 1e3);
-            let max = "";
-            if (~~this._maxRequestsPerSocket > 0) {
-              max = `, max=${this._maxRequestsPerSocket}`;
-            }
-            header += `Keep-Alive: timeout=${timeoutSeconds}${max}\r
-`;
-          }
-        } else {
-          this._last = true;
-          header += "Connection: close\r\n";
-        }
-      }
-      if (!state.contLen && !state.te) {
-        if (!this._hasBody) {
-          this.chunkedEncoding = false;
-        } else if (!this.useChunkedEncodingByDefault) {
-          this._last = true;
-        } else if (!state.trailer && !this._removedContLen && typeof this._contentLength === "number") {
-          header += "Content-Length: " + this._contentLength + "\r\n";
-        } else if (!this._removedTE) {
-          header += "Transfer-Encoding: chunked\r\n";
-          this.chunkedEncoding = true;
-        } else {
-          debug("Both Content-Length and Transfer-Encoding are removed");
-          this._last = true;
-        }
-      }
-      if (this.chunkedEncoding !== true && state.trailer) {
-        throw new ERR_HTTP_TRAILER_INVALID();
-      }
-      this._header = header + "\r\n";
-      this._headerSent = false;
-      if (state.expect) this._send("");
-    }
-    function processHeader(self2, state, key, value, validate) {
-      if (validate)
-        validateHeaderName(key);
-      if (isContentDispositionField(key) && self2._contentLength) {
-        if (ArrayIsArray(value)) {
-          for (let i = 0; i < value.length; i++) {
-            value[i] = Buffer2.from(value[i], "latin1");
-          }
-        } else {
-          value = Buffer2.from(value, "latin1");
-        }
-      }
-      if (ArrayIsArray(value)) {
-        if ((value.length < 2 || !isCookieField(key)) && (!self2[kUniqueHeaders] || !self2[kUniqueHeaders].has(key.toLowerCase()))) {
-          for (let i = 0; i < value.length; i++)
-            storeHeader(self2, state, key, value[i], validate);
-          return;
-        }
-        value = value.join("; ");
-      }
-      storeHeader(self2, state, key, value, validate);
-    }
-    function storeHeader(self2, state, key, value, validate) {
-      if (validate)
-        validateHeaderValue(key, value);
-      state.header += key + ": " + value + "\r\n";
-      matchHeader(self2, state, key, value);
-    }
-    function matchHeader(self2, state, field, value) {
-      if (field.length < 4 || field.length > 17)
-        return;
-      field = field.toLowerCase();
-      switch (field) {
-        case "connection":
-          state.connection = true;
-          self2._removedConnection = false;
-          if (RE_CONN_CLOSE.test(value))
-            self2._last = true;
-          else
-            self2.shouldKeepAlive = true;
-          break;
-        case "transfer-encoding":
-          state.te = true;
-          self2._removedTE = false;
-          if (RE_TE_CHUNKED.test(value))
-            self2.chunkedEncoding = true;
-          break;
-        case "content-length":
-          state.contLen = true;
-          self2._contentLength = +value;
-          self2._removedContLen = false;
-          break;
-        case "date":
-        case "expect":
-        case "trailer":
-          state[field] = true;
-          break;
-        case "keep-alive":
-          self2._defaultKeepAlive = false;
-          break;
-      }
-    }
-    var validateHeaderName = assignFunctionName("validateHeaderName", hideStackFrames((name, label) => {
-      if (typeof name !== "string" || !name || !checkIsHttpToken(name)) {
-        throw new ERR_INVALID_HTTP_TOKEN.HideStackFramesError(label || "Header name", name);
-      }
-    }));
-    var validateHeaderValue = assignFunctionName("validateHeaderValue", hideStackFrames((name, value) => {
-      if (value === void 0) {
-        throw new ERR_HTTP_INVALID_HEADER_VALUE.HideStackFramesError(value, name);
-      }
-      if (checkInvalidHeaderChar(value)) {
-        debug('Header "%s" contains invalid characters', name);
-        throw new ERR_INVALID_CHAR.HideStackFramesError("header content", name);
-      }
-    }));
-    function parseUniqueHeadersOption(headers) {
-      if (!ArrayIsArray(headers)) {
-        return null;
-      }
-      const unique = new SafeSet();
-      const l = headers.length;
-      for (let i = 0; i < l; i++) {
-        unique.add(headers[i].toLowerCase());
-      }
-      return unique;
-    }
-    OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("set");
-      }
-      validateHeaderName(name);
-      validateHeaderValue(name, value);
-      let headers = this[kOutHeaders];
-      if (headers === null)
-        this[kOutHeaders] = headers = { __proto__: null };
-      headers[name.toLowerCase()] = [name, value];
-      return this;
-    };
-    OutgoingMessage.prototype.setHeaders = function setHeaders(headers) {
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("set");
-      }
-      if (!headers || ArrayIsArray(headers) || typeof headers.keys !== "function" || typeof headers.get !== "function") {
-        throw new ERR_INVALID_ARG_TYPE("headers", ["Headers", "Map"], headers);
-      }
-      const cookies = [];
-      for (const { 0: key, 1: value } of headers) {
-        if (key === "set-cookie") {
-          if (ArrayIsArray(value)) {
-            cookies.push(...value);
-          } else {
-            cookies.push(value);
-          }
-          continue;
-        }
-        this.setHeader(key, value);
-      }
-      if (cookies.length) {
-        this.setHeader("set-cookie", cookies);
-      }
-      return this;
-    };
-    OutgoingMessage.prototype.appendHeader = function appendHeader(name, value) {
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("append");
-      }
-      validateHeaderName(name);
-      validateHeaderValue(name, value);
-      const field = name.toLowerCase();
-      const headers = this[kOutHeaders];
-      if (headers === null || !headers[field]) {
-        return this.setHeader(name, value);
-      }
-      if (!ArrayIsArray(headers[field][1])) {
-        headers[field][1] = [headers[field][1]];
-      }
-      const existingValues = headers[field][1];
-      if (ArrayIsArray(value)) {
-        for (let i = 0, length = value.length; i < length; i++) {
-          existingValues.push(value[i]);
-        }
-      } else {
-        existingValues.push(value);
-      }
-      return this;
-    };
-    OutgoingMessage.prototype.getHeader = function getHeader(name) {
-      validateString(name, "name");
-      const headers = this[kOutHeaders];
-      if (headers === null)
-        return;
-      const entry = headers[name.toLowerCase()];
-      return entry?.[1];
-    };
-    OutgoingMessage.prototype.getHeaderNames = function getHeaderNames() {
-      return this[kOutHeaders] !== null ? ObjectKeys(this[kOutHeaders]) : [];
-    };
-    OutgoingMessage.prototype.getRawHeaderNames = function getRawHeaderNames() {
-      const headersMap = this[kOutHeaders];
-      if (headersMap === null) return [];
-      const values = ObjectValues(headersMap);
-      const headers = Array2(values.length);
-      for (let i = 0, l = values.length; i < l; i++) {
-        headers[i] = values[i][0];
-      }
-      return headers;
-    };
-    OutgoingMessage.prototype.getHeaders = function getHeaders() {
-      const headers = this[kOutHeaders];
-      const ret = { __proto__: null };
-      if (headers) {
-        const keys = ObjectKeys(headers);
-        for (let i = 0; i < keys.length; ++i) {
-          const key = keys[i];
-          const val = headers[key][1];
-          ret[key] = val;
-        }
-      }
-      return ret;
-    };
-    OutgoingMessage.prototype.hasHeader = function hasHeader(name) {
-      validateString(name, "name");
-      return this[kOutHeaders] !== null && !!this[kOutHeaders][name.toLowerCase()];
-    };
-    OutgoingMessage.prototype.removeHeader = function removeHeader(name) {
-      validateString(name, "name");
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("remove");
-      }
-      const key = name.toLowerCase();
-      switch (key) {
-        case "connection":
-          this._removedConnection = true;
-          break;
-        case "content-length":
-          this._removedContLen = true;
-          break;
-        case "transfer-encoding":
-          this._removedTE = true;
-          break;
-        case "date":
-          this.sendDate = false;
-          break;
-      }
-      if (this[kOutHeaders] !== null) {
-        delete this[kOutHeaders][key];
-      }
-    };
-    OutgoingMessage.prototype._implicitHeader = function _implicitHeader() {
-      throw new ERR_METHOD_NOT_IMPLEMENTED("_implicitHeader()");
-    };
-    ObjectDefineProperty(OutgoingMessage.prototype, "headersSent", {
-      __proto__: null,
-      configurable: true,
-      enumerable: true,
-      get: function() {
-        return !!this._header;
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableEnded", {
-      __proto__: null,
-      get: function() {
-        return this.finished;
-      }
-    });
-    ObjectDefineProperty(OutgoingMessage.prototype, "writableNeedDrain", {
-      __proto__: null,
-      get: function() {
-        return !this.destroyed && !this.finished && this[kNeedDrain];
-      }
-    });
-    var crlf_buf = Buffer2.from("\r\n");
-    OutgoingMessage.prototype.write = function write(chunk, encoding, callback) {
-      if (typeof encoding === "function") {
-        callback = encoding;
-        encoding = null;
-      }
-      const ret = write_(this, chunk, encoding, callback, false);
-      if (!ret)
-        this[kNeedDrain] = true;
-      return ret;
-    };
-    function onError(msg, err, callback) {
-      if (msg.destroyed) {
-        return;
-      }
-      const triggerAsyncId = msg.socket ? msg.socket[async_id_symbol] : void 0;
-      defaultTriggerAsyncIdScope(
-        triggerAsyncId,
-        globalThis.process.nextTick,
-        emitErrorNt,
-        msg,
-        err,
-        callback
-      );
-    }
-    function emitErrorNt(msg, err, callback) {
-      callback(err);
-      if (typeof msg.emit === "function" && !msg.destroyed) {
-        msg.emit("error", err);
-      }
-    }
-    function strictContentLength(msg) {
-      return msg.strictContentLength && msg._contentLength != null && msg._hasBody && !msg._removedContLen && !msg.chunkedEncoding && !msg.hasHeader("transfer-encoding");
-    }
-    function write_(msg, chunk, encoding, callback, fromEnd) {
-      if (typeof callback !== "function")
-        callback = nop;
-      if (chunk === null) {
-        throw new ERR_STREAM_NULL_VALUES();
-      } else if (typeof chunk !== "string" && !isUint8Array(chunk)) {
-        throw new ERR_INVALID_ARG_TYPE(
-          "chunk",
-          ["string", "Buffer", "Uint8Array"],
-          chunk
-        );
-      }
-      let err;
-      if (msg.finished) {
-        err = new ERR_STREAM_WRITE_AFTER_END();
-      } else if (msg.destroyed) {
-        err = new ERR_STREAM_DESTROYED("write");
-      }
-      if (err) {
-        if (!msg.destroyed) {
-          onError(msg, err, callback);
-        } else {
-          globalThis.process.nextTick(callback, err);
-        }
-        return false;
-      }
-      let len;
-      if (msg.strictContentLength) {
-        len ??= typeof chunk === "string" ? Buffer2.byteLength(chunk, encoding) : chunk.byteLength;
-        if (strictContentLength(msg) && (fromEnd ? msg[kBytesWritten] + len !== msg._contentLength : msg[kBytesWritten] + len > msg._contentLength)) {
-          throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(len + msg[kBytesWritten], msg._contentLength);
-        }
-        msg[kBytesWritten] += len;
-      }
-      if (!msg._header) {
-        if (fromEnd) {
-          len ??= typeof chunk === "string" ? Buffer2.byteLength(chunk, encoding) : chunk.byteLength;
-          msg._contentLength = len;
-        }
-        msg._implicitHeader();
-      }
-      if (!msg._hasBody) {
-        if (msg[kRejectNonStandardBodyWrites]) {
-          throw new ERR_HTTP_BODY_NOT_ALLOWED();
-        } else {
-          debug("This type of response MUST NOT have a body. Ignoring write() calls.");
-          globalThis.process.nextTick(callback);
-          return true;
-        }
-      }
-      if (!fromEnd && msg.socket && !msg.socket.writableCorked) {
-        msg.socket.cork();
-        globalThis.process.nextTick(connectionCorkNT, msg.socket);
-      }
-      let ret;
-      if (msg.chunkedEncoding && chunk.length !== 0) {
-        len ??= typeof chunk === "string" ? Buffer2.byteLength(chunk, encoding) : chunk.byteLength;
-        if (msg[kCorked] && msg._headerSent) {
-          msg[kChunkedBuffer].push(chunk, encoding, callback);
-          msg[kChunkedLength] += len;
-          ret = msg[kChunkedLength] < msg[kHighWaterMark];
-        } else {
-          msg._send(len.toString(16), "latin1", null);
-          msg._send(crlf_buf, null, null);
-          msg._send(chunk, encoding, null, len);
-          ret = msg._send(crlf_buf, null, callback);
-        }
-      } else {
-        ret = msg._send(chunk, encoding, callback, len);
-      }
-      debug("write ret = " + ret);
-      return ret;
-    }
-    function connectionCorkNT(conn) {
-      conn.uncork();
-    }
-    OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
-      this._trailer = "";
-      const keys = ObjectKeys(headers);
-      const isArray = ArrayIsArray(headers);
-      for (let i = 0, l = keys.length; i < l; i++) {
-        let field, value;
-        const key = keys[i];
-        if (isArray) {
-          field = headers[key][0];
-          value = headers[key][1];
-        } else {
-          field = key;
-          value = headers[key];
-        }
-        validateHeaderName(field, "Trailer name");
-        const isArrayValue = ArrayIsArray(value);
-        if (isArrayValue && value.length > 1 && (!this[kUniqueHeaders] || !this[kUniqueHeaders].has(field.toLowerCase()))) {
-          for (let j = 0, l2 = value.length; j < l2; j++) {
-            if (checkInvalidHeaderChar(value[j])) {
-              debug('Trailer "%s"[%d] contains invalid characters', field, j);
-              throw new ERR_INVALID_CHAR("trailer content", field);
-            }
-            this._trailer += field + ": " + value[j] + "\r\n";
-          }
-        } else {
-          if (isArrayValue) {
-            value = value.join("; ");
-          }
-          if (checkInvalidHeaderChar(value)) {
-            debug('Trailer "%s" contains invalid characters', field);
-            throw new ERR_INVALID_CHAR("trailer content", field);
-          }
-          this._trailer += field + ": " + value + "\r\n";
-        }
-      }
-    };
-    function onFinish(outmsg) {
-      if (outmsg?.socket?._hadError) return;
-      outmsg.emit("finish");
-    }
-    OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
-      if (typeof chunk === "function") {
-        callback = chunk;
-        chunk = null;
-        encoding = null;
-      } else if (typeof encoding === "function") {
-        callback = encoding;
-        encoding = null;
-      }
-      if (chunk) {
-        if (this.finished) {
-          onError(
-            this,
-            new ERR_STREAM_WRITE_AFTER_END(),
-            typeof callback !== "function" ? nop : callback
-          );
-          return this;
-        }
-        if (this[kSocket]) {
-          this[kSocket].cork();
-        }
-        write_(this, chunk, encoding, null, true);
-      } else if (this.finished) {
-        if (typeof callback === "function") {
-          if (!this.writableFinished) {
-            this.on("finish", callback);
-          } else {
-            callback(new ERR_STREAM_ALREADY_FINISHED("end"));
-          }
-        }
-        return this;
-      } else if (!this._header) {
-        if (this[kSocket]) {
-          this[kSocket].cork();
-        }
-        this._contentLength = 0;
-        this._implicitHeader();
-      }
-      if (typeof callback === "function")
-        this.once("finish", callback);
-      if (strictContentLength(this) && this[kBytesWritten] !== this._contentLength) {
-        throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(this[kBytesWritten], this._contentLength);
-      }
-      const finish = onFinish.bind(void 0, this);
-      if (this._hasBody && this.chunkedEncoding) {
-        this._send("0\r\n" + this._trailer + "\r\n", "latin1", finish);
-      } else if (!this._headerSent || this.writableLength || chunk) {
-        this._send("", "latin1", finish);
-      } else {
-        globalThis.process.nextTick(finish);
-      }
-      if (this[kSocket]) {
-        this[kSocket]._writableState.corked = 1;
-        this[kSocket].uncork();
-      }
-      this[kCorked] = 1;
-      this.uncork();
-      this.finished = true;
-      debug("outgoing message end.");
-      if (this.outputData.length === 0 && this[kSocket] && this[kSocket]._httpMessage === this) {
-        this._finish();
-      }
-      return this;
-    };
-    OutgoingMessage.prototype._finish = function _finish() {
-      assert(this[kSocket]);
-      this.emit("prefinish");
-    };
-    OutgoingMessage.prototype._flush = function _flush() {
-      const socket = this[kSocket];
-      if (socket?.writable) {
-        const ret = this._flushOutput(socket);
-        if (this.finished) {
-          this._finish();
-        } else if (ret && this[kNeedDrain]) {
-          this[kNeedDrain] = false;
-          this.emit("drain");
-        }
-      }
-    };
-    OutgoingMessage.prototype._flushOutput = function _flushOutput(socket) {
-      const outputLength = this.outputData.length;
-      if (outputLength <= 0)
-        return void 0;
-      const outputData = this.outputData;
-      socket.cork();
-      let ret;
-      for (let i = 0; i < outputLength; i++) {
-        const { data, encoding, callback } = outputData[i];
-        outputData[i].data = null;
-        ret = socket.write(data, encoding, callback);
-      }
-      socket.uncork();
-      this.outputData = [];
-      this._onPendingData(-this.outputSize);
-      this.outputSize = 0;
-      return ret;
-    };
-    OutgoingMessage.prototype.flushHeaders = function flushHeaders() {
-      if (!this._header) {
-        this._implicitHeader();
-      }
-      this._send("");
-    };
-    OutgoingMessage.prototype.pipe = function pipe() {
-      this.emit("error", new ERR_STREAM_CANNOT_PIPE());
-    };
-    OutgoingMessage.prototype[EE.captureRejectionSymbol] = function(err, event) {
-      this.destroy(err);
-    };
-    module.exports = {
-      kHighWaterMark,
-      kUniqueHeaders,
-      parseUniqueHeadersOption,
-      validateHeaderName,
-      validateHeaderValue,
-      OutgoingMessage
-    };
-  }
-});
-
-// ../lib/_http_client.js
-var require_http_client = __commonJS({
-  "../lib/_http_client.js"(exports2, module) {
-    "use strict";
-    var {
-      ArrayIsArray,
-      Boolean: Boolean2,
-      Error: Error2,
-      NumberIsFinite,
-      ObjectAssign,
-      ObjectKeys,
-      ObjectSetPrototypeOf,
-      ReflectApply,
-      String: String2,
-      Symbol: Symbol2
-    } = primordials;
-    var net = require_net2();
-    var assert = require_assert();
-    var {
-      kEmptyObject,
-      once
-    } = require_util5();
-    var {
-      _checkIsHttpToken: checkIsHttpToken,
-      freeParser,
-      parsers,
-      HTTPParser,
-      isLenient,
-      prepareError
-    } = require_http_common();
-    var {
-      kUniqueHeaders,
-      parseUniqueHeadersOption,
-      OutgoingMessage
-    } = require_http_outgoing();
-    var Agent = require_http_agent();
-    var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
-    var { defaultTriggerAsyncIdScope } = require_async_hooks();
-    var { URL: URL2, urlToHttpOptions, isURL } = require_url();
-    var {
-      kOutHeaders,
-      kNeedDrain,
-      isTraceHTTPEnabled,
-      traceBegin,
-      traceEnd,
-      getNextTraceEventId,
-      kProxyConfig,
-      checkShouldUseProxy
-    } = require_http();
-    var {
-      ConnResetException,
-      codes: {
-        ERR_HTTP_HEADERS_SENT,
-        ERR_INVALID_ARG_TYPE,
-        ERR_INVALID_HTTP_TOKEN,
-        ERR_INVALID_PROTOCOL,
-        ERR_UNESCAPED_CHARACTERS
-      }
-    } = require_errors();
-    var {
-      validateInteger,
-      validateBoolean,
-      validateString
-    } = require_validators();
-    var { getTimerDuration } = require_timers();
-    var {
-      hasObserver,
-      startPerf,
-      stopPerf
-    } = require_observe();
-    var kClientRequestStatistics = Symbol2("ClientRequestStatistics");
-    var dc = require_diagnostics_channel();
-    var onClientRequestCreatedChannel = dc.channel("http.client.request.created");
-    var onClientRequestStartChannel = dc.channel("http.client.request.start");
-    var onClientRequestErrorChannel = dc.channel("http.client.request.error");
-    var onClientResponseFinishChannel = dc.channel("http.client.response.finish");
-    function emitErrorEvent(request, error) {
-      if (onClientRequestErrorChannel.hasSubscribers) {
-        onClientRequestErrorChannel.publish({
-          request,
-          error
-        });
-      }
-      request.emit("error", error);
-    }
-    var { addAbortSignal, finished } = require_stream();
-    var debug = require_debuglog().debuglog("http", (fn) => {
-      debug = fn;
-    });
-    var INVALID_PATH_REGEX = /[^\u0021-\u00ff]/;
-    var kError = Symbol2("kError");
-    var kLenientAll = HTTPParser.kLenientAll | 0;
-    var kLenientNone = HTTPParser.kLenientNone | 0;
-    var HTTP_CLIENT_TRACE_EVENT_NAME = "http.client.request";
-    function validateHost(host, name) {
-      if (host !== null && host !== void 0 && typeof host !== "string") {
-        throw new ERR_INVALID_ARG_TYPE(
-          `options.${name}`,
-          ["string", "undefined", "null"],
-          host
-        );
-      }
-      return host;
-    }
-    var HTTPClientAsyncResource = class {
-      constructor(type, req) {
-        this.type = type;
-        this.req = req;
-      }
-    };
-    function rewriteForProxiedHttp(req, reqOptions) {
-      if (req._header) {
-        debug("request._header is already sent, skipping rewriteForProxiedHttp", reqOptions);
-        return false;
-      }
-      const agent = req.agent;
-      if (!agent || !agent[kProxyConfig]) {
-        return false;
-      }
-      if ((reqOptions.protocol || agent.protocol) !== "http:") {
-        return false;
-      }
-      const shouldUseProxy = checkShouldUseProxy(agent[kProxyConfig], reqOptions);
-      debug(`rewriteForProxiedHttp should use proxy for ${reqOptions.host}:${reqOptions.port}:`, shouldUseProxy);
-      if (!shouldUseProxy) {
-        return false;
-      }
-      const { auth, href } = agent[kProxyConfig];
-      if (auth) {
-        req.setHeader("proxy-authorization", auth);
-      }
-      if (req.shouldKeepAlive) {
-        req.setHeader("proxy-connection", "keep-alive");
-      } else {
-        req.setHeader("proxy-connection", "close");
-      }
-      const requestHost = req.getHeader("host") || "localhost";
-      const requestBase = `http://${requestHost}`;
-      const requestURL = new URL2(req.path, requestBase);
-      if (reqOptions.port) {
-        requestURL.port = reqOptions.port;
-      }
-      req.path = requestURL.href;
-      debug(`updated request for HTTP proxy ${href} with ${req.path} `, req[kOutHeaders]);
-      return true;
-    }
-    function ClientRequest(input, options, cb) {
-      OutgoingMessage.call(this);
-      if (typeof input === "string") {
-        const urlStr = input;
-        input = urlToHttpOptions(new URL2(urlStr));
-      } else if (isURL(input)) {
-        input = urlToHttpOptions(input);
-      } else {
-        cb = options;
-        options = input;
-        input = null;
-      }
-      if (typeof options === "function") {
-        cb = options;
-        options = input || kEmptyObject;
-      } else {
-        options = ObjectAssign(input || {}, options);
-      }
-      let agent = options.agent;
-      const defaultAgent = options._defaultAgent || Agent.globalAgent;
-      if (agent === false) {
-        agent = new defaultAgent.constructor();
-      } else if (agent === null || agent === void 0) {
-        if (typeof options.createConnection !== "function") {
-          agent = defaultAgent;
-        }
-      } else if (typeof agent.addRequest !== "function") {
-        throw new ERR_INVALID_ARG_TYPE(
-          "options.agent",
-          ["Agent-like Object", "undefined", "false"],
-          agent
-        );
-      }
-      this.agent = agent;
-      const protocol = options.protocol || defaultAgent.protocol;
-      let expectedProtocol = defaultAgent.protocol;
-      if (this.agent?.protocol)
-        expectedProtocol = this.agent.protocol;
-      if (options.path) {
-        const path2 = String2(options.path);
-        if (INVALID_PATH_REGEX.test(path2)) {
-          debug('Path contains unescaped characters: "%s"', path2);
-          throw new ERR_UNESCAPED_CHARACTERS("Request path");
-        }
-      }
-      if (protocol !== expectedProtocol) {
-        throw new ERR_INVALID_PROTOCOL(protocol, expectedProtocol);
-      }
-      const defaultPort = options.defaultPort || this.agent?.defaultPort;
-      const optsWithoutSignal = { __proto__: null, ...options };
-      const port = optsWithoutSignal.port = options.port || defaultPort || 80;
-      const host = optsWithoutSignal.host = validateHost(options.hostname, "hostname") || validateHost(options.host, "host") || "localhost";
-      const setHost = options.setHost !== void 0 ? Boolean2(options.setHost) : options.setDefaultHeaders !== false;
-      this._removedConnection = options.setDefaultHeaders === false;
-      this._removedContLen = options.setDefaultHeaders === false;
-      this._removedTE = options.setDefaultHeaders === false;
-      this.socketPath = options.socketPath;
-      if (options.timeout !== void 0)
-        this.timeout = getTimerDuration(options.timeout, "timeout");
-      const signal = options.signal;
-      if (signal) {
-        addAbortSignal(signal, this);
-        delete optsWithoutSignal.signal;
-      }
-      let method = options.method;
-      if (method != null) {
-        validateString(method, "options.method");
-      }
-      if (method) {
-        if (!checkIsHttpToken(method)) {
-          throw new ERR_INVALID_HTTP_TOKEN("Method", method);
-        }
-        method = this.method = method.toUpperCase();
-      } else {
-        method = this.method = "GET";
-      }
-      const maxHeaderSize = options.maxHeaderSize;
-      if (maxHeaderSize !== void 0)
-        validateInteger(maxHeaderSize, "maxHeaderSize", 0);
-      this.maxHeaderSize = maxHeaderSize;
-      const insecureHTTPParser = options.insecureHTTPParser;
-      if (insecureHTTPParser !== void 0) {
-        validateBoolean(insecureHTTPParser, "options.insecureHTTPParser");
-      }
-      this.insecureHTTPParser = insecureHTTPParser;
-      if (options.joinDuplicateHeaders !== void 0) {
-        validateBoolean(options.joinDuplicateHeaders, "options.joinDuplicateHeaders");
-      }
-      this.joinDuplicateHeaders = options.joinDuplicateHeaders;
-      this.path = options.path || "/";
-      if (cb) {
-        this.once("response", cb);
-      }
-      if (method === "GET" || method === "HEAD" || method === "DELETE" || method === "OPTIONS" || method === "TRACE" || method === "CONNECT") {
-        this.useChunkedEncodingByDefault = false;
-      } else {
-        this.useChunkedEncodingByDefault = true;
-      }
-      this._ended = false;
-      this.res = null;
-      this.aborted = false;
-      this.timeoutCb = null;
-      this.upgradeOrConnect = false;
-      this.parser = null;
-      this.maxHeadersCount = null;
-      this.reusedSocket = false;
-      this.host = host;
-      this.protocol = protocol;
-      if (this.agent) {
-        if (!this.agent.keepAlive && !NumberIsFinite(this.agent.maxSockets)) {
-          this._last = true;
-          this.shouldKeepAlive = false;
-        } else {
-          this._last = false;
-          this.shouldKeepAlive = true;
-        }
-      }
-      const headersArray = ArrayIsArray(options.headers);
-      if (!headersArray) {
-        if (options.headers) {
-          const keys = ObjectKeys(options.headers);
-          for (let i = 0; i < keys.length; i++) {
-            const key = keys[i];
-            this.setHeader(key, options.headers[key]);
-          }
-        }
-        if (host && !this.getHeader("host") && setHost) {
-          let hostHeader = host;
-          const posColon = hostHeader.indexOf(":");
-          if (posColon !== -1 && hostHeader.includes(":", posColon + 1) && hostHeader.charCodeAt(0) !== 91) {
-            hostHeader = `[${hostHeader}]`;
-          }
-          if (port && +port !== defaultPort) {
-            hostHeader += ":" + port;
-          }
-          this.setHeader("Host", hostHeader);
-        }
-        if (options.auth && !this.getHeader("Authorization")) {
-          this.setHeader("Authorization", "Basic " + Buffer2.from(options.auth).toString("base64"));
-        }
-        if (this.getHeader("expect")) {
-          if (this._header) {
-            throw new ERR_HTTP_HEADERS_SENT("render");
-          }
-          rewriteForProxiedHttp(this, optsWithoutSignal);
-          this._storeHeader(
-            this.method + " " + this.path + " HTTP/1.1\r\n",
-            this[kOutHeaders]
-          );
-        } else {
-          rewriteForProxiedHttp(this, optsWithoutSignal);
-        }
-      } else {
-        rewriteForProxiedHttp(this, optsWithoutSignal);
-        this._storeHeader(
-          this.method + " " + this.path + " HTTP/1.1\r\n",
-          options.headers
-        );
-      }
-      this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
-      if (this.agent) {
-        this.agent.addRequest(this, optsWithoutSignal);
-      } else {
-        this._last = true;
-        this.shouldKeepAlive = false;
-        let opts = optsWithoutSignal;
-        if (opts.path || opts.socketPath) {
-          opts = { ...optsWithoutSignal };
-          if (opts.socketPath) {
-            opts.path = opts.socketPath;
-          } else {
-            opts.path &&= void 0;
-          }
-        }
-        if (typeof opts.createConnection === "function") {
-          const oncreate = once((err, socket) => {
-            if (err) {
-              globalThis.process.nextTick(() => emitErrorEvent(this, err));
-            } else {
-              this.onSocket(socket);
-            }
-          });
-          try {
-            const newSocket = opts.createConnection(opts, oncreate);
-            if (newSocket) {
-              oncreate(null, newSocket);
-            }
-          } catch (err) {
-            oncreate(err);
-          }
-        } else {
-          debug("CLIENT use net.createConnection", opts);
-          this.onSocket(net.createConnection(opts));
-        }
-      }
-      if (onClientRequestCreatedChannel.hasSubscribers) {
-        onClientRequestCreatedChannel.publish({
-          request: this
-        });
-      }
-    }
-    ObjectSetPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
-    ObjectSetPrototypeOf(ClientRequest, OutgoingMessage);
-    ClientRequest.prototype._finish = function _finish() {
-      OutgoingMessage.prototype._finish.call(this);
-      if (hasObserver("http")) {
-        startPerf(this, kClientRequestStatistics, {
-          type: "http",
-          name: "HttpClient",
-          detail: {
-            req: {
-              method: this.method,
-              url: `${this.protocol}//${this.host}${this.path}`,
-              headers: typeof this.getHeaders === "function" ? this.getHeaders() : {}
-            }
-          }
-        });
-      }
-      if (onClientRequestStartChannel.hasSubscribers) {
-        onClientRequestStartChannel.publish({
-          request: this
-        });
-      }
-      if (isTraceHTTPEnabled()) {
-        this._traceEventId = getNextTraceEventId();
-        traceBegin(HTTP_CLIENT_TRACE_EVENT_NAME, this._traceEventId);
-      }
-    };
-    ClientRequest.prototype._implicitHeader = function _implicitHeader() {
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("render");
-      }
-      this._storeHeader(
-        this.method + " " + this.path + " HTTP/1.1\r\n",
-        this[kOutHeaders]
-      );
-    };
-    ClientRequest.prototype.abort = function abort() {
-      if (this.aborted) {
-        return;
-      }
-      this.aborted = true;
-      globalThis.process.nextTick(emitAbortNT, this);
-      this.destroy();
-    };
-    ClientRequest.prototype.destroy = function destroy(err) {
-      if (this.destroyed) {
-        return this;
-      }
-      this.destroyed = true;
-      if (this.res) {
-        this.res._dump();
-      }
-      this[kError] = err;
-      this.socket?.destroy(err);
-      return this;
-    };
-    function emitAbortNT(req) {
-      req.emit("abort");
-    }
-    function ondrain() {
-      const msg = this._httpMessage;
-      if (msg && !msg.finished && msg[kNeedDrain]) {
-        msg[kNeedDrain] = false;
-        msg.emit("drain");
-      }
-    }
-    function socketCloseListener() {
-      const socket = this;
-      const req = socket._httpMessage;
-      debug("HTTP socket close");
-      const parser = socket.parser;
-      const res = req.res;
-      req.destroyed = true;
-      if (res) {
-        if (!res.complete) {
-          res.destroy(new ConnResetException("aborted"));
-        }
-        req._closed = true;
-        req.emit("close");
-        if (!res.aborted && res.readable) {
-          res.push(null);
-        }
-      } else {
-        if (!req.socket._hadError) {
-          req.socket._hadError = true;
-          emitErrorEvent(req, new ConnResetException("socket hang up"));
-        }
-        req._closed = true;
-        req.emit("close");
-      }
-      if (req.outputData)
-        req.outputData.length = 0;
-      if (parser) {
-        parser.finish();
-        freeParser(parser, req, socket);
-      }
-    }
-    function socketErrorListener(err) {
-      const socket = this;
-      const req = socket._httpMessage;
-      debug("SOCKET ERROR:", err.message, err.stack);
-      if (req) {
-        req.socket._hadError = true;
-        emitErrorEvent(req, err);
-      }
-      const parser = socket.parser;
-      if (parser) {
-        parser.finish();
-        freeParser(parser, req, socket);
-      }
-      socket.removeListener("data", socketOnData);
-      socket.removeListener("end", socketOnEnd);
-      socket.destroy();
-    }
-    function socketOnEnd() {
-      const socket = this;
-      const req = this._httpMessage;
-      const parser = this.parser;
-      if (!req.res && !req.socket._hadError) {
-        req.socket._hadError = true;
-        emitErrorEvent(req, new ConnResetException("socket hang up"));
-      }
-      if (parser) {
-        parser.finish();
-        freeParser(parser, req, socket);
-      }
-      socket.destroy();
-    }
-    function socketOnData(d) {
-      const socket = this;
-      const req = this._httpMessage;
-      const parser = this.parser;
-      assert(parser && parser.socket === socket);
-      const ret = parser.execute(d);
-      if (ret instanceof Error2) {
-        prepareError(ret, parser, d);
-        debug("parse error", ret);
-        freeParser(parser, req, socket);
-        socket.removeListener("data", socketOnData);
-        socket.removeListener("end", socketOnEnd);
-        socket.destroy();
-        req.socket._hadError = true;
-        emitErrorEvent(req, ret);
-      } else if (parser.incoming?.upgrade) {
-        const bytesParsed = ret;
-        const res = parser.incoming;
-        req.res = res;
-        socket.removeListener("data", socketOnData);
-        socket.removeListener("end", socketOnEnd);
-        socket.removeListener("drain", ondrain);
-        if (req.timeoutCb) socket.removeListener("timeout", req.timeoutCb);
-        socket.removeListener("timeout", responseOnTimeout);
-        parser.finish();
-        freeParser(parser, req, socket);
-        const bodyHead = d.slice(bytesParsed, d.length);
-        const eventName = req.method === "CONNECT" ? "connect" : "upgrade";
-        if (req.listenerCount(eventName) > 0) {
-          req.upgradeOrConnect = true;
-          socket.emit("agentRemove");
-          socket.removeListener("close", socketCloseListener);
-          socket.removeListener("error", socketErrorListener);
-          socket._httpMessage = null;
-          socket.readableFlowing = null;
-          req.emit(eventName, res, socket, bodyHead);
-          req.destroyed = true;
-          req._closed = true;
-          req.emit("close");
-        } else {
-          socket.destroy();
-        }
-      } else if (parser.incoming?.complete && // When the status code is informational (100, 102-199),
-      // the server will send a final response after this client
-      // sends a request body, so we must not free the parser.
-      // 101 (Switching Protocols) and all other status codes
-      // should be processed normally.
-      !statusIsInformational(parser.incoming.statusCode)) {
-        socket.removeListener("data", socketOnData);
-        socket.removeListener("end", socketOnEnd);
-        socket.removeListener("drain", ondrain);
-        freeParser(parser, req, socket);
-      }
-    }
-    function statusIsInformational(status) {
-      return status < 200 && status >= 100 && status !== 101;
-    }
-    function parserOnIncomingClient(res, shouldKeepAlive) {
-      const socket = this.socket;
-      const req = socket._httpMessage;
-      debug("AGENT incoming response!");
-      if (req.res) {
-        socket.destroy();
-        return 0;
-      }
-      req.res = res;
-      if (res.upgrade)
-        return 2;
-      const method = req.method;
-      if (method === "CONNECT") {
-        res.upgrade = true;
-        return 2;
-      }
-      if (statusIsInformational(res.statusCode)) {
-        req.res = null;
-        if (res.statusCode === 100) {
-          req.emit("continue");
-        }
-        req.emit("information", {
-          statusCode: res.statusCode,
-          statusMessage: res.statusMessage,
-          httpVersion: res.httpVersion,
-          httpVersionMajor: res.httpVersionMajor,
-          httpVersionMinor: res.httpVersionMinor,
-          headers: res.headers,
-          rawHeaders: res.rawHeaders
-        });
-        return 1;
-      }
-      if (req.shouldKeepAlive && !shouldKeepAlive && !req.upgradeOrConnect) {
-        req.shouldKeepAlive = false;
-      }
-      if (req[kClientRequestStatistics] && hasObserver("http")) {
-        stopPerf(req, kClientRequestStatistics, {
-          detail: {
-            res: {
-              statusCode: res.statusCode,
-              statusMessage: res.statusMessage,
-              headers: res.headers
-            }
-          }
-        });
-      }
-      if (onClientResponseFinishChannel.hasSubscribers) {
-        onClientResponseFinishChannel.publish({
-          request: req,
-          response: res
-        });
-      }
-      if (isTraceHTTPEnabled() && typeof req._traceEventId === "number") {
-        traceEnd(HTTP_CLIENT_TRACE_EVENT_NAME, req._traceEventId, {
-          path: req.path,
-          statusCode: res.statusCode
-        });
-      }
-      req.res = res;
-      res.req = req;
-      res.on("end", responseOnEnd);
-      req.on("finish", requestOnFinish);
-      socket.on("timeout", responseOnTimeout);
-      if (req.aborted || !req.emit("response", res))
-        res._dump();
-      if (method === "HEAD")
-        return 1;
-      if (res.statusCode === 304) {
-        res.complete = true;
-        return 1;
-      }
-      return 0;
-    }
-    function responseKeepAlive(req) {
-      const socket = req.socket;
-      debug("AGENT socket keep-alive");
-      if (req.timeoutCb) {
-        socket.setTimeout(0, req.timeoutCb);
-        req.timeoutCb = null;
-      }
-      socket.removeListener("close", socketCloseListener);
-      socket.removeListener("error", socketErrorListener);
-      socket.removeListener("data", socketOnData);
-      socket.removeListener("end", socketOnEnd);
-      const asyncId = socket._handle ? socket._handle.getAsyncId() : void 0;
-      defaultTriggerAsyncIdScope(asyncId, globalThis.process.nextTick, emitFreeNT, req);
-      req.destroyed = true;
-      if (req.res) {
-        req.res.socket = null;
-      }
-    }
-    function responseOnEnd() {
-      const req = this.req;
-      const socket = req.socket;
-      if (socket) {
-        if (req.timeoutCb) socket.removeListener("timeout", emitRequestTimeout);
-        socket.removeListener("timeout", responseOnTimeout);
-      }
-      req._ended = true;
-      if (!req.shouldKeepAlive) {
-        if (socket.writable) {
-          debug("AGENT socket.destroySoon()");
-          if (typeof socket.destroySoon === "function")
-            socket.destroySoon();
-          else
-            socket.end();
-        }
-        assert(!socket.writable);
-      } else if (req.writableFinished && !this.aborted) {
-        assert(req.finished);
-        responseKeepAlive(req);
-      }
-    }
-    function responseOnTimeout() {
-      const req = this._httpMessage;
-      if (!req) return;
-      const res = req.res;
-      if (!res) return;
-      res.emit("timeout");
-    }
-    function requestOnFinish() {
-      const req = this;
-      if (req.shouldKeepAlive && req._ended)
-        responseKeepAlive(req);
-    }
-    function emitFreeNT(req) {
-      req._closed = true;
-      req.emit("close");
-      if (req.socket) {
-        req.socket.emit("free");
-      }
-    }
-    function tickOnSocket(req, socket) {
-      const parser = parsers.alloc();
-      req.socket = socket;
-      const lenient = req.insecureHTTPParser === void 0 ? isLenient() : req.insecureHTTPParser;
-      parser.initialize(
-        HTTPParser.RESPONSE,
-        new HTTPClientAsyncResource("HTTPINCOMINGMESSAGE", req),
-        req.maxHeaderSize || 0,
-        lenient ? kLenientAll : kLenientNone
-      );
-      parser.socket = socket;
-      parser.outgoing = req;
-      req.parser = parser;
-      socket.parser = parser;
-      socket._httpMessage = req;
-      if (typeof req.maxHeadersCount === "number") {
-        parser.maxHeaderPairs = req.maxHeadersCount << 1;
-      }
-      parser.joinDuplicateHeaders = req.joinDuplicateHeaders;
-      parser.onIncoming = parserOnIncomingClient;
-      socket.on("error", socketErrorListener);
-      socket.on("data", socketOnData);
-      socket.on("end", socketOnEnd);
-      socket.on("close", socketCloseListener);
-      socket.on("drain", ondrain);
-      if (req.timeout !== void 0 || req.agent?.options?.timeout) {
-        listenSocketTimeout(req);
-      }
-      req.emit("socket", socket);
-    }
-    function emitRequestTimeout() {
-      const req = this._httpMessage;
-      if (req) {
-        req.emit("timeout");
-      }
-    }
-    function listenSocketTimeout(req) {
-      if (req.timeoutCb) {
-        return;
-      }
-      req.timeoutCb = emitRequestTimeout;
-      if (req.socket) {
-        req.socket.once("timeout", emitRequestTimeout);
-      } else {
-        req.on("socket", (socket) => {
-          socket.once("timeout", emitRequestTimeout);
-        });
-      }
-    }
-    ClientRequest.prototype.onSocket = function onSocket(socket, err) {
-      globalThis.process.nextTick(onSocketNT, this, socket, err);
-    };
-    function onSocketNT(req, socket, err) {
-      if (req.destroyed || err) {
-        let _destroy = function(req2, err2) {
-          if (!req2.aborted && !err2) {
-            err2 = new ConnResetException("socket hang up");
-          }
-          if (err2) {
-            emitErrorEvent(req2, err2);
-          }
-          req2._closed = true;
-          req2.emit("close");
-        };
-        req.destroyed = true;
-        if (socket) {
-          if (!err && req.agent && !socket.destroyed) {
-            socket.emit("free");
-          } else {
-            finished(socket.destroy(err || req[kError]), (er) => {
-              if (er?.code === "ERR_STREAM_PREMATURE_CLOSE") {
-                er = null;
-              }
-              _destroy(req, er || err);
-            });
-            return;
-          }
-        }
-        _destroy(req, err || req[kError]);
-      } else {
-        tickOnSocket(req, socket);
-        req._flush();
-      }
-    }
-    ClientRequest.prototype._deferToConnect = _deferToConnect;
-    function _deferToConnect(method, arguments_) {
-      const callSocketMethod = () => {
-        if (method)
-          ReflectApply(this.socket[method], this.socket, arguments_);
-      };
-      const onSocket = () => {
-        if (this.socket.writable) {
-          callSocketMethod();
-        } else {
-          this.socket.once("connect", callSocketMethod);
-        }
-      };
-      if (!this.socket) {
-        this.once("socket", onSocket);
-      } else {
-        onSocket();
-      }
-    }
-    ClientRequest.prototype.setTimeout = function setTimeout2(msecs, callback) {
-      if (this._ended) {
-        return this;
-      }
-      listenSocketTimeout(this);
-      msecs = getTimerDuration(msecs, "msecs");
-      if (callback) this.once("timeout", callback);
-      if (this.socket) {
-        setSocketTimeout(this.socket, msecs);
-      } else {
-        this.once("socket", (sock) => setSocketTimeout(sock, msecs));
-      }
-      return this;
-    };
-    function setSocketTimeout(sock, msecs) {
-      if (sock.connecting) {
-        sock.once("connect", function() {
-          sock.setTimeout(msecs);
-        });
-      } else {
-        sock.setTimeout(msecs);
-      }
-    }
-    ClientRequest.prototype.setNoDelay = function setNoDelay(noDelay) {
-      this._deferToConnect("setNoDelay", [noDelay]);
-    };
-    ClientRequest.prototype.setSocketKeepAlive = function setSocketKeepAlive(enable, initialDelay) {
-      this._deferToConnect("setKeepAlive", [enable, initialDelay]);
-    };
-    ClientRequest.prototype.clearTimeout = function clearTimeout2(cb) {
-      this.setTimeout(0, cb);
-    };
-    module.exports = {
-      ClientRequest
-    };
-  }
-});
-
-// ../lib/_http_server.js
-var require_http_server = __commonJS({
-  "../lib/_http_server.js"(exports2, module) {
-    "use strict";
-    var {
-      ArrayIsArray,
-      Error: Error2,
-      MathMin,
-      NumberIsFinite,
-      ObjectKeys,
-      ObjectSetPrototypeOf,
-      ReflectApply,
-      Symbol: Symbol2,
-      SymbolAsyncDispose,
-      SymbolFor
-    } = primordials;
-    var net = require_net2();
-    var EE = require_events();
-    var assert = require_assert();
-    var {
-      parsers,
-      freeParser,
-      continueExpression,
-      chunkExpression,
-      kIncomingMessage,
-      HTTPParser,
-      isLenient,
-      _checkInvalidHeaderChar: checkInvalidHeaderChar,
-      prepareError
-    } = require_http_common();
-    var { ConnectionsList } = internalBinding("http_parser");
-    var {
-      kUniqueHeaders,
-      parseUniqueHeadersOption,
-      OutgoingMessage
-    } = require_http_outgoing();
-    var {
-      kOutHeaders,
-      kNeedDrain,
-      isTraceHTTPEnabled,
-      traceBegin,
-      traceEnd,
-      getNextTraceEventId
-    } = require_http();
-    var {
-      defaultTriggerAsyncIdScope,
-      getOrSetAsyncId
-    } = require_async_hooks();
-    var { IncomingMessage } = require_http_incoming();
-    var {
-      ConnResetException,
-      codes: {
-        ERR_HTTP_HEADERS_SENT,
-        ERR_HTTP_INVALID_STATUS_CODE,
-        ERR_HTTP_REQUEST_TIMEOUT,
-        ERR_HTTP_SOCKET_ASSIGNED,
-        ERR_HTTP_SOCKET_ENCODING,
-        ERR_INVALID_ARG_VALUE,
-        ERR_INVALID_CHAR,
-        ERR_OUT_OF_RANGE
-      }
-    } = require_errors();
-    var {
-      assignFunctionName,
-      deprecate,
-      kEmptyObject,
-      promisify
-    } = require_util5();
-    var {
-      validateInteger,
-      validateBoolean,
-      validateLinkHeaderValue,
-      validateObject,
-      validateFunction
-    } = require_validators();
-    var Buffer2 = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports)).Buffer;
-    var { setInterval, clearInterval } = require_timers2();
-    var debug = require_debuglog().debuglog("http", (fn) => {
-      debug = fn;
-    });
-    var dc = require_diagnostics_channel();
-    var onRequestStartChannel = dc.channel("http.server.request.start");
-    var onResponseCreatedChannel = dc.channel("http.server.response.created");
-    var onResponseFinishChannel = dc.channel("http.server.response.finish");
-    var kServerResponse = Symbol2("ServerResponse");
-    var kServerResponseStatistics = Symbol2("ServerResponseStatistics");
-    var {
-      hasObserver,
-      startPerf,
-      stopPerf
-    } = require_observe();
-    var STATUS_CODES = {
-      100: "Continue",
-      // RFC 7231 6.2.1
-      101: "Switching Protocols",
-      // RFC 7231 6.2.2
-      102: "Processing",
-      // RFC 2518 10.1 (obsoleted by RFC 4918)
-      103: "Early Hints",
-      // RFC 8297 2
-      200: "OK",
-      // RFC 7231 6.3.1
-      201: "Created",
-      // RFC 7231 6.3.2
-      202: "Accepted",
-      // RFC 7231 6.3.3
-      203: "Non-Authoritative Information",
-      // RFC 7231 6.3.4
-      204: "No Content",
-      // RFC 7231 6.3.5
-      205: "Reset Content",
-      // RFC 7231 6.3.6
-      206: "Partial Content",
-      // RFC 7233 4.1
-      207: "Multi-Status",
-      // RFC 4918 11.1
-      208: "Already Reported",
-      // RFC 5842 7.1
-      226: "IM Used",
-      // RFC 3229 10.4.1
-      300: "Multiple Choices",
-      // RFC 7231 6.4.1
-      301: "Moved Permanently",
-      // RFC 7231 6.4.2
-      302: "Found",
-      // RFC 7231 6.4.3
-      303: "See Other",
-      // RFC 7231 6.4.4
-      304: "Not Modified",
-      // RFC 7232 4.1
-      305: "Use Proxy",
-      // RFC 7231 6.4.5
-      307: "Temporary Redirect",
-      // RFC 7231 6.4.7
-      308: "Permanent Redirect",
-      // RFC 7238 3
-      400: "Bad Request",
-      // RFC 7231 6.5.1
-      401: "Unauthorized",
-      // RFC 7235 3.1
-      402: "Payment Required",
-      // RFC 7231 6.5.2
-      403: "Forbidden",
-      // RFC 7231 6.5.3
-      404: "Not Found",
-      // RFC 7231 6.5.4
-      405: "Method Not Allowed",
-      // RFC 7231 6.5.5
-      406: "Not Acceptable",
-      // RFC 7231 6.5.6
-      407: "Proxy Authentication Required",
-      // RFC 7235 3.2
-      408: "Request Timeout",
-      // RFC 7231 6.5.7
-      409: "Conflict",
-      // RFC 7231 6.5.8
-      410: "Gone",
-      // RFC 7231 6.5.9
-      411: "Length Required",
-      // RFC 7231 6.5.10
-      412: "Precondition Failed",
-      // RFC 7232 4.2
-      413: "Payload Too Large",
-      // RFC 7231 6.5.11
-      414: "URI Too Long",
-      // RFC 7231 6.5.12
-      415: "Unsupported Media Type",
-      // RFC 7231 6.5.13
-      416: "Range Not Satisfiable",
-      // RFC 7233 4.4
-      417: "Expectation Failed",
-      // RFC 7231 6.5.14
-      418: "I'm a Teapot",
-      // RFC 7168 2.3.3
-      421: "Misdirected Request",
-      // RFC 7540 9.1.2
-      422: "Unprocessable Entity",
-      // RFC 4918 11.2
-      423: "Locked",
-      // RFC 4918 11.3
-      424: "Failed Dependency",
-      // RFC 4918 11.4
-      425: "Too Early",
-      // RFC 8470 5.2
-      426: "Upgrade Required",
-      // RFC 2817 and RFC 7231 6.5.15
-      428: "Precondition Required",
-      // RFC 6585 3
-      429: "Too Many Requests",
-      // RFC 6585 4
-      431: "Request Header Fields Too Large",
-      // RFC 6585 5
-      451: "Unavailable For Legal Reasons",
-      // RFC 7725 3
-      500: "Internal Server Error",
-      // RFC 7231 6.6.1
-      501: "Not Implemented",
-      // RFC 7231 6.6.2
-      502: "Bad Gateway",
-      // RFC 7231 6.6.3
-      503: "Service Unavailable",
-      // RFC 7231 6.6.4
-      504: "Gateway Timeout",
-      // RFC 7231 6.6.5
-      505: "HTTP Version Not Supported",
-      // RFC 7231 6.6.6
-      506: "Variant Also Negotiates",
-      // RFC 2295 8.1
-      507: "Insufficient Storage",
-      // RFC 4918 11.5
-      508: "Loop Detected",
-      // RFC 5842 7.2
-      509: "Bandwidth Limit Exceeded",
-      510: "Not Extended",
-      // RFC 2774 7
-      511: "Network Authentication Required"
-      // RFC 6585 6
-    };
-    var kOnExecute = HTTPParser.kOnExecute | 0;
-    var kOnTimeout = HTTPParser.kOnTimeout | 0;
-    var kLenientAll = HTTPParser.kLenientAll | 0;
-    var kLenientNone = HTTPParser.kLenientNone | 0;
-    var kConnections = Symbol2("http.server.connections");
-    var kConnectionsCheckingInterval = Symbol2("http.server.connectionsCheckingInterval");
-    var HTTP_SERVER_TRACE_EVENT_NAME = "http.server.request";
-    var HTTPServerAsyncResource = class {
-      constructor(type, socket) {
-        this.type = type;
-        this.socket = socket;
-      }
-    };
-    function ServerResponse(req, options) {
-      OutgoingMessage.call(this, options);
-      if (req.method === "HEAD") this._hasBody = false;
-      this.req = req;
-      this.sendDate = true;
-      this._sent100 = false;
-      this._expect_continue = false;
-      if (req.httpVersionMajor < 1 || req.httpVersionMinor < 1) {
-        this.useChunkedEncodingByDefault = chunkExpression.test(req.headers.te);
-        this.shouldKeepAlive = false;
-      }
-      if (hasObserver("http")) {
-        startPerf(this, kServerResponseStatistics, {
-          type: "http",
-          name: "HttpRequest",
-          detail: {
-            req: {
-              method: req.method,
-              url: req.url,
-              headers: req.headers
-            }
-          }
-        });
-      }
-      if (isTraceHTTPEnabled()) {
-        this._traceEventId = getNextTraceEventId();
-        traceBegin(HTTP_SERVER_TRACE_EVENT_NAME, this._traceEventId);
-      }
-      if (onResponseCreatedChannel.hasSubscribers) {
-        onResponseCreatedChannel.publish({
-          request: req,
-          response: this
-        });
-      }
-    }
-    ObjectSetPrototypeOf(ServerResponse.prototype, OutgoingMessage.prototype);
-    ObjectSetPrototypeOf(ServerResponse, OutgoingMessage);
-    ServerResponse.prototype._finish = function _finish() {
-      if (this[kServerResponseStatistics] && hasObserver("http")) {
-        stopPerf(this, kServerResponseStatistics, {
-          detail: {
-            res: {
-              statusCode: this.statusCode,
-              statusMessage: this.statusMessage,
-              headers: typeof this.getHeaders === "function" ? this.getHeaders() : {}
-            }
-          }
-        });
-      }
-      OutgoingMessage.prototype._finish.call(this);
-      if (isTraceHTTPEnabled() && typeof this._traceEventId === "number") {
-        const data = {
-          url: this.req?.url,
-          statusCode: this.statusCode
-        };
-        traceEnd(HTTP_SERVER_TRACE_EVENT_NAME, this._traceEventId, data);
-      }
-    };
-    ServerResponse.prototype.statusCode = 200;
-    ServerResponse.prototype.statusMessage = void 0;
-    function onServerResponseClose() {
-      if (this._httpMessage) {
-        emitCloseNT(this._httpMessage);
-      }
-    }
-    ServerResponse.prototype.assignSocket = function assignSocket(socket) {
-      if (socket._httpMessage) {
-        throw new ERR_HTTP_SOCKET_ASSIGNED();
-      }
-      socket._httpMessage = this;
-      socket.on("close", onServerResponseClose);
-      this.socket = socket;
-      this.emit("socket", socket);
-      this._flush();
-    };
-    ServerResponse.prototype.detachSocket = function detachSocket(socket) {
-      assert(socket._httpMessage === this);
-      socket.removeListener("close", onServerResponseClose);
-      socket._httpMessage = null;
-      this.socket = null;
-    };
-    ServerResponse.prototype.writeContinue = function writeContinue(cb) {
-      this._writeRaw("HTTP/1.1 100 Continue\r\n\r\n", "ascii", cb);
-      this._sent100 = true;
-    };
-    ServerResponse.prototype.writeProcessing = function writeProcessing(cb) {
-      this._writeRaw("HTTP/1.1 102 Processing\r\n\r\n", "ascii", cb);
-    };
-    ServerResponse.prototype.writeEarlyHints = function writeEarlyHints(hints, cb) {
-      let head = "HTTP/1.1 103 Early Hints\r\n";
-      validateObject(hints, "hints");
-      if (hints.link === null || hints.link === void 0) {
-        return;
-      }
-      const link = validateLinkHeaderValue(hints.link);
-      if (link.length === 0) {
-        return;
-      }
-      head += "Link: " + link + "\r\n";
-      for (const key of ObjectKeys(hints)) {
-        if (key !== "link") {
-          head += key + ": " + hints[key] + "\r\n";
-        }
-      }
-      head += "\r\n";
-      this._writeRaw(head, "ascii", cb);
-    };
-    ServerResponse.prototype._implicitHeader = function _implicitHeader() {
-      this.writeHead(this.statusCode);
-    };
-    ServerResponse.prototype.writeHead = writeHead;
-    function writeHead(statusCode, reason, obj) {
-      if (this._header) {
-        throw new ERR_HTTP_HEADERS_SENT("write");
-      }
-      const originalStatusCode = statusCode;
-      statusCode |= 0;
-      if (statusCode < 100 || statusCode > 999) {
-        throw new ERR_HTTP_INVALID_STATUS_CODE(originalStatusCode);
-      }
-      if (typeof reason === "string") {
-        this.statusMessage = reason;
-      } else {
-        this.statusMessage ||= STATUS_CODES[statusCode] || "unknown";
-        obj ??= reason;
-      }
-      this.statusCode = statusCode;
-      let headers;
-      if (this[kOutHeaders]) {
-        let k;
-        if (ArrayIsArray(obj)) {
-          if (obj.length % 2 !== 0) {
-            throw new ERR_INVALID_ARG_VALUE("headers", obj);
-          }
-          for (let n = 0; n < obj.length; n += 2) {
-            k = obj[n + 0];
-            this.removeHeader(k);
-          }
-          for (let n = 0; n < obj.length; n += 2) {
-            k = obj[n + 0];
-            if (k) this.appendHeader(k, obj[n + 1]);
-          }
-        } else if (obj) {
-          const keys = ObjectKeys(obj);
-          for (let i = 0; i < keys.length; i++) {
-            k = keys[i];
-            if (k) this.setHeader(k, obj[k]);
-          }
-        }
-        headers = this[kOutHeaders];
-      } else {
-        headers = obj;
-      }
-      if (checkInvalidHeaderChar(this.statusMessage))
-        throw new ERR_INVALID_CHAR("statusMessage");
-      const statusLine = `HTTP/1.1 ${statusCode} ${this.statusMessage}\r
-`;
-      if (statusCode === 204 || statusCode === 304 || statusCode >= 100 && statusCode <= 199) {
-        this._hasBody = false;
-      }
-      if (this._expect_continue && !this._sent100) {
-        this.shouldKeepAlive = false;
-      }
-      this._storeHeader(statusLine, headers);
-      return this;
-    }
-    ServerResponse.prototype.writeHeader = deprecate(
-      ServerResponse.prototype.writeHead,
-      "ServerResponse.prototype.writeHeader is deprecated.",
-      "DEP0063"
-    );
-    function storeHTTPOptions(options) {
-      this[kIncomingMessage] = options.IncomingMessage || IncomingMessage;
-      this[kServerResponse] = options.ServerResponse || ServerResponse;
-      const maxHeaderSize = options.maxHeaderSize;
-      if (maxHeaderSize !== void 0)
-        validateInteger(maxHeaderSize, "maxHeaderSize", 0);
-      this.maxHeaderSize = maxHeaderSize;
-      const insecureHTTPParser = options.insecureHTTPParser;
-      if (insecureHTTPParser !== void 0)
-        validateBoolean(insecureHTTPParser, "options.insecureHTTPParser");
-      this.insecureHTTPParser = insecureHTTPParser;
-      const requestTimeout = options.requestTimeout;
-      if (requestTimeout !== void 0) {
-        validateInteger(requestTimeout, "requestTimeout", 0);
-        this.requestTimeout = requestTimeout;
-      } else {
-        this.requestTimeout = 3e5;
-      }
-      const headersTimeout = options.headersTimeout;
-      if (headersTimeout !== void 0) {
-        validateInteger(headersTimeout, "headersTimeout", 0);
-        this.headersTimeout = headersTimeout;
-      } else {
-        this.headersTimeout = MathMin(6e4, this.requestTimeout);
-      }
-      if (this.requestTimeout > 0 && this.headersTimeout > 0 && this.headersTimeout > this.requestTimeout) {
-        throw new ERR_OUT_OF_RANGE("headersTimeout", "<= requestTimeout", headersTimeout);
-      }
-      const keepAliveTimeout = options.keepAliveTimeout;
-      if (keepAliveTimeout !== void 0) {
-        validateInteger(keepAliveTimeout, "keepAliveTimeout", 0);
-        this.keepAliveTimeout = keepAliveTimeout;
-      } else {
-        this.keepAliveTimeout = 5e3;
-      }
-      const keepAliveTimeoutBuffer = options.keepAliveTimeoutBuffer;
-      if (keepAliveTimeoutBuffer !== void 0) {
-        validateInteger(keepAliveTimeoutBuffer, "keepAliveTimeoutBuffer", 0);
-        this.keepAliveTimeoutBuffer = keepAliveTimeoutBuffer;
-      } else {
-        this.keepAliveTimeoutBuffer = 1e3;
-      }
-      const connectionsCheckingInterval = options.connectionsCheckingInterval;
-      if (connectionsCheckingInterval !== void 0) {
-        validateInteger(connectionsCheckingInterval, "connectionsCheckingInterval", 0);
-        this.connectionsCheckingInterval = connectionsCheckingInterval;
-      } else {
-        this.connectionsCheckingInterval = 3e4;
-      }
-      const requireHostHeader = options.requireHostHeader;
-      if (requireHostHeader !== void 0) {
-        validateBoolean(requireHostHeader, "options.requireHostHeader");
-        this.requireHostHeader = requireHostHeader;
-      } else {
-        this.requireHostHeader = true;
-      }
-      const joinDuplicateHeaders = options.joinDuplicateHeaders;
-      if (joinDuplicateHeaders !== void 0) {
-        validateBoolean(joinDuplicateHeaders, "options.joinDuplicateHeaders");
-      }
-      this.joinDuplicateHeaders = joinDuplicateHeaders;
-      const rejectNonStandardBodyWrites = options.rejectNonStandardBodyWrites;
-      if (rejectNonStandardBodyWrites !== void 0) {
-        validateBoolean(rejectNonStandardBodyWrites, "options.rejectNonStandardBodyWrites");
-        this.rejectNonStandardBodyWrites = rejectNonStandardBodyWrites;
-      } else {
-        this.rejectNonStandardBodyWrites = false;
-      }
-      const shouldUpgradeCallback = options.shouldUpgradeCallback;
-      if (shouldUpgradeCallback !== void 0) {
-        validateFunction(shouldUpgradeCallback, "options.shouldUpgradeCallback");
-        this.shouldUpgradeCallback = shouldUpgradeCallback;
-      } else {
-        this.shouldUpgradeCallback = function() {
-          return this.listenerCount("upgrade") > 0;
-        };
-      }
-    }
-    function setupConnectionsTracking() {
-      this[kConnections] ||= new ConnectionsList();
-      if (this[kConnectionsCheckingInterval]) {
-        clearInterval(this[kConnectionsCheckingInterval]);
-      }
-      this[kConnectionsCheckingInterval] = setInterval(checkConnections.bind(this), this.connectionsCheckingInterval).unref();
-    }
-    function httpServerPreClose(server) {
-      server.closeIdleConnections();
-      clearInterval(server[kConnectionsCheckingInterval]);
-    }
-    function Server(options, requestListener) {
-      if (!(this instanceof Server)) return new Server(options, requestListener);
-      if (typeof options === "function") {
-        requestListener = options;
-        options = kEmptyObject;
-      } else if (options == null) {
-        options = kEmptyObject;
-      } else {
-        validateObject(options, "options");
-      }
-      storeHTTPOptions.call(this, options);
-      const buf = options.keepAliveTimeoutBuffer;
-      this.keepAliveTimeoutBuffer = typeof buf === "number" && NumberIsFinite(buf) && buf >= 0 ? buf : 1e3;
-      net.Server.call(
-        this,
-        {
-          allowHalfOpen: true,
-          noDelay: options.noDelay ?? true,
-          keepAlive: options.keepAlive,
-          keepAliveInitialDelay: options.keepAliveInitialDelay,
-          highWaterMark: options.highWaterMark
-        }
-      );
-      if (requestListener) {
-        this.on("request", requestListener);
-      }
-      this.httpAllowHalfOpen = false;
-      this.on("connection", connectionListener);
-      this.on("listening", setupConnectionsTracking);
-      this.timeout = 0;
-      this.maxHeadersCount = null;
-      this.maxRequestsPerSocket = 0;
-      this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
-    }
-    ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
-    ObjectSetPrototypeOf(Server, net.Server);
-    Server.prototype.close = function close() {
-      httpServerPreClose(this);
-      ReflectApply(net.Server.prototype.close, this, arguments);
-      return this;
-    };
-    Server.prototype[SymbolAsyncDispose] = assignFunctionName(SymbolAsyncDispose, async function() {
-      await promisify(this.close).call(this);
-    });
-    Server.prototype.closeAllConnections = function closeAllConnections() {
-      if (!this[kConnections]) {
-        return;
-      }
-      const connections = this[kConnections].all();
-      for (let i = 0, l = connections.length; i < l; i++) {
-        connections[i].socket.destroy();
-      }
-    };
-    Server.prototype.closeIdleConnections = function closeIdleConnections() {
-      if (!this[kConnections]) {
-        return;
-      }
-      const connections = this[kConnections].idle();
-      for (let i = 0, l = connections.length; i < l; i++) {
-        if (connections[i].socket._httpMessage && !connections[i].socket._httpMessage.finished) {
-          continue;
-        }
-        connections[i].socket.destroy();
-      }
-    };
-    Server.prototype.setTimeout = function setTimeout2(msecs, callback) {
-      this.timeout = msecs;
-      if (callback)
-        this.on("timeout", callback);
-      return this;
-    };
-    Server.prototype[EE.captureRejectionSymbol] = assignFunctionName(EE.captureRejectionSymbol, function(err, event, ...args) {
-      switch (event) {
-        case "request": {
-          const { 1: res } = args;
-          if (!res.headersSent && !res.writableEnded) {
-            const names = res.getHeaderNames();
-            for (let i = 0; i < names.length; i++) {
-              res.removeHeader(names[i]);
-            }
-            res.statusCode = 500;
-            res.end(STATUS_CODES[500]);
-          } else {
-            res.destroy();
-          }
-          break;
-        }
-        default:
-          net.Server.prototype[SymbolFor("nodejs.rejection")].apply(this, arguments);
-      }
-    });
-    function checkConnections() {
-      if (this.headersTimeout === 0 && this.requestTimeout === 0) {
-        return;
-      }
-      const expired = this[kConnections].expired(this.headersTimeout, this.requestTimeout);
-      for (let i = 0; i < expired.length; i++) {
-        const socket = expired[i].socket;
-        if (socket) {
-          onRequestTimeout(socket);
-        }
-      }
-    }
-    function connectionListener(socket) {
-      defaultTriggerAsyncIdScope(
-        getOrSetAsyncId(socket),
-        connectionListenerInternal,
-        this,
-        socket
-      );
-    }
-    function connectionListenerInternal(server, socket) {
-      debug("SERVER new http connection");
-      socket.server = server;
-      if (server.timeout && typeof socket.setTimeout === "function")
-        socket.setTimeout(server.timeout);
-      socket.on("timeout", socketOnTimeout);
-      const parser = parsers.alloc();
-      const lenient = server.insecureHTTPParser === void 0 ? isLenient() : server.insecureHTTPParser;
-      parser.initialize(
-        HTTPParser.REQUEST,
-        new HTTPServerAsyncResource("HTTPINCOMINGMESSAGE", socket),
-        server.maxHeaderSize || 0,
-        lenient ? kLenientAll : kLenientNone,
-        server[kConnections]
-      );
-      parser.socket = socket;
-      socket.parser = parser;
-      if (typeof server.maxHeadersCount === "number") {
-        parser.maxHeaderPairs = server.maxHeadersCount << 1;
-      }
-      const state = {
-        onData: null,
-        onEnd: null,
-        onClose: null,
-        onDrain: null,
-        outgoing: [],
-        incoming: [],
-        // `outgoingData` is an approximate amount of bytes queued through all
-        // inactive responses. If more data than the high watermark is queued - we
-        // need to pause TCP socket/HTTP parser, and wait until the data will be
-        // sent to the client.
-        outgoingData: 0,
-        requestsCount: 0,
-        keepAliveTimeoutSet: false
-      };
-      state.onData = socketOnData.bind(
-        void 0,
-        server,
-        socket,
-        parser,
-        state
-      );
-      state.onEnd = socketOnEnd.bind(
-        void 0,
-        server,
-        socket,
-        parser,
-        state
-      );
-      state.onClose = socketOnClose.bind(
-        void 0,
-        socket,
-        state
-      );
-      state.onDrain = socketOnDrain.bind(
-        void 0,
-        socket,
-        state
-      );
-      socket.on("data", state.onData);
-      socket.on("error", socketOnError);
-      socket.on("end", state.onEnd);
-      socket.on("close", state.onClose);
-      socket.on("drain", state.onDrain);
-      parser.onIncoming = parserOnIncoming.bind(
-        void 0,
-        server,
-        socket,
-        state
-      );
-      socket.on("resume", onSocketResume);
-      socket.on("pause", onSocketPause);
-      socket.on = generateSocketListenerWrapper("on");
-      socket.addListener = generateSocketListenerWrapper("addListener");
-      socket.prependListener = generateSocketListenerWrapper("prependListener");
-      socket.setEncoding = socketSetEncoding;
-      if (socket._handle?.isStreamBase && !socket._handle._consumed) {
-        parser._consumed = true;
-        socket._handle._consumed = true;
-        parser.consume(socket._handle);
-      }
-      parser[kOnExecute] = onParserExecute.bind(
-        void 0,
-        server,
-        socket,
-        parser,
-        state
-      );
-      parser[kOnTimeout] = onParserTimeout.bind(
-        void 0,
-        server,
-        socket
-      );
-      socket._paused = false;
-    }
-    function socketSetEncoding() {
-      throw new ERR_HTTP_SOCKET_ENCODING();
-    }
-    function updateOutgoingData(socket, state, delta) {
-      state.outgoingData += delta;
-      socketOnDrain(socket, state);
-    }
-    function socketOnDrain(socket, state) {
-      const needPause = state.outgoingData > socket.writableHighWaterMark;
-      if (socket._paused && !needPause) {
-        socket._paused = false;
-        if (socket.parser)
-          socket.parser.resume();
-        socket.resume();
-      }
-      const msg = socket._httpMessage;
-      if (msg && !msg.finished && msg[kNeedDrain]) {
-        msg[kNeedDrain] = false;
-        msg.emit("drain");
-      }
-    }
-    function socketOnTimeout() {
-      const req = this.parser?.incoming;
-      const reqTimeout = req && !req.complete && req.emit("timeout", this);
-      const res = this._httpMessage;
-      const resTimeout = res && res.emit("timeout", this);
-      const serverTimeout = this.server.emit("timeout", this);
-      if (!reqTimeout && !resTimeout && !serverTimeout)
-        this.destroy();
-    }
-    function socketOnClose(socket, state) {
-      debug("server socket close");
-      freeParser(socket.parser, null, socket);
-      abortIncoming(state.incoming);
-    }
-    function abortIncoming(incoming) {
-      while (incoming.length) {
-        const req = incoming.shift();
-        req.destroy(new ConnResetException("aborted"));
-      }
-    }
-    function socketOnEnd(server, socket, parser, state) {
-      const ret = parser.finish();
-      if (ret instanceof Error2) {
-        debug("parse error");
-        socketOnError.call(socket, ret);
-      } else if (!server.httpAllowHalfOpen) {
-        socket.end();
-      } else if (state.outgoing.length) {
-        state.outgoing[state.outgoing.length - 1]._last = true;
-      } else if (socket._httpMessage) {
-        socket._httpMessage._last = true;
-      } else {
-        socket.end();
-      }
-    }
-    function socketOnData(server, socket, parser, state, d) {
-      assert(!socket._paused);
-      debug("SERVER socketOnData %d", d.length);
-      const ret = parser.execute(d);
-      onParserExecuteCommon(server, socket, parser, state, ret, d);
-    }
-    function onRequestTimeout(socket) {
-      socketOnError.call(socket, new ERR_HTTP_REQUEST_TIMEOUT());
-    }
-    function onParserExecute(server, socket, parser, state, ret) {
-      socket._unrefTimer();
-      debug("SERVER socketOnParserExecute %d", ret);
-      onParserExecuteCommon(server, socket, parser, state, ret, void 0);
-    }
-    function onParserTimeout(server, socket) {
-      const serverTimeout = server.emit("timeout", socket);
-      if (!serverTimeout)
-        socket.destroy();
-    }
-    var noop = () => {
-    };
-    var badRequestResponse = Buffer2.from(
-      `HTTP/1.1 400 ${STATUS_CODES[400]}\r
-Connection: close\r
-\r
-`,
-      "ascii"
-    );
-    var requestTimeoutResponse = Buffer2.from(
-      `HTTP/1.1 408 ${STATUS_CODES[408]}\r
-Connection: close\r
-\r
-`,
-      "ascii"
-    );
-    var requestHeaderFieldsTooLargeResponse = Buffer2.from(
-      `HTTP/1.1 431 ${STATUS_CODES[431]}\r
-Connection: close\r
-\r
-`,
-      "ascii"
-    );
-    var requestChunkExtensionsTooLargeResponse = Buffer2.from(
-      `HTTP/1.1 413 ${STATUS_CODES[413]}\r
-Connection: close\r
-\r
-`,
-      "ascii"
-    );
-    function socketOnError(e) {
-      this.removeListener("error", socketOnError);
-      if (this.listenerCount("error", noop) === 0) {
-        this.on("error", noop);
-      }
-      if (!this.server.emit("clientError", e, this)) {
-        if (this.writable && (!this._httpMessage || !this._httpMessage._headerSent)) {
-          let response;
-          switch (e.code) {
-            case "HPE_HEADER_OVERFLOW":
-              response = requestHeaderFieldsTooLargeResponse;
-              break;
-            case "HPE_CHUNK_EXTENSIONS_OVERFLOW":
-              response = requestChunkExtensionsTooLargeResponse;
-              break;
-            case "ERR_HTTP_REQUEST_TIMEOUT":
-              response = requestTimeoutResponse;
-              break;
-            default:
-              response = badRequestResponse;
-              break;
-          }
-          this.write(response);
-        }
-        this.destroy(e);
-      }
-    }
-    function onParserExecuteCommon(server, socket, parser, state, ret, d) {
-      if (ret instanceof Error2) {
-        prepareError(ret, parser, d);
-        debug("parse error", ret);
-        socketOnError.call(socket, ret);
-      } else if (parser.incoming?.upgrade) {
-        const req = parser.incoming;
-        debug("SERVER upgrade or connect", req.method);
-        d ||= parser.getCurrentBuffer();
-        socket.removeListener("data", state.onData);
-        socket.removeListener("end", state.onEnd);
-        socket.removeListener("close", state.onClose);
-        socket.removeListener("drain", state.onDrain);
-        socket.removeListener("error", socketOnError);
-        socket.removeListener("timeout", socketOnTimeout);
-        unconsume(parser, socket);
-        parser.finish();
-        freeParser(parser, req, socket);
-        parser = null;
-        const eventName = req.method === "CONNECT" ? "connect" : "upgrade";
-        if (server.listenerCount(eventName) > 0) {
-          debug("SERVER have listener for %s", eventName);
-          const bodyHead = d.slice(ret, d.length);
-          socket.readableFlowing = null;
-          server.emit(eventName, req, socket, bodyHead);
-        } else {
-          socket.destroy();
-        }
-      } else if (parser.incoming && parser.incoming.method === "PRI") {
-        debug("SERVER got PRI request");
-        socket.destroy();
-      }
-      if (socket._paused && socket.parser) {
-        debug("pause parser");
-        socket.parser.pause();
-      }
-    }
-    function clearIncoming(req) {
-      req ||= this;
-      const parser = req.socket?.parser;
-      if (parser && parser.incoming === req) {
-        if (req.readableEnded) {
-          parser.incoming = null;
-        } else {
-          req.on("end", clearIncoming);
-        }
-      }
-    }
-    function resOnFinish(req, res, socket, state, server) {
-      if (onResponseFinishChannel.hasSubscribers) {
-        onResponseFinishChannel.publish({
-          request: req,
-          response: res,
-          socket,
-          server
-        });
-      }
-      assert(state.incoming.length === 0 || state.incoming[0] === req);
-      state.incoming.shift();
-      if (!req._consuming && !req._readableState.resumeScheduled)
-        req._dump();
-      res.detachSocket(socket);
-      clearIncoming(req);
-      globalThis.process.nextTick(emitCloseNT, res);
-      if (res._last) {
-        if (typeof socket.destroySoon === "function") {
-          socket.destroySoon();
-        } else {
-          socket.end();
-        }
-      } else if (state.outgoing.length === 0) {
-        const keepAliveTimeout = NumberIsFinite(server.keepAliveTimeout) && server.keepAliveTimeout >= 0 ? server.keepAliveTimeout : 0;
-        const keepAliveTimeoutBuffer = NumberIsFinite(server.keepAliveTimeoutBuffer) && server.keepAliveTimeoutBuffer >= 0 ? server.keepAliveTimeoutBuffer : 1e3;
-        if (keepAliveTimeout && typeof socket.setTimeout === "function") {
-          socket.setTimeout(keepAliveTimeout + keepAliveTimeoutBuffer);
-          state.keepAliveTimeoutSet = true;
-        }
-      } else {
-        const m = state.outgoing.shift();
-        if (m) {
-          m.assignSocket(socket);
-        }
-      }
-    }
-    function emitCloseNT(self2) {
-      if (!self2._closed) {
-        self2.destroyed = true;
-        self2._closed = true;
-        self2.emit("close");
-      }
-    }
-    function parserOnIncoming(server, socket, state, req, keepAlive) {
-      resetSocketTimeout(server, socket, state);
-      if (req.upgrade) {
-        req.upgrade = req.method === "CONNECT" || !!server.shouldUpgradeCallback(req);
-        if (req.upgrade)
-          return 2;
-      }
-      state.incoming.push(req);
-      if (!socket._paused) {
-        const ws = socket._writableState;
-        if (ws.needDrain || state.outgoingData >= socket.writableHighWaterMark) {
-          socket._paused = true;
-          socket.pause();
-        }
-      }
-      const res = new server[kServerResponse](
-        req,
-        {
-          highWaterMark: socket.writableHighWaterMark,
-          rejectNonStandardBodyWrites: server.rejectNonStandardBodyWrites
-        }
-      );
-      res._keepAliveTimeout = server.keepAliveTimeout;
-      res._maxRequestsPerSocket = server.maxRequestsPerSocket;
-      res._onPendingData = updateOutgoingData.bind(
-        void 0,
-        socket,
-        state
-      );
-      res.shouldKeepAlive = keepAlive;
-      res[kUniqueHeaders] = server[kUniqueHeaders];
-      if (onRequestStartChannel.hasSubscribers) {
-        onRequestStartChannel.publish({
-          request: req,
-          response: res,
-          socket,
-          server
-        });
-      }
-      if (socket._httpMessage) {
-        state.outgoing.push(res);
-      } else {
-        res.assignSocket(socket);
-      }
-      res.on(
-        "finish",
-        resOnFinish.bind(
-          void 0,
-          req,
-          res,
-          socket,
-          state,
-          server
-        )
-      );
-      let handled = false;
-      if (req.httpVersionMajor === 1 && req.httpVersionMinor === 1) {
-        if (server.requireHostHeader && req.headers.host === void 0) {
-          res.writeHead(400, ["Connection", "close"]);
-          res.end();
-          return 0;
-        }
-        const isRequestsLimitSet = typeof server.maxRequestsPerSocket === "number" && server.maxRequestsPerSocket > 0;
-        if (isRequestsLimitSet) {
-          state.requestsCount++;
-          res.maxRequestsOnConnectionReached = server.maxRequestsPerSocket <= state.requestsCount;
-        }
-        if (isRequestsLimitSet && server.maxRequestsPerSocket < state.requestsCount) {
-          handled = true;
-          server.emit("dropRequest", req, socket);
-          res.writeHead(503);
-          res.end();
-        } else if (req.headers.expect !== void 0) {
-          handled = true;
-          if (continueExpression.test(req.headers.expect)) {
-            res._expect_continue = true;
-            if (server.listenerCount("checkContinue") > 0) {
-              server.emit("checkContinue", req, res);
-            } else {
-              res.writeContinue();
-              server.emit("request", req, res);
-            }
-          } else if (server.listenerCount("checkExpectation") > 0) {
-            server.emit("checkExpectation", req, res);
-          } else {
-            res.writeHead(417);
-            res.end();
-          }
-        }
-      }
-      if (!handled) {
-        server.emit("request", req, res);
-      }
-      return 0;
-    }
-    function resetSocketTimeout(server, socket, state) {
-      if (!state.keepAliveTimeoutSet)
-        return;
-      socket.setTimeout(server.timeout || 0);
-      state.keepAliveTimeoutSet = false;
-    }
-    function onSocketResume() {
-      if (this._paused) {
-        this.pause();
-        return;
-      }
-      if (this._handle && !this._handle.reading) {
-        this._handle.reading = true;
-        this._handle.readStart();
-      }
-    }
-    function onSocketPause() {
-      if (this._handle?.reading) {
-        this._handle.reading = false;
-        this._handle.readStop();
-      }
-    }
-    function unconsume(parser, socket) {
-      if (socket._handle) {
-        if (parser._consumed)
-          parser.unconsume();
-        parser._consumed = false;
-        socket.removeListener("pause", onSocketPause);
-        socket.removeListener("resume", onSocketResume);
-      }
-    }
-    function generateSocketListenerWrapper(originalFnName) {
-      return function socketListenerWrap(ev, fn) {
-        const res = net.Socket.prototype[originalFnName].call(
-          this,
-          ev,
-          fn
-        );
-        if (!this.parser) {
-          this.on = net.Socket.prototype.on;
-          this.addListener = net.Socket.prototype.addListener;
-          this.prependListener = net.Socket.prototype.prependListener;
-          return res;
-        }
-        if (ev === "data" || ev === "readable")
-          unconsume(this.parser, this);
-        return res;
-      };
-    }
-    module.exports = {
-      STATUS_CODES,
-      Server,
-      ServerResponse,
-      setupConnectionsTracking,
-      storeHTTPOptions,
-      _connectionListener: connectionListener,
-      kServerResponse,
-      httpServerPreClose,
-      kConnectionsCheckingInterval
-    };
-  }
-});
-
-// ../lib/http.js
-var require_http2 = __commonJS({
-  "../lib/http.js"(exports2, module) {
-    var {
-      ObjectDefineProperty
-    } = primordials;
-    var { validateInteger } = require_validators();
-    var httpAgent = require_http_agent();
-    var { ClientRequest } = require_http_client();
-    var { methods, parsers } = require_http_common();
-    var { IncomingMessage } = require_http_incoming();
-    var {
-      validateHeaderName,
-      validateHeaderValue,
-      OutgoingMessage
-    } = require_http_outgoing();
-    var {
-      _connectionListener,
-      STATUS_CODES,
-      Server,
-      ServerResponse
-    } = require_http_server();
-    var maxHeaderSize;
-    var undici;
-    function createServer(opts, requestListener) {
-      return new Server(opts, requestListener);
-    }
-    function request(url, options, cb) {
-      return new ClientRequest(url, options, cb);
-    }
-    function get(url, options, cb) {
-      const req = request(url, options, cb);
-      req.end();
-      return req;
-    }
-    function lazyUndici() {
-      return undici ??= require_undici();
-    }
-    module.exports = {
-      _connectionListener,
-      METHODS: methods.toSorted(),
-      STATUS_CODES,
-      Agent: httpAgent.Agent,
-      ClientRequest,
-      IncomingMessage,
-      OutgoingMessage,
-      Server,
-      ServerResponse,
-      createServer,
-      validateHeaderName,
-      validateHeaderValue,
-      get,
-      request,
-      setMaxIdleHTTPParsers(max) {
-        validateInteger(max, "max", 1);
-        parsers.max = max;
-      }
-    };
-    ObjectDefineProperty(module.exports, "maxHeaderSize", {
-      __proto__: null,
-      configurable: true,
-      enumerable: true,
-      get() {
-        if (maxHeaderSize === void 0) {
-          const { getOptionValue } = require_options();
-          maxHeaderSize = getOptionValue("--max-http-header-size");
-        }
-        return maxHeaderSize;
-      }
-    });
-    ObjectDefineProperty(module.exports, "globalAgent", {
-      __proto__: null,
-      configurable: true,
-      enumerable: true,
-      get() {
-        return httpAgent.globalAgent;
-      },
-      set(value) {
-        httpAgent.globalAgent = value;
-      }
-    });
-    ObjectDefineProperty(module.exports, "WebSocket", {
-      __proto__: null,
-      configurable: true,
-      enumerable: true,
-      get() {
-        return lazyUndici().WebSocket;
-      }
-    });
-    ObjectDefineProperty(module.exports, "CloseEvent", {
-      __proto__: null,
-      configurable: true,
-      enumerable: true,
-      get() {
-        return lazyUndici().CloseEvent;
-      }
-    });
-    ObjectDefineProperty(module.exports, "MessageEvent", {
-      __proto__: null,
-      configurable: true,
-      enumerable: true,
-      get() {
-        return lazyUndici().MessageEvent;
-      }
-    });
-  }
-});
-
 // ../lib/zlib.js
 var require_zlib = __commonJS({
   "../lib/zlib.js"(exports2, module) {
@@ -77128,6 +76134,2974 @@ var require_perf_hooks = __commonJS({
   }
 });
 
+// ../lib/internal/freelist.js
+var require_freelist = __commonJS({
+  "../lib/internal/freelist.js"(exports2, module) {
+    "use strict";
+    var {
+      ReflectApply
+    } = primordials;
+    var FreeList = class {
+      constructor(name, max, ctor) {
+        this.name = name;
+        this.ctor = ctor;
+        this.max = max;
+        this.list = [];
+      }
+      alloc() {
+        return this.list.length > 0 ? this.list.pop() : ReflectApply(this.ctor, this, arguments);
+      }
+      free(obj) {
+        if (this.list.length < this.max) {
+          this.list.push(obj);
+          return true;
+        }
+        return false;
+      }
+    };
+    module.exports = FreeList;
+  }
+});
+
+// ../lib/_http_incoming.js
+var require_http_incoming = __commonJS({
+  "../lib/_http_incoming.js"(exports2, module) {
+    "use strict";
+    var {
+      ObjectDefineProperty,
+      ObjectSetPrototypeOf,
+      Symbol: Symbol2
+    } = primordials;
+    var { Readable, finished } = require_stream();
+    var kHeaders = Symbol2("kHeaders");
+    var kHeadersDistinct = Symbol2("kHeadersDistinct");
+    var kHeadersCount = Symbol2("kHeadersCount");
+    var kTrailers = Symbol2("kTrailers");
+    var kTrailersDistinct = Symbol2("kTrailersDistinct");
+    var kTrailersCount = Symbol2("kTrailersCount");
+    function readStart(socket) {
+      if (socket && !socket._paused && socket.readable)
+        socket.resume();
+    }
+    function readStop(socket) {
+      if (socket)
+        socket.pause();
+    }
+    function IncomingMessage(socket) {
+      let streamOptions;
+      if (socket) {
+        streamOptions = {
+          highWaterMark: socket.readableHighWaterMark
+        };
+      }
+      Readable.call(this, streamOptions);
+      this._readableState.readingMore = true;
+      this.socket = socket;
+      this.httpVersionMajor = null;
+      this.httpVersionMinor = null;
+      this.httpVersion = null;
+      this.complete = false;
+      this[kHeaders] = null;
+      this[kHeadersCount] = 0;
+      this.rawHeaders = [];
+      this[kTrailers] = null;
+      this[kTrailersCount] = 0;
+      this.rawTrailers = [];
+      this.joinDuplicateHeaders = false;
+      this.aborted = false;
+      this.upgrade = null;
+      this.url = "";
+      this.method = null;
+      this.statusCode = null;
+      this.statusMessage = null;
+      this.client = socket;
+      this._consuming = false;
+      this._dumped = false;
+    }
+    ObjectSetPrototypeOf(IncomingMessage.prototype, Readable.prototype);
+    ObjectSetPrototypeOf(IncomingMessage, Readable);
+    ObjectDefineProperty(IncomingMessage.prototype, "connection", {
+      __proto__: null,
+      get: function() {
+        return this.socket;
+      },
+      set: function(val) {
+        this.socket = val;
+      }
+    });
+    ObjectDefineProperty(IncomingMessage.prototype, "headers", {
+      __proto__: null,
+      get: function() {
+        if (!this[kHeaders]) {
+          this[kHeaders] = {};
+          const src = this.rawHeaders;
+          const dst = this[kHeaders];
+          for (let n = 0; n < this[kHeadersCount]; n += 2) {
+            this._addHeaderLine(src[n + 0], src[n + 1], dst);
+          }
+        }
+        return this[kHeaders];
+      },
+      set: function(val) {
+        this[kHeaders] = val;
+      }
+    });
+    ObjectDefineProperty(IncomingMessage.prototype, "headersDistinct", {
+      __proto__: null,
+      get: function() {
+        if (!this[kHeadersDistinct]) {
+          this[kHeadersDistinct] = {};
+          const src = this.rawHeaders;
+          const dst = this[kHeadersDistinct];
+          for (let n = 0; n < this[kHeadersCount]; n += 2) {
+            this._addHeaderLineDistinct(src[n + 0], src[n + 1], dst);
+          }
+        }
+        return this[kHeadersDistinct];
+      },
+      set: function(val) {
+        this[kHeadersDistinct] = val;
+      }
+    });
+    ObjectDefineProperty(IncomingMessage.prototype, "trailers", {
+      __proto__: null,
+      get: function() {
+        if (!this[kTrailers]) {
+          this[kTrailers] = {};
+          const src = this.rawTrailers;
+          const dst = this[kTrailers];
+          for (let n = 0; n < this[kTrailersCount]; n += 2) {
+            this._addHeaderLine(src[n + 0], src[n + 1], dst);
+          }
+        }
+        return this[kTrailers];
+      },
+      set: function(val) {
+        this[kTrailers] = val;
+      }
+    });
+    ObjectDefineProperty(IncomingMessage.prototype, "trailersDistinct", {
+      __proto__: null,
+      get: function() {
+        if (!this[kTrailersDistinct]) {
+          this[kTrailersDistinct] = {};
+          const src = this.rawTrailers;
+          const dst = this[kTrailersDistinct];
+          for (let n = 0; n < this[kTrailersCount]; n += 2) {
+            this._addHeaderLineDistinct(src[n + 0], src[n + 1], dst);
+          }
+        }
+        return this[kTrailersDistinct];
+      },
+      set: function(val) {
+        this[kTrailersDistinct] = val;
+      }
+    });
+    IncomingMessage.prototype.setTimeout = function setTimeout2(msecs, callback) {
+      if (callback)
+        this.on("timeout", callback);
+      this.socket.setTimeout(msecs);
+      return this;
+    };
+    IncomingMessage.prototype._read = function _read(n) {
+      if (!this._consuming) {
+        this._readableState.readingMore = false;
+        this._consuming = true;
+      }
+      if (this.socket.readable)
+        readStart(this.socket);
+    };
+    IncomingMessage.prototype._destroy = function _destroy(err, cb) {
+      if (!this.readableEnded || !this.complete) {
+        this.aborted = true;
+        this.emit("aborted");
+      }
+      if (this.socket && !this.socket.destroyed && this.aborted) {
+        this.socket.destroy(err);
+        const cleanup = finished(this.socket, (e) => {
+          if (e?.code === "ERR_STREAM_PREMATURE_CLOSE") {
+            e = null;
+          }
+          cleanup();
+          globalThis.process.nextTick(onError, this, e || err, cb);
+        });
+      } else {
+        globalThis.process.nextTick(onError, this, err, cb);
+      }
+    };
+    IncomingMessage.prototype._addHeaderLines = _addHeaderLines;
+    function _addHeaderLines(headers, n) {
+      if (headers?.length) {
+        let dest;
+        if (this.complete) {
+          this.rawTrailers = headers;
+          this[kTrailersCount] = n;
+          dest = this[kTrailers];
+        } else {
+          this.rawHeaders = headers;
+          this[kHeadersCount] = n;
+          dest = this[kHeaders];
+        }
+        if (dest) {
+          for (let i = 0; i < n; i += 2) {
+            this._addHeaderLine(headers[i], headers[i + 1], dest);
+          }
+        }
+      }
+    }
+    function matchKnownFields(field, lowercased) {
+      switch (field.length) {
+        case 3:
+          if (field === "Age" || field === "age") return "age";
+          break;
+        case 4:
+          if (field === "Host" || field === "host") return "host";
+          if (field === "From" || field === "from") return "from";
+          if (field === "ETag" || field === "etag") return "etag";
+          if (field === "Date" || field === "date") return "\0date";
+          if (field === "Vary" || field === "vary") return "\0vary";
+          break;
+        case 6:
+          if (field === "Server" || field === "server") return "server";
+          if (field === "Cookie" || field === "cookie") return "cookie";
+          if (field === "Origin" || field === "origin") return "\0origin";
+          if (field === "Expect" || field === "expect") return "\0expect";
+          if (field === "Accept" || field === "accept") return "\0accept";
+          break;
+        case 7:
+          if (field === "Referer" || field === "referer") return "referer";
+          if (field === "Expires" || field === "expires") return "expires";
+          if (field === "Upgrade" || field === "upgrade") return "\0upgrade";
+          break;
+        case 8:
+          if (field === "Location" || field === "location")
+            return "location";
+          if (field === "If-Match" || field === "if-match")
+            return "\0if-match";
+          break;
+        case 10:
+          if (field === "User-Agent" || field === "user-agent")
+            return "user-agent";
+          if (field === "Set-Cookie" || field === "set-cookie")
+            return "";
+          if (field === "Connection" || field === "connection")
+            return "\0connection";
+          break;
+        case 11:
+          if (field === "Retry-After" || field === "retry-after")
+            return "retry-after";
+          break;
+        case 12:
+          if (field === "Content-Type" || field === "content-type")
+            return "content-type";
+          if (field === "Max-Forwards" || field === "max-forwards")
+            return "max-forwards";
+          break;
+        case 13:
+          if (field === "Authorization" || field === "authorization")
+            return "authorization";
+          if (field === "Last-Modified" || field === "last-modified")
+            return "last-modified";
+          if (field === "Cache-Control" || field === "cache-control")
+            return "\0cache-control";
+          if (field === "If-None-Match" || field === "if-none-match")
+            return "\0if-none-match";
+          break;
+        case 14:
+          if (field === "Content-Length" || field === "content-length")
+            return "content-length";
+          break;
+        case 15:
+          if (field === "Accept-Encoding" || field === "accept-encoding")
+            return "\0accept-encoding";
+          if (field === "Accept-Language" || field === "accept-language")
+            return "\0accept-language";
+          if (field === "X-Forwarded-For" || field === "x-forwarded-for")
+            return "\0x-forwarded-for";
+          break;
+        case 16:
+          if (field === "Content-Encoding" || field === "content-encoding")
+            return "\0content-encoding";
+          if (field === "X-Forwarded-Host" || field === "x-forwarded-host")
+            return "\0x-forwarded-host";
+          break;
+        case 17:
+          if (field === "If-Modified-Since" || field === "if-modified-since")
+            return "if-modified-since";
+          if (field === "Transfer-Encoding" || field === "transfer-encoding")
+            return "\0transfer-encoding";
+          if (field === "X-Forwarded-Proto" || field === "x-forwarded-proto")
+            return "\0x-forwarded-proto";
+          break;
+        case 19:
+          if (field === "Proxy-Authorization" || field === "proxy-authorization")
+            return "proxy-authorization";
+          if (field === "If-Unmodified-Since" || field === "if-unmodified-since")
+            return "if-unmodified-since";
+          break;
+      }
+      if (lowercased) {
+        return "\0" + field;
+      }
+      return matchKnownFields(field.toLowerCase(), true);
+    }
+    IncomingMessage.prototype._addHeaderLine = _addHeaderLine;
+    function _addHeaderLine(field, value, dest) {
+      field = matchKnownFields(field);
+      const flag = field.charCodeAt(0);
+      if (flag === 0 || flag === 2) {
+        field = field.slice(1);
+        if (typeof dest[field] === "string") {
+          dest[field] += (flag === 0 ? ", " : "; ") + value;
+        } else {
+          dest[field] = value;
+        }
+      } else if (flag === 1) {
+        if (dest["set-cookie"] !== void 0) {
+          dest["set-cookie"].push(value);
+        } else {
+          dest["set-cookie"] = [value];
+        }
+      } else if (this.joinDuplicateHeaders) {
+        if (dest[field] === void 0) {
+          dest[field] = value;
+        } else {
+          dest[field] += ", " + value;
+        }
+      } else if (dest[field] === void 0) {
+        dest[field] = value;
+      }
+    }
+    IncomingMessage.prototype._addHeaderLineDistinct = _addHeaderLineDistinct;
+    function _addHeaderLineDistinct(field, value, dest) {
+      field = field.toLowerCase();
+      if (!dest[field]) {
+        dest[field] = [value];
+      } else {
+        dest[field].push(value);
+      }
+    }
+    IncomingMessage.prototype._dump = function _dump() {
+      if (!this._dumped) {
+        this._dumped = true;
+        this.removeAllListeners("data");
+        this.resume();
+      }
+    };
+    function onError(self2, error, cb) {
+      if (self2.listenerCount("error") === 0) {
+        cb();
+      } else {
+        cb(error);
+      }
+    }
+    module.exports = {
+      IncomingMessage,
+      readStart,
+      readStop
+    };
+  }
+});
+
+// ../lib/_http_common.js
+var require_http_common = __commonJS({
+  "../lib/_http_common.js"(exports2, module) {
+    "use strict";
+    var {
+      MathMin,
+      Symbol: Symbol2,
+      Uint8Array: Uint8Array2
+    } = primordials;
+    var { setImmediate: setImmediate2 } = require_timers2();
+    var { methods, allMethods, HTTPParser } = internalBinding("http_parser");
+    var { getOptionValue } = require_options();
+    var insecureHTTPParser = getOptionValue("--insecure-http-parser");
+    var FreeList = require_freelist();
+    var incoming = require_http_incoming();
+    var {
+      IncomingMessage,
+      readStart,
+      readStop
+    } = incoming;
+    var kIncomingMessage = Symbol2("IncomingMessage");
+    var kOnMessageBegin = HTTPParser.kOnMessageBegin | 0;
+    var kOnHeaders = HTTPParser.kOnHeaders | 0;
+    var kOnHeadersComplete = HTTPParser.kOnHeadersComplete | 0;
+    var kOnBody = HTTPParser.kOnBody | 0;
+    var kOnMessageComplete = HTTPParser.kOnMessageComplete | 0;
+    var kOnExecute = HTTPParser.kOnExecute | 0;
+    var kOnTimeout = HTTPParser.kOnTimeout | 0;
+    var MAX_HEADER_PAIRS = 2e3;
+    function parserOnHeaders(headers, url) {
+      if (this.maxHeaderPairs <= 0 || this._headers.length < this.maxHeaderPairs) {
+        this._headers.push(...headers);
+      }
+      this._url += url;
+    }
+    var HTTP_VERSION_1_1 = "1.1";
+    function parserOnHeadersComplete(versionMajor, versionMinor, headers, method, url, statusCode, statusMessage, upgrade, shouldKeepAlive) {
+      const parser = this;
+      const { socket } = parser;
+      if (headers === void 0) {
+        headers = parser._headers;
+        parser._headers = [];
+      }
+      if (url === void 0) {
+        url = parser._url;
+        parser._url = "";
+      }
+      const ParserIncomingMessage = socket?.server?.[kIncomingMessage] || IncomingMessage;
+      const incoming2 = parser.incoming = new ParserIncomingMessage(socket);
+      incoming2.httpVersionMajor = versionMajor;
+      incoming2.httpVersionMinor = versionMinor;
+      incoming2.httpVersion = versionMajor === 1 && versionMinor === 1 ? HTTP_VERSION_1_1 : `${versionMajor}.${versionMinor}`;
+      incoming2.joinDuplicateHeaders = socket?.server?.joinDuplicateHeaders || parser.joinDuplicateHeaders;
+      incoming2.url = url;
+      incoming2.upgrade = upgrade;
+      let n = headers.length;
+      if (parser.maxHeaderPairs > 0)
+        n = MathMin(n, parser.maxHeaderPairs);
+      incoming2._addHeaderLines(headers, n);
+      if (typeof method === "number") {
+        incoming2.method = allMethods[method];
+      } else {
+        incoming2.statusCode = statusCode;
+        incoming2.statusMessage = statusMessage;
+      }
+      return parser.onIncoming(incoming2, shouldKeepAlive);
+    }
+    function parserOnBody(b) {
+      const stream = this.incoming;
+      if (stream === null)
+        return;
+      if (!stream._dumped) {
+        const ret = stream.push(b);
+        if (!ret)
+          readStop(this.socket);
+      }
+    }
+    function parserOnMessageComplete() {
+      const parser = this;
+      const stream = parser.incoming;
+      if (stream !== null) {
+        stream.complete = true;
+        const headers = parser._headers;
+        if (headers.length) {
+          stream._addHeaderLines(headers, headers.length);
+          parser._headers = [];
+          parser._url = "";
+        }
+        stream.push(null);
+      }
+      readStart(parser.socket);
+    }
+    var parsers = new FreeList("parsers", 1e3, function parsersCb() {
+      const parser = new HTTPParser();
+      cleanParser(parser);
+      parser[kOnHeaders] = parserOnHeaders;
+      parser[kOnHeadersComplete] = parserOnHeadersComplete;
+      parser[kOnBody] = parserOnBody;
+      parser[kOnMessageComplete] = parserOnMessageComplete;
+      return parser;
+    });
+    function closeParserInstance(parser) {
+      parser.close();
+    }
+    function freeParser(parser, req, socket) {
+      if (parser) {
+        if (parser._consumed)
+          parser.unconsume();
+        cleanParser(parser);
+        parser.remove();
+        if (parsers.free(parser) === false) {
+          setImmediate2(closeParserInstance, parser);
+        } else {
+          parser.free();
+        }
+      }
+      if (req) {
+        req.parser = null;
+      }
+      if (socket) {
+        socket.parser = null;
+      }
+    }
+    var tokenRegExp = /^[\^_`a-zA-Z\-0-9!#$%&'*+.|~]+$/;
+    var validTokenChars = new Uint8Array2([
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 0-15
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 16-31
+      0,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      // 32-47 (!"#$%&'()*+,-./)
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 48-63 (0-9:;<=>?)
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      // 64-79 (@A-O)
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      // 80-95 (P-Z[\]^_)
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      // 96-111 (`a-o)
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      // 112-127 (p-z{|}~)
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 128-143
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 144-159
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 160-175
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 176-191
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 192-207
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 208-223
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // 224-239
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+      // 240-255
+    ]);
+    function checkIsHttpToken(val) {
+      if (val.length >= 10) {
+        return tokenRegExp.test(val);
+      }
+      if (val.length === 0) return false;
+      for (let i = 0; i < val.length; i++) {
+        if (!validTokenChars[val.charCodeAt(i)]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    var headerCharRegex = /[^\t\x20-\x7e\x80-\xff]/;
+    function checkInvalidHeaderChar(val) {
+      return headerCharRegex.test(val);
+    }
+    function cleanParser(parser) {
+      parser._headers = [];
+      parser._url = "";
+      parser.socket = null;
+      parser.incoming = null;
+      parser.outgoing = null;
+      parser.maxHeaderPairs = MAX_HEADER_PAIRS;
+      parser[kOnMessageBegin] = null;
+      parser[kOnExecute] = null;
+      parser[kOnTimeout] = null;
+      parser._consumed = false;
+      parser.onIncoming = null;
+      parser.joinDuplicateHeaders = null;
+    }
+    function prepareError(err, parser, rawPacket) {
+      err.rawPacket = rawPacket || parser.getCurrentBuffer();
+      if (typeof err.reason === "string")
+        err.message = `Parse Error: ${err.reason}`;
+    }
+    var warnedLenient = false;
+    function isLenient() {
+      if (insecureHTTPParser && !warnedLenient) {
+        warnedLenient = true;
+        globalThis.process.emitWarning("Using insecure HTTP parsing");
+      }
+      return insecureHTTPParser;
+    }
+    module.exports = {
+      _checkInvalidHeaderChar: checkInvalidHeaderChar,
+      _checkIsHttpToken: checkIsHttpToken,
+      chunkExpression: /(?:^|\W)chunked(?:$|\W)/i,
+      continueExpression: /(?:^|\W)100-continue(?:$|\W)/i,
+      CRLF: "\r\n",
+      // TODO: Deprecate this.
+      freeParser,
+      methods,
+      parsers,
+      kIncomingMessage,
+      HTTPParser,
+      isLenient,
+      prepareError
+    };
+  }
+});
+
+// ../lib/internal/http.js
+var require_http2 = __commonJS({
+  "../lib/internal/http.js"(exports2, module) {
+    "use strict";
+    var {
+      Date: Date2,
+      Number: Number2,
+      NumberParseInt,
+      Symbol: Symbol2,
+      decodeURIComponent: decodeURIComponent2
+    } = primordials;
+    var { setUnrefTimeout } = require_timers();
+    var { getCategoryEnabledBuffer, trace } = internalBinding("trace_events");
+    var {
+      CHAR_LOWERCASE_B,
+      CHAR_LOWERCASE_E
+    } = require_constants();
+    var { URL: URL2 } = require_url2();
+    var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
+    var { isIPv4 } = require_net();
+    var { ERR_PROXY_INVALID_CONFIG } = require_errors().codes;
+    var utcCache;
+    function utcDate() {
+      if (!utcCache) cache();
+      return utcCache;
+    }
+    function cache() {
+      const d = new Date2();
+      utcCache = d.toUTCString();
+      setUnrefTimeout(resetCache, 1e3 - d.getMilliseconds());
+    }
+    function resetCache() {
+      utcCache = void 0;
+    }
+    var traceEventId = 0;
+    function getNextTraceEventId() {
+      return ++traceEventId;
+    }
+    var httpEnabled = getCategoryEnabledBuffer("node.http");
+    function isTraceHTTPEnabled() {
+      return httpEnabled[0] > 0;
+    }
+    var traceEventCategory = "node,node.http";
+    function traceBegin(...args) {
+      trace(CHAR_LOWERCASE_B, traceEventCategory, ...args);
+    }
+    function traceEnd(...args) {
+      trace(CHAR_LOWERCASE_E, traceEventCategory, ...args);
+    }
+    function ipToInt(ip) {
+      const octets = ip.split(".");
+      let result = 0;
+      for (let i = 0; i < octets.length; i++) {
+        result = (result << 8) + NumberParseInt(octets[i]);
+      }
+      return result >>> 0;
+    }
+    var ProxyConfig = class {
+      constructor(proxyUrl, keepAlive, noProxyList) {
+        let parsedURL;
+        try {
+          parsedURL = new URL2(proxyUrl);
+        } catch {
+          throw new ERR_PROXY_INVALID_CONFIG(`Invalid proxy URL: ${proxyUrl}`);
+        }
+        const { hostname, port, protocol, username, password } = parsedURL;
+        this.href = proxyUrl;
+        this.protocol = protocol;
+        if (username || password) {
+          const auth = `${decodeURIComponent2(username)}:${decodeURIComponent2(password)}`;
+          this.auth = `Basic ${Buffer2.from(auth).toString("base64")}`;
+        }
+        if (noProxyList) {
+          this.bypassList = noProxyList.split(",").map((entry) => entry.trim().toLowerCase());
+        } else {
+          this.bypassList = [];
+        }
+        this.proxyConnectionOptions = {
+          // The host name comes from parsed URL so if it starts with '[' it must be an IPv6 address
+          // ending with ']'. Remove the brackets for net.connect().
+          host: hostname[0] === "[" ? hostname.slice(1, -1) : hostname,
+          // The port comes from parsed URL so it is either '' or a valid number string.
+          port: port ? Number2(port) : protocol === "https:" ? 443 : 80
+        };
+      }
+      // See: https://about.gitlab.com/blog/we-need-to-talk-no-proxy
+      // TODO(joyeecheung): share code with undici.
+      shouldUseProxy(hostname, port) {
+        const bypassList = this.bypassList;
+        if (this.bypassList.length === 0) {
+          return true;
+        }
+        const host = hostname.toLowerCase();
+        const hostWithPort = port ? `${host}:${port}` : host;
+        for (let i = 0; i < bypassList.length; i++) {
+          const entry = bypassList[i];
+          if (entry === "*") return false;
+          if (entry === host || entry === hostWithPort) return false;
+          if (entry.startsWith(".")) {
+            const suffix = entry.substring(1);
+            if (host.endsWith(suffix)) return false;
+          }
+          if (entry.startsWith("*.") && host.endsWith(entry.substring(1))) return false;
+          if (entry.includes("-") && isIPv4(host)) {
+            let { 0: startIP, 1: endIP } = entry.split("-");
+            startIP = startIP.trim();
+            endIP = endIP.trim();
+            if (startIP && endIP && isIPv4(startIP) && isIPv4(endIP)) {
+              const hostInt = ipToInt(host);
+              const startInt = ipToInt(startIP);
+              const endInt = ipToInt(endIP);
+              if (hostInt >= startInt && hostInt <= endInt) return false;
+            }
+          }
+        }
+        return true;
+      }
+    };
+    function parseProxyConfigFromEnv(env, protocol, keepAlive) {
+      if (protocol !== "http:" && protocol !== "https:") {
+        return null;
+      }
+      const proxyUrl = protocol === "https:" ? env.https_proxy || env.HTTPS_PROXY : env.http_proxy || env.HTTP_PROXY;
+      if (!proxyUrl) {
+        return null;
+      }
+      if (proxyUrl.includes("\r") || proxyUrl.includes("\n")) {
+        throw new ERR_PROXY_INVALID_CONFIG(`Invalid proxy URL: ${proxyUrl}`);
+      }
+      if (!proxyUrl.startsWith("http://") && !proxyUrl.startsWith("https://")) {
+        return null;
+      }
+      const noProxyList = env.no_proxy || env.NO_PROXY;
+      return new ProxyConfig(proxyUrl, keepAlive, noProxyList);
+    }
+    function checkShouldUseProxy(proxyConfig, reqOptions) {
+      if (!proxyConfig) {
+        return false;
+      }
+      if (reqOptions.socketPath) {
+        return false;
+      }
+      return proxyConfig.shouldUseProxy(reqOptions.host || "localhost", reqOptions.port);
+    }
+    function filterEnvForProxies(env) {
+      return {
+        __proto__: null,
+        http_proxy: env.http_proxy,
+        HTTP_PROXY: env.HTTP_PROXY,
+        https_proxy: env.https_proxy,
+        HTTPS_PROXY: env.HTTPS_PROXY,
+        no_proxy: env.no_proxy,
+        NO_PROXY: env.NO_PROXY
+      };
+    }
+    module.exports = {
+      kOutHeaders: Symbol2("kOutHeaders"),
+      kNeedDrain: Symbol2("kNeedDrain"),
+      kProxyConfig: Symbol2("kProxyConfig"),
+      kWaitForProxyTunnel: Symbol2("kWaitForProxyTunnel"),
+      checkShouldUseProxy,
+      parseProxyConfigFromEnv,
+      utcDate,
+      traceBegin,
+      traceEnd,
+      getNextTraceEventId,
+      isTraceHTTPEnabled,
+      filterEnvForProxies
+    };
+  }
+});
+
+// ../lib/_http_outgoing.js
+var require_http_outgoing = __commonJS({
+  "../lib/_http_outgoing.js"(exports2, module) {
+    "use strict";
+    var {
+      Array: Array2,
+      ArrayIsArray,
+      MathFloor,
+      ObjectDefineProperty,
+      ObjectHasOwn,
+      ObjectKeys,
+      ObjectSetPrototypeOf,
+      ObjectValues,
+      SafeSet,
+      Symbol: Symbol2
+    } = primordials;
+    var { getDefaultHighWaterMark } = require_state();
+    var assert = require_assert();
+    var EE = require_events();
+    var Stream = require_stream();
+    var { kOutHeaders, utcDate, kNeedDrain } = require_http2();
+    var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
+    var {
+      _checkIsHttpToken: checkIsHttpToken,
+      _checkInvalidHeaderChar: checkInvalidHeaderChar,
+      chunkExpression: RE_TE_CHUNKED
+    } = require_http_common();
+    var {
+      defaultTriggerAsyncIdScope,
+      symbols: { async_id_symbol }
+    } = require_async_hooks();
+    var {
+      codes: {
+        ERR_HTTP_BODY_NOT_ALLOWED,
+        ERR_HTTP_CONTENT_LENGTH_MISMATCH,
+        ERR_HTTP_HEADERS_SENT,
+        ERR_HTTP_INVALID_HEADER_VALUE,
+        ERR_HTTP_TRAILER_INVALID,
+        ERR_INVALID_ARG_TYPE,
+        ERR_INVALID_ARG_VALUE,
+        ERR_INVALID_CHAR,
+        ERR_INVALID_HTTP_TOKEN,
+        ERR_METHOD_NOT_IMPLEMENTED,
+        ERR_STREAM_ALREADY_FINISHED,
+        ERR_STREAM_CANNOT_PIPE,
+        ERR_STREAM_DESTROYED,
+        ERR_STREAM_NULL_VALUES,
+        ERR_STREAM_WRITE_AFTER_END
+      },
+      hideStackFrames
+    } = require_errors();
+    var { validateString } = require_validators();
+    var { assignFunctionName } = require_util5();
+    var { isUint8Array } = require_types();
+    var debug = require_debuglog().debuglog("http", (fn) => {
+      debug = fn;
+    });
+    var kCorked = Symbol2("corked");
+    var kSocket = Symbol2("kSocket");
+    var kChunkedBuffer = Symbol2("kChunkedBuffer");
+    var kChunkedLength = Symbol2("kChunkedLength");
+    var kUniqueHeaders = Symbol2("kUniqueHeaders");
+    var kBytesWritten = Symbol2("kBytesWritten");
+    var kErrored = Symbol2("errored");
+    var kHighWaterMark = Symbol2("kHighWaterMark");
+    var kRejectNonStandardBodyWrites = Symbol2("kRejectNonStandardBodyWrites");
+    var nop = () => {
+    };
+    var RE_CONN_CLOSE = /(?:^|\W)close(?:$|\W)/i;
+    function isCookieField(s) {
+      return s.length === 6 && s.toLowerCase() === "cookie";
+    }
+    function isContentDispositionField(s) {
+      return s.length === 19 && s.toLowerCase() === "content-disposition";
+    }
+    function OutgoingMessage(options) {
+      Stream.call(this);
+      this.outputData = [];
+      this.outputSize = 0;
+      this.writable = true;
+      this.destroyed = false;
+      this._last = false;
+      this.chunkedEncoding = false;
+      this.shouldKeepAlive = true;
+      this.maxRequestsOnConnectionReached = false;
+      this._defaultKeepAlive = true;
+      this.useChunkedEncodingByDefault = true;
+      this.sendDate = false;
+      this._removedConnection = false;
+      this._removedContLen = false;
+      this._removedTE = false;
+      this.strictContentLength = false;
+      this[kBytesWritten] = 0;
+      this._contentLength = null;
+      this._hasBody = true;
+      this._trailer = "";
+      this[kNeedDrain] = false;
+      this.finished = false;
+      this._headerSent = false;
+      this[kCorked] = 0;
+      this[kChunkedBuffer] = [];
+      this[kChunkedLength] = 0;
+      this._closed = false;
+      this[kSocket] = null;
+      this._header = null;
+      this[kOutHeaders] = null;
+      this._keepAliveTimeout = 0;
+      this._onPendingData = nop;
+      this[kErrored] = null;
+      this[kHighWaterMark] = options?.highWaterMark ?? getDefaultHighWaterMark();
+      this[kRejectNonStandardBodyWrites] = options?.rejectNonStandardBodyWrites ?? false;
+    }
+    ObjectSetPrototypeOf(OutgoingMessage.prototype, Stream.prototype);
+    ObjectSetPrototypeOf(OutgoingMessage, Stream);
+    ObjectDefineProperty(OutgoingMessage.prototype, "errored", {
+      __proto__: null,
+      get() {
+        return this[kErrored];
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "closed", {
+      __proto__: null,
+      get() {
+        return this._closed;
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableFinished", {
+      __proto__: null,
+      get() {
+        return this.finished && this.outputSize === 0 && (!this[kSocket] || this[kSocket].writableLength === 0);
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableObjectMode", {
+      __proto__: null,
+      get() {
+        return false;
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableLength", {
+      __proto__: null,
+      get() {
+        return this.outputSize + this[kChunkedLength] + (this[kSocket] ? this[kSocket].writableLength : 0);
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableHighWaterMark", {
+      __proto__: null,
+      get() {
+        return this[kSocket] ? this[kSocket].writableHighWaterMark : this[kHighWaterMark];
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableCorked", {
+      __proto__: null,
+      get() {
+        return this[kCorked];
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "connection", {
+      __proto__: null,
+      get: function() {
+        return this[kSocket];
+      },
+      set: function(val) {
+        this.socket = val;
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "socket", {
+      __proto__: null,
+      get: function() {
+        return this[kSocket];
+      },
+      set: function(val) {
+        for (let n = 0; n < this[kCorked]; n++) {
+          val?.cork();
+          this[kSocket]?.uncork();
+        }
+        this[kSocket] = val;
+      }
+    });
+    OutgoingMessage.prototype._renderHeaders = function _renderHeaders() {
+      if (this._header) {
+        throw new ERR_HTTP_HEADERS_SENT("render");
+      }
+      const headersMap = this[kOutHeaders];
+      const headers = {};
+      if (headersMap !== null) {
+        const keys = ObjectKeys(headersMap);
+        for (let i = 0, l = keys.length; i < l; i++) {
+          const key = keys[i];
+          headers[headersMap[key][0]] = headersMap[key][1];
+        }
+      }
+      return headers;
+    };
+    OutgoingMessage.prototype.cork = function cork() {
+      this[kCorked]++;
+      if (this[kSocket]) {
+        this[kSocket].cork();
+      }
+    };
+    OutgoingMessage.prototype.uncork = function uncork() {
+      this[kCorked]--;
+      if (this[kSocket]) {
+        this[kSocket].uncork();
+      }
+      if (this[kCorked] || this[kChunkedBuffer].length === 0) {
+        return;
+      }
+      const len = this[kChunkedLength];
+      const buf = this[kChunkedBuffer];
+      assert(this.chunkedEncoding);
+      let callbacks;
+      this._send(len.toString(16), "latin1", null);
+      this._send(crlf_buf, null, null);
+      for (let n = 0; n < buf.length; n += 3) {
+        this._send(buf[n + 0], buf[n + 1], null);
+        if (buf[n + 2]) {
+          callbacks ??= [];
+          callbacks.push(buf[n + 2]);
+        }
+      }
+      this._send(crlf_buf, null, callbacks.length ? (err) => {
+        for (const callback of callbacks) {
+          callback(err);
+        }
+      } : null);
+      this[kChunkedBuffer].length = 0;
+      this[kChunkedLength] = 0;
+    };
+    OutgoingMessage.prototype.setTimeout = function setTimeout2(msecs, callback) {
+      if (callback) {
+        this.on("timeout", callback);
+      }
+      if (!this[kSocket]) {
+        this.once("socket", function socketSetTimeoutOnConnect(socket) {
+          socket.setTimeout(msecs);
+        });
+      } else {
+        this[kSocket].setTimeout(msecs);
+      }
+      return this;
+    };
+    OutgoingMessage.prototype.destroy = function destroy(error) {
+      if (this.destroyed) {
+        return this;
+      }
+      this.destroyed = true;
+      this[kErrored] = error;
+      if (this[kSocket]) {
+        this[kSocket].destroy(error);
+      } else {
+        this.once("socket", function socketDestroyOnConnect(socket) {
+          socket.destroy(error);
+        });
+      }
+      return this;
+    };
+    OutgoingMessage.prototype._send = function _send(data, encoding, callback, byteLength) {
+      if (!this._headerSent && this._header !== null) {
+        if (typeof data === "string" && (encoding === "utf8" || encoding === "latin1" || !encoding)) {
+          data = this._header + data;
+        } else {
+          const header = this._header;
+          this.outputData.unshift({
+            data: header,
+            encoding: "latin1",
+            callback: null
+          });
+          this.outputSize += header.length;
+          this._onPendingData(header.length);
+        }
+        this._headerSent = true;
+      }
+      return this._writeRaw(data, encoding, callback, byteLength);
+    };
+    OutgoingMessage.prototype._writeRaw = _writeRaw;
+    function _writeRaw(data, encoding, callback, size) {
+      const conn = this[kSocket];
+      if (conn?.destroyed) {
+        return false;
+      }
+      if (typeof encoding === "function") {
+        callback = encoding;
+        encoding = null;
+      }
+      if (conn && conn._httpMessage === this && conn.writable) {
+        if (this.outputData.length) {
+          this._flushOutput(conn);
+        }
+        return conn.write(data, encoding, callback);
+      }
+      this.outputData.push({ data, encoding, callback });
+      this.outputSize += data.length;
+      this._onPendingData(data.length);
+      return this.outputSize < this[kHighWaterMark];
+    }
+    OutgoingMessage.prototype._storeHeader = _storeHeader;
+    function _storeHeader(firstLine, headers) {
+      const state = {
+        connection: false,
+        contLen: false,
+        te: false,
+        date: false,
+        expect: false,
+        trailer: false,
+        header: firstLine
+      };
+      if (headers) {
+        if (headers === this[kOutHeaders]) {
+          for (const key in headers) {
+            const entry = headers[key];
+            processHeader(this, state, entry[0], entry[1], false);
+          }
+        } else if (ArrayIsArray(headers)) {
+          if (headers.length && ArrayIsArray(headers[0])) {
+            for (let i = 0; i < headers.length; i++) {
+              const entry = headers[i];
+              processHeader(this, state, entry[0], entry[1], true);
+            }
+          } else {
+            if (headers.length % 2 !== 0) {
+              throw new ERR_INVALID_ARG_VALUE("headers", headers);
+            }
+            for (let n = 0; n < headers.length; n += 2) {
+              processHeader(this, state, headers[n + 0], headers[n + 1], true);
+            }
+          }
+        } else {
+          for (const key in headers) {
+            if (ObjectHasOwn(headers, key)) {
+              processHeader(this, state, key, headers[key], true);
+            }
+          }
+        }
+      }
+      let { header } = state;
+      if (this.sendDate && !state.date) {
+        header += "Date: " + utcDate() + "\r\n";
+      }
+      if (this.chunkedEncoding && (this.statusCode === 204 || this.statusCode === 304)) {
+        debug(this.statusCode + " response should not use chunked encoding, closing connection.");
+        this.chunkedEncoding = false;
+        this.shouldKeepAlive = false;
+      }
+      if (this._removedConnection) {
+        this._last = !this.shouldKeepAlive;
+      } else if (!state.connection) {
+        const shouldSendKeepAlive = this.shouldKeepAlive && (state.contLen || this.useChunkedEncodingByDefault || this.agent);
+        if (shouldSendKeepAlive && this.maxRequestsOnConnectionReached) {
+          header += "Connection: close\r\n";
+        } else if (shouldSendKeepAlive) {
+          header += "Connection: keep-alive\r\n";
+          if (this._keepAliveTimeout && this._defaultKeepAlive) {
+            const timeoutSeconds = MathFloor(this._keepAliveTimeout / 1e3);
+            let max = "";
+            if (~~this._maxRequestsPerSocket > 0) {
+              max = `, max=${this._maxRequestsPerSocket}`;
+            }
+            header += `Keep-Alive: timeout=${timeoutSeconds}${max}\r
+`;
+          }
+        } else {
+          this._last = true;
+          header += "Connection: close\r\n";
+        }
+      }
+      if (!state.contLen && !state.te) {
+        if (!this._hasBody) {
+          this.chunkedEncoding = false;
+        } else if (!this.useChunkedEncodingByDefault) {
+          this._last = true;
+        } else if (!state.trailer && !this._removedContLen && typeof this._contentLength === "number") {
+          header += "Content-Length: " + this._contentLength + "\r\n";
+        } else if (!this._removedTE) {
+          header += "Transfer-Encoding: chunked\r\n";
+          this.chunkedEncoding = true;
+        } else {
+          debug("Both Content-Length and Transfer-Encoding are removed");
+          this._last = true;
+        }
+      }
+      if (this.chunkedEncoding !== true && state.trailer) {
+        throw new ERR_HTTP_TRAILER_INVALID();
+      }
+      this._header = header + "\r\n";
+      this._headerSent = false;
+      if (state.expect) this._send("");
+    }
+    function processHeader(self2, state, key, value, validate) {
+      if (validate)
+        validateHeaderName(key);
+      if (isContentDispositionField(key) && self2._contentLength) {
+        if (ArrayIsArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            value[i] = Buffer2.from(value[i], "latin1");
+          }
+        } else {
+          value = Buffer2.from(value, "latin1");
+        }
+      }
+      if (ArrayIsArray(value)) {
+        if ((value.length < 2 || !isCookieField(key)) && (!self2[kUniqueHeaders] || !self2[kUniqueHeaders].has(key.toLowerCase()))) {
+          for (let i = 0; i < value.length; i++)
+            storeHeader(self2, state, key, value[i], validate);
+          return;
+        }
+        value = value.join("; ");
+      }
+      storeHeader(self2, state, key, value, validate);
+    }
+    function storeHeader(self2, state, key, value, validate) {
+      if (validate)
+        validateHeaderValue(key, value);
+      state.header += key + ": " + value + "\r\n";
+      matchHeader(self2, state, key, value);
+    }
+    function matchHeader(self2, state, field, value) {
+      if (field.length < 4 || field.length > 17)
+        return;
+      field = field.toLowerCase();
+      switch (field) {
+        case "connection":
+          state.connection = true;
+          self2._removedConnection = false;
+          if (RE_CONN_CLOSE.test(value))
+            self2._last = true;
+          else
+            self2.shouldKeepAlive = true;
+          break;
+        case "transfer-encoding":
+          state.te = true;
+          self2._removedTE = false;
+          if (RE_TE_CHUNKED.test(value))
+            self2.chunkedEncoding = true;
+          break;
+        case "content-length":
+          state.contLen = true;
+          self2._contentLength = +value;
+          self2._removedContLen = false;
+          break;
+        case "date":
+        case "expect":
+        case "trailer":
+          state[field] = true;
+          break;
+        case "keep-alive":
+          self2._defaultKeepAlive = false;
+          break;
+      }
+    }
+    var validateHeaderName = assignFunctionName("validateHeaderName", hideStackFrames((name, label) => {
+      if (typeof name !== "string" || !name || !checkIsHttpToken(name)) {
+        throw new ERR_INVALID_HTTP_TOKEN.HideStackFramesError(label || "Header name", name);
+      }
+    }));
+    var validateHeaderValue = assignFunctionName("validateHeaderValue", hideStackFrames((name, value) => {
+      if (value === void 0) {
+        throw new ERR_HTTP_INVALID_HEADER_VALUE.HideStackFramesError(value, name);
+      }
+      if (checkInvalidHeaderChar(value)) {
+        debug('Header "%s" contains invalid characters', name);
+        throw new ERR_INVALID_CHAR.HideStackFramesError("header content", name);
+      }
+    }));
+    function parseUniqueHeadersOption(headers) {
+      if (!ArrayIsArray(headers)) {
+        return null;
+      }
+      const unique = new SafeSet();
+      const l = headers.length;
+      for (let i = 0; i < l; i++) {
+        unique.add(headers[i].toLowerCase());
+      }
+      return unique;
+    }
+    OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
+      if (this._header) {
+        throw new ERR_HTTP_HEADERS_SENT("set");
+      }
+      validateHeaderName(name);
+      validateHeaderValue(name, value);
+      let headers = this[kOutHeaders];
+      if (headers === null)
+        this[kOutHeaders] = headers = { __proto__: null };
+      headers[name.toLowerCase()] = [name, value];
+      return this;
+    };
+    OutgoingMessage.prototype.setHeaders = function setHeaders(headers) {
+      if (this._header) {
+        throw new ERR_HTTP_HEADERS_SENT("set");
+      }
+      if (!headers || ArrayIsArray(headers) || typeof headers.keys !== "function" || typeof headers.get !== "function") {
+        throw new ERR_INVALID_ARG_TYPE("headers", ["Headers", "Map"], headers);
+      }
+      const cookies = [];
+      for (const { 0: key, 1: value } of headers) {
+        if (key === "set-cookie") {
+          if (ArrayIsArray(value)) {
+            cookies.push(...value);
+          } else {
+            cookies.push(value);
+          }
+          continue;
+        }
+        this.setHeader(key, value);
+      }
+      if (cookies.length) {
+        this.setHeader("set-cookie", cookies);
+      }
+      return this;
+    };
+    OutgoingMessage.prototype.appendHeader = function appendHeader(name, value) {
+      if (this._header) {
+        throw new ERR_HTTP_HEADERS_SENT("append");
+      }
+      validateHeaderName(name);
+      validateHeaderValue(name, value);
+      const field = name.toLowerCase();
+      const headers = this[kOutHeaders];
+      if (headers === null || !headers[field]) {
+        return this.setHeader(name, value);
+      }
+      if (!ArrayIsArray(headers[field][1])) {
+        headers[field][1] = [headers[field][1]];
+      }
+      const existingValues = headers[field][1];
+      if (ArrayIsArray(value)) {
+        for (let i = 0, length = value.length; i < length; i++) {
+          existingValues.push(value[i]);
+        }
+      } else {
+        existingValues.push(value);
+      }
+      return this;
+    };
+    OutgoingMessage.prototype.getHeader = function getHeader(name) {
+      validateString(name, "name");
+      const headers = this[kOutHeaders];
+      if (headers === null)
+        return;
+      const entry = headers[name.toLowerCase()];
+      return entry?.[1];
+    };
+    OutgoingMessage.prototype.getHeaderNames = function getHeaderNames() {
+      return this[kOutHeaders] !== null ? ObjectKeys(this[kOutHeaders]) : [];
+    };
+    OutgoingMessage.prototype.getRawHeaderNames = function getRawHeaderNames() {
+      const headersMap = this[kOutHeaders];
+      if (headersMap === null) return [];
+      const values = ObjectValues(headersMap);
+      const headers = Array2(values.length);
+      for (let i = 0, l = values.length; i < l; i++) {
+        headers[i] = values[i][0];
+      }
+      return headers;
+    };
+    OutgoingMessage.prototype.getHeaders = function getHeaders() {
+      const headers = this[kOutHeaders];
+      const ret = { __proto__: null };
+      if (headers) {
+        const keys = ObjectKeys(headers);
+        for (let i = 0; i < keys.length; ++i) {
+          const key = keys[i];
+          const val = headers[key][1];
+          ret[key] = val;
+        }
+      }
+      return ret;
+    };
+    OutgoingMessage.prototype.hasHeader = function hasHeader(name) {
+      validateString(name, "name");
+      return this[kOutHeaders] !== null && !!this[kOutHeaders][name.toLowerCase()];
+    };
+    OutgoingMessage.prototype.removeHeader = function removeHeader(name) {
+      validateString(name, "name");
+      if (this._header) {
+        throw new ERR_HTTP_HEADERS_SENT("remove");
+      }
+      const key = name.toLowerCase();
+      switch (key) {
+        case "connection":
+          this._removedConnection = true;
+          break;
+        case "content-length":
+          this._removedContLen = true;
+          break;
+        case "transfer-encoding":
+          this._removedTE = true;
+          break;
+        case "date":
+          this.sendDate = false;
+          break;
+      }
+      if (this[kOutHeaders] !== null) {
+        delete this[kOutHeaders][key];
+      }
+    };
+    OutgoingMessage.prototype._implicitHeader = function _implicitHeader() {
+      throw new ERR_METHOD_NOT_IMPLEMENTED("_implicitHeader()");
+    };
+    ObjectDefineProperty(OutgoingMessage.prototype, "headersSent", {
+      __proto__: null,
+      configurable: true,
+      enumerable: true,
+      get: function() {
+        return !!this._header;
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableEnded", {
+      __proto__: null,
+      get: function() {
+        return this.finished;
+      }
+    });
+    ObjectDefineProperty(OutgoingMessage.prototype, "writableNeedDrain", {
+      __proto__: null,
+      get: function() {
+        return !this.destroyed && !this.finished && this[kNeedDrain];
+      }
+    });
+    var crlf_buf = Buffer2.from("\r\n");
+    OutgoingMessage.prototype.write = function write(chunk, encoding, callback) {
+      if (typeof encoding === "function") {
+        callback = encoding;
+        encoding = null;
+      }
+      const ret = write_(this, chunk, encoding, callback, false);
+      if (!ret)
+        this[kNeedDrain] = true;
+      return ret;
+    };
+    function onError(msg, err, callback) {
+      if (msg.destroyed) {
+        return;
+      }
+      const triggerAsyncId = msg.socket ? msg.socket[async_id_symbol] : void 0;
+      defaultTriggerAsyncIdScope(
+        triggerAsyncId,
+        globalThis.process.nextTick,
+        emitErrorNt,
+        msg,
+        err,
+        callback
+      );
+    }
+    function emitErrorNt(msg, err, callback) {
+      callback(err);
+      if (typeof msg.emit === "function" && !msg.destroyed) {
+        msg.emit("error", err);
+      }
+    }
+    function strictContentLength(msg) {
+      return msg.strictContentLength && msg._contentLength != null && msg._hasBody && !msg._removedContLen && !msg.chunkedEncoding && !msg.hasHeader("transfer-encoding");
+    }
+    function write_(msg, chunk, encoding, callback, fromEnd) {
+      if (typeof callback !== "function")
+        callback = nop;
+      if (chunk === null) {
+        throw new ERR_STREAM_NULL_VALUES();
+      } else if (typeof chunk !== "string" && !isUint8Array(chunk)) {
+        throw new ERR_INVALID_ARG_TYPE(
+          "chunk",
+          ["string", "Buffer", "Uint8Array"],
+          chunk
+        );
+      }
+      let err;
+      if (msg.finished) {
+        err = new ERR_STREAM_WRITE_AFTER_END();
+      } else if (msg.destroyed) {
+        err = new ERR_STREAM_DESTROYED("write");
+      }
+      if (err) {
+        if (!msg.destroyed) {
+          onError(msg, err, callback);
+        } else {
+          globalThis.process.nextTick(callback, err);
+        }
+        return false;
+      }
+      let len;
+      if (msg.strictContentLength) {
+        len ??= typeof chunk === "string" ? Buffer2.byteLength(chunk, encoding) : chunk.byteLength;
+        if (strictContentLength(msg) && (fromEnd ? msg[kBytesWritten] + len !== msg._contentLength : msg[kBytesWritten] + len > msg._contentLength)) {
+          throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(len + msg[kBytesWritten], msg._contentLength);
+        }
+        msg[kBytesWritten] += len;
+      }
+      if (!msg._header) {
+        if (fromEnd) {
+          len ??= typeof chunk === "string" ? Buffer2.byteLength(chunk, encoding) : chunk.byteLength;
+          msg._contentLength = len;
+        }
+        msg._implicitHeader();
+      }
+      if (!msg._hasBody) {
+        if (msg[kRejectNonStandardBodyWrites]) {
+          throw new ERR_HTTP_BODY_NOT_ALLOWED();
+        } else {
+          debug("This type of response MUST NOT have a body. Ignoring write() calls.");
+          globalThis.process.nextTick(callback);
+          return true;
+        }
+      }
+      if (!fromEnd && msg.socket && !msg.socket.writableCorked) {
+        msg.socket.cork();
+        globalThis.process.nextTick(connectionCorkNT, msg.socket);
+      }
+      let ret;
+      if (msg.chunkedEncoding && chunk.length !== 0) {
+        len ??= typeof chunk === "string" ? Buffer2.byteLength(chunk, encoding) : chunk.byteLength;
+        if (msg[kCorked] && msg._headerSent) {
+          msg[kChunkedBuffer].push(chunk, encoding, callback);
+          msg[kChunkedLength] += len;
+          ret = msg[kChunkedLength] < msg[kHighWaterMark];
+        } else {
+          msg._send(len.toString(16), "latin1", null);
+          msg._send(crlf_buf, null, null);
+          msg._send(chunk, encoding, null, len);
+          ret = msg._send(crlf_buf, null, callback);
+        }
+      } else {
+        ret = msg._send(chunk, encoding, callback, len);
+      }
+      debug("write ret = " + ret);
+      return ret;
+    }
+    function connectionCorkNT(conn) {
+      conn.uncork();
+    }
+    OutgoingMessage.prototype.addTrailers = function addTrailers(headers) {
+      this._trailer = "";
+      const keys = ObjectKeys(headers);
+      const isArray = ArrayIsArray(headers);
+      for (let i = 0, l = keys.length; i < l; i++) {
+        let field, value;
+        const key = keys[i];
+        if (isArray) {
+          field = headers[key][0];
+          value = headers[key][1];
+        } else {
+          field = key;
+          value = headers[key];
+        }
+        validateHeaderName(field, "Trailer name");
+        const isArrayValue = ArrayIsArray(value);
+        if (isArrayValue && value.length > 1 && (!this[kUniqueHeaders] || !this[kUniqueHeaders].has(field.toLowerCase()))) {
+          for (let j = 0, l2 = value.length; j < l2; j++) {
+            if (checkInvalidHeaderChar(value[j])) {
+              debug('Trailer "%s"[%d] contains invalid characters', field, j);
+              throw new ERR_INVALID_CHAR("trailer content", field);
+            }
+            this._trailer += field + ": " + value[j] + "\r\n";
+          }
+        } else {
+          if (isArrayValue) {
+            value = value.join("; ");
+          }
+          if (checkInvalidHeaderChar(value)) {
+            debug('Trailer "%s" contains invalid characters', field);
+            throw new ERR_INVALID_CHAR("trailer content", field);
+          }
+          this._trailer += field + ": " + value + "\r\n";
+        }
+      }
+    };
+    function onFinish(outmsg) {
+      if (outmsg?.socket?._hadError) return;
+      outmsg.emit("finish");
+    }
+    OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
+      if (typeof chunk === "function") {
+        callback = chunk;
+        chunk = null;
+        encoding = null;
+      } else if (typeof encoding === "function") {
+        callback = encoding;
+        encoding = null;
+      }
+      if (chunk) {
+        if (this.finished) {
+          onError(
+            this,
+            new ERR_STREAM_WRITE_AFTER_END(),
+            typeof callback !== "function" ? nop : callback
+          );
+          return this;
+        }
+        if (this[kSocket]) {
+          this[kSocket].cork();
+        }
+        write_(this, chunk, encoding, null, true);
+      } else if (this.finished) {
+        if (typeof callback === "function") {
+          if (!this.writableFinished) {
+            this.on("finish", callback);
+          } else {
+            callback(new ERR_STREAM_ALREADY_FINISHED("end"));
+          }
+        }
+        return this;
+      } else if (!this._header) {
+        if (this[kSocket]) {
+          this[kSocket].cork();
+        }
+        this._contentLength = 0;
+        this._implicitHeader();
+      }
+      if (typeof callback === "function")
+        this.once("finish", callback);
+      if (strictContentLength(this) && this[kBytesWritten] !== this._contentLength) {
+        throw new ERR_HTTP_CONTENT_LENGTH_MISMATCH(this[kBytesWritten], this._contentLength);
+      }
+      const finish = onFinish.bind(void 0, this);
+      if (this._hasBody && this.chunkedEncoding) {
+        this._send("0\r\n" + this._trailer + "\r\n", "latin1", finish);
+      } else if (!this._headerSent || this.writableLength || chunk) {
+        this._send("", "latin1", finish);
+      } else {
+        globalThis.process.nextTick(finish);
+      }
+      if (this[kSocket]) {
+        this[kSocket]._writableState.corked = 1;
+        this[kSocket].uncork();
+      }
+      this[kCorked] = 1;
+      this.uncork();
+      this.finished = true;
+      debug("outgoing message end.");
+      if (this.outputData.length === 0 && this[kSocket] && this[kSocket]._httpMessage === this) {
+        this._finish();
+      }
+      return this;
+    };
+    OutgoingMessage.prototype._finish = function _finish() {
+      assert(this[kSocket]);
+      this.emit("prefinish");
+    };
+    OutgoingMessage.prototype._flush = function _flush() {
+      const socket = this[kSocket];
+      if (socket?.writable) {
+        const ret = this._flushOutput(socket);
+        if (this.finished) {
+          this._finish();
+        } else if (ret && this[kNeedDrain]) {
+          this[kNeedDrain] = false;
+          this.emit("drain");
+        }
+      }
+    };
+    OutgoingMessage.prototype._flushOutput = function _flushOutput(socket) {
+      const outputLength = this.outputData.length;
+      if (outputLength <= 0)
+        return void 0;
+      const outputData = this.outputData;
+      socket.cork();
+      let ret;
+      for (let i = 0; i < outputLength; i++) {
+        const { data, encoding, callback } = outputData[i];
+        outputData[i].data = null;
+        ret = socket.write(data, encoding, callback);
+      }
+      socket.uncork();
+      this.outputData = [];
+      this._onPendingData(-this.outputSize);
+      this.outputSize = 0;
+      return ret;
+    };
+    OutgoingMessage.prototype.flushHeaders = function flushHeaders() {
+      if (!this._header) {
+        this._implicitHeader();
+      }
+      this._send("");
+    };
+    OutgoingMessage.prototype.pipe = function pipe() {
+      this.emit("error", new ERR_STREAM_CANNOT_PIPE());
+    };
+    OutgoingMessage.prototype[EE.captureRejectionSymbol] = function(err, event) {
+      this.destroy(err);
+    };
+    module.exports = {
+      kHighWaterMark,
+      kUniqueHeaders,
+      parseUniqueHeadersOption,
+      validateHeaderName,
+      validateHeaderValue,
+      OutgoingMessage
+    };
+  }
+});
+
+// ../lib/_http_server.js
+var require_http_server = __commonJS({
+  "../lib/_http_server.js"(exports2, module) {
+    "use strict";
+    var {
+      ArrayIsArray,
+      Error: Error2,
+      MathMin,
+      NumberIsFinite,
+      ObjectKeys,
+      ObjectSetPrototypeOf,
+      ReflectApply,
+      Symbol: Symbol2,
+      SymbolAsyncDispose,
+      SymbolFor
+    } = primordials;
+    var net = require_net2();
+    var EE = require_events();
+    var assert = require_assert();
+    var {
+      parsers,
+      freeParser,
+      continueExpression,
+      chunkExpression,
+      kIncomingMessage,
+      HTTPParser,
+      isLenient,
+      _checkInvalidHeaderChar: checkInvalidHeaderChar,
+      prepareError
+    } = require_http_common();
+    var { ConnectionsList } = internalBinding("http_parser");
+    var {
+      kUniqueHeaders,
+      parseUniqueHeadersOption,
+      OutgoingMessage
+    } = require_http_outgoing();
+    var {
+      kOutHeaders,
+      kNeedDrain,
+      isTraceHTTPEnabled,
+      traceBegin,
+      traceEnd,
+      getNextTraceEventId
+    } = require_http2();
+    var {
+      defaultTriggerAsyncIdScope,
+      getOrSetAsyncId
+    } = require_async_hooks();
+    var { IncomingMessage } = require_http_incoming();
+    var {
+      ConnResetException,
+      codes: {
+        ERR_HTTP_HEADERS_SENT,
+        ERR_HTTP_INVALID_STATUS_CODE,
+        ERR_HTTP_REQUEST_TIMEOUT,
+        ERR_HTTP_SOCKET_ASSIGNED,
+        ERR_HTTP_SOCKET_ENCODING,
+        ERR_INVALID_ARG_VALUE,
+        ERR_INVALID_CHAR,
+        ERR_OUT_OF_RANGE
+      }
+    } = require_errors();
+    var {
+      assignFunctionName,
+      deprecate,
+      kEmptyObject,
+      promisify
+    } = require_util5();
+    var {
+      validateInteger,
+      validateBoolean,
+      validateLinkHeaderValue,
+      validateObject,
+      validateFunction
+    } = require_validators();
+    var Buffer2 = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports)).Buffer;
+    var { setInterval, clearInterval } = require_timers2();
+    var debug = require_debuglog().debuglog("http", (fn) => {
+      debug = fn;
+    });
+    var dc = require_diagnostics_channel();
+    var onRequestStartChannel = dc.channel("http.server.request.start");
+    var onResponseCreatedChannel = dc.channel("http.server.response.created");
+    var onResponseFinishChannel = dc.channel("http.server.response.finish");
+    var kServerResponse = Symbol2("ServerResponse");
+    var kServerResponseStatistics = Symbol2("ServerResponseStatistics");
+    var {
+      hasObserver,
+      startPerf,
+      stopPerf
+    } = require_observe();
+    var STATUS_CODES = {
+      100: "Continue",
+      // RFC 7231 6.2.1
+      101: "Switching Protocols",
+      // RFC 7231 6.2.2
+      102: "Processing",
+      // RFC 2518 10.1 (obsoleted by RFC 4918)
+      103: "Early Hints",
+      // RFC 8297 2
+      200: "OK",
+      // RFC 7231 6.3.1
+      201: "Created",
+      // RFC 7231 6.3.2
+      202: "Accepted",
+      // RFC 7231 6.3.3
+      203: "Non-Authoritative Information",
+      // RFC 7231 6.3.4
+      204: "No Content",
+      // RFC 7231 6.3.5
+      205: "Reset Content",
+      // RFC 7231 6.3.6
+      206: "Partial Content",
+      // RFC 7233 4.1
+      207: "Multi-Status",
+      // RFC 4918 11.1
+      208: "Already Reported",
+      // RFC 5842 7.1
+      226: "IM Used",
+      // RFC 3229 10.4.1
+      300: "Multiple Choices",
+      // RFC 7231 6.4.1
+      301: "Moved Permanently",
+      // RFC 7231 6.4.2
+      302: "Found",
+      // RFC 7231 6.4.3
+      303: "See Other",
+      // RFC 7231 6.4.4
+      304: "Not Modified",
+      // RFC 7232 4.1
+      305: "Use Proxy",
+      // RFC 7231 6.4.5
+      307: "Temporary Redirect",
+      // RFC 7231 6.4.7
+      308: "Permanent Redirect",
+      // RFC 7238 3
+      400: "Bad Request",
+      // RFC 7231 6.5.1
+      401: "Unauthorized",
+      // RFC 7235 3.1
+      402: "Payment Required",
+      // RFC 7231 6.5.2
+      403: "Forbidden",
+      // RFC 7231 6.5.3
+      404: "Not Found",
+      // RFC 7231 6.5.4
+      405: "Method Not Allowed",
+      // RFC 7231 6.5.5
+      406: "Not Acceptable",
+      // RFC 7231 6.5.6
+      407: "Proxy Authentication Required",
+      // RFC 7235 3.2
+      408: "Request Timeout",
+      // RFC 7231 6.5.7
+      409: "Conflict",
+      // RFC 7231 6.5.8
+      410: "Gone",
+      // RFC 7231 6.5.9
+      411: "Length Required",
+      // RFC 7231 6.5.10
+      412: "Precondition Failed",
+      // RFC 7232 4.2
+      413: "Payload Too Large",
+      // RFC 7231 6.5.11
+      414: "URI Too Long",
+      // RFC 7231 6.5.12
+      415: "Unsupported Media Type",
+      // RFC 7231 6.5.13
+      416: "Range Not Satisfiable",
+      // RFC 7233 4.4
+      417: "Expectation Failed",
+      // RFC 7231 6.5.14
+      418: "I'm a Teapot",
+      // RFC 7168 2.3.3
+      421: "Misdirected Request",
+      // RFC 7540 9.1.2
+      422: "Unprocessable Entity",
+      // RFC 4918 11.2
+      423: "Locked",
+      // RFC 4918 11.3
+      424: "Failed Dependency",
+      // RFC 4918 11.4
+      425: "Too Early",
+      // RFC 8470 5.2
+      426: "Upgrade Required",
+      // RFC 2817 and RFC 7231 6.5.15
+      428: "Precondition Required",
+      // RFC 6585 3
+      429: "Too Many Requests",
+      // RFC 6585 4
+      431: "Request Header Fields Too Large",
+      // RFC 6585 5
+      451: "Unavailable For Legal Reasons",
+      // RFC 7725 3
+      500: "Internal Server Error",
+      // RFC 7231 6.6.1
+      501: "Not Implemented",
+      // RFC 7231 6.6.2
+      502: "Bad Gateway",
+      // RFC 7231 6.6.3
+      503: "Service Unavailable",
+      // RFC 7231 6.6.4
+      504: "Gateway Timeout",
+      // RFC 7231 6.6.5
+      505: "HTTP Version Not Supported",
+      // RFC 7231 6.6.6
+      506: "Variant Also Negotiates",
+      // RFC 2295 8.1
+      507: "Insufficient Storage",
+      // RFC 4918 11.5
+      508: "Loop Detected",
+      // RFC 5842 7.2
+      509: "Bandwidth Limit Exceeded",
+      510: "Not Extended",
+      // RFC 2774 7
+      511: "Network Authentication Required"
+      // RFC 6585 6
+    };
+    var kOnExecute = HTTPParser.kOnExecute | 0;
+    var kOnTimeout = HTTPParser.kOnTimeout | 0;
+    var kLenientAll = HTTPParser.kLenientAll | 0;
+    var kLenientNone = HTTPParser.kLenientNone | 0;
+    var kConnections = Symbol2("http.server.connections");
+    var kConnectionsCheckingInterval = Symbol2("http.server.connectionsCheckingInterval");
+    var HTTP_SERVER_TRACE_EVENT_NAME = "http.server.request";
+    var HTTPServerAsyncResource = class {
+      constructor(type, socket) {
+        this.type = type;
+        this.socket = socket;
+      }
+    };
+    function ServerResponse(req, options) {
+      OutgoingMessage.call(this, options);
+      if (req.method === "HEAD") this._hasBody = false;
+      this.req = req;
+      this.sendDate = true;
+      this._sent100 = false;
+      this._expect_continue = false;
+      if (req.httpVersionMajor < 1 || req.httpVersionMinor < 1) {
+        this.useChunkedEncodingByDefault = chunkExpression.test(req.headers.te);
+        this.shouldKeepAlive = false;
+      }
+      if (hasObserver("http")) {
+        startPerf(this, kServerResponseStatistics, {
+          type: "http",
+          name: "HttpRequest",
+          detail: {
+            req: {
+              method: req.method,
+              url: req.url,
+              headers: req.headers
+            }
+          }
+        });
+      }
+      if (isTraceHTTPEnabled()) {
+        this._traceEventId = getNextTraceEventId();
+        traceBegin(HTTP_SERVER_TRACE_EVENT_NAME, this._traceEventId);
+      }
+      if (onResponseCreatedChannel.hasSubscribers) {
+        onResponseCreatedChannel.publish({
+          request: req,
+          response: this
+        });
+      }
+    }
+    ObjectSetPrototypeOf(ServerResponse.prototype, OutgoingMessage.prototype);
+    ObjectSetPrototypeOf(ServerResponse, OutgoingMessage);
+    ServerResponse.prototype._finish = function _finish() {
+      if (this[kServerResponseStatistics] && hasObserver("http")) {
+        stopPerf(this, kServerResponseStatistics, {
+          detail: {
+            res: {
+              statusCode: this.statusCode,
+              statusMessage: this.statusMessage,
+              headers: typeof this.getHeaders === "function" ? this.getHeaders() : {}
+            }
+          }
+        });
+      }
+      OutgoingMessage.prototype._finish.call(this);
+      if (isTraceHTTPEnabled() && typeof this._traceEventId === "number") {
+        const data = {
+          url: this.req?.url,
+          statusCode: this.statusCode
+        };
+        traceEnd(HTTP_SERVER_TRACE_EVENT_NAME, this._traceEventId, data);
+      }
+    };
+    ServerResponse.prototype.statusCode = 200;
+    ServerResponse.prototype.statusMessage = void 0;
+    function onServerResponseClose() {
+      if (this._httpMessage) {
+        emitCloseNT(this._httpMessage);
+      }
+    }
+    ServerResponse.prototype.assignSocket = function assignSocket(socket) {
+      if (socket._httpMessage) {
+        throw new ERR_HTTP_SOCKET_ASSIGNED();
+      }
+      socket._httpMessage = this;
+      socket.on("close", onServerResponseClose);
+      this.socket = socket;
+      this.emit("socket", socket);
+      this._flush();
+    };
+    ServerResponse.prototype.detachSocket = function detachSocket(socket) {
+      assert(socket._httpMessage === this);
+      socket.removeListener("close", onServerResponseClose);
+      socket._httpMessage = null;
+      this.socket = null;
+    };
+    ServerResponse.prototype.writeContinue = function writeContinue(cb) {
+      this._writeRaw("HTTP/1.1 100 Continue\r\n\r\n", "ascii", cb);
+      this._sent100 = true;
+    };
+    ServerResponse.prototype.writeProcessing = function writeProcessing(cb) {
+      this._writeRaw("HTTP/1.1 102 Processing\r\n\r\n", "ascii", cb);
+    };
+    ServerResponse.prototype.writeEarlyHints = function writeEarlyHints(hints, cb) {
+      let head = "HTTP/1.1 103 Early Hints\r\n";
+      validateObject(hints, "hints");
+      if (hints.link === null || hints.link === void 0) {
+        return;
+      }
+      const link = validateLinkHeaderValue(hints.link);
+      if (link.length === 0) {
+        return;
+      }
+      head += "Link: " + link + "\r\n";
+      for (const key of ObjectKeys(hints)) {
+        if (key !== "link") {
+          head += key + ": " + hints[key] + "\r\n";
+        }
+      }
+      head += "\r\n";
+      this._writeRaw(head, "ascii", cb);
+    };
+    ServerResponse.prototype._implicitHeader = function _implicitHeader() {
+      this.writeHead(this.statusCode);
+    };
+    ServerResponse.prototype.writeHead = writeHead;
+    function writeHead(statusCode, reason, obj) {
+      if (this._header) {
+        throw new ERR_HTTP_HEADERS_SENT("write");
+      }
+      const originalStatusCode = statusCode;
+      statusCode |= 0;
+      if (statusCode < 100 || statusCode > 999) {
+        throw new ERR_HTTP_INVALID_STATUS_CODE(originalStatusCode);
+      }
+      if (typeof reason === "string") {
+        this.statusMessage = reason;
+      } else {
+        this.statusMessage ||= STATUS_CODES[statusCode] || "unknown";
+        obj ??= reason;
+      }
+      this.statusCode = statusCode;
+      let headers;
+      if (this[kOutHeaders]) {
+        let k;
+        if (ArrayIsArray(obj)) {
+          if (obj.length % 2 !== 0) {
+            throw new ERR_INVALID_ARG_VALUE("headers", obj);
+          }
+          for (let n = 0; n < obj.length; n += 2) {
+            k = obj[n + 0];
+            this.removeHeader(k);
+          }
+          for (let n = 0; n < obj.length; n += 2) {
+            k = obj[n + 0];
+            if (k) this.appendHeader(k, obj[n + 1]);
+          }
+        } else if (obj) {
+          const keys = ObjectKeys(obj);
+          for (let i = 0; i < keys.length; i++) {
+            k = keys[i];
+            if (k) this.setHeader(k, obj[k]);
+          }
+        }
+        headers = this[kOutHeaders];
+      } else {
+        headers = obj;
+      }
+      if (checkInvalidHeaderChar(this.statusMessage))
+        throw new ERR_INVALID_CHAR("statusMessage");
+      const statusLine = `HTTP/1.1 ${statusCode} ${this.statusMessage}\r
+`;
+      if (statusCode === 204 || statusCode === 304 || statusCode >= 100 && statusCode <= 199) {
+        this._hasBody = false;
+      }
+      if (this._expect_continue && !this._sent100) {
+        this.shouldKeepAlive = false;
+      }
+      this._storeHeader(statusLine, headers);
+      return this;
+    }
+    ServerResponse.prototype.writeHeader = deprecate(
+      ServerResponse.prototype.writeHead,
+      "ServerResponse.prototype.writeHeader is deprecated.",
+      "DEP0063"
+    );
+    function storeHTTPOptions(options) {
+      this[kIncomingMessage] = options.IncomingMessage || IncomingMessage;
+      this[kServerResponse] = options.ServerResponse || ServerResponse;
+      const maxHeaderSize = options.maxHeaderSize;
+      if (maxHeaderSize !== void 0)
+        validateInteger(maxHeaderSize, "maxHeaderSize", 0);
+      this.maxHeaderSize = maxHeaderSize;
+      const insecureHTTPParser = options.insecureHTTPParser;
+      if (insecureHTTPParser !== void 0)
+        validateBoolean(insecureHTTPParser, "options.insecureHTTPParser");
+      this.insecureHTTPParser = insecureHTTPParser;
+      const requestTimeout = options.requestTimeout;
+      if (requestTimeout !== void 0) {
+        validateInteger(requestTimeout, "requestTimeout", 0);
+        this.requestTimeout = requestTimeout;
+      } else {
+        this.requestTimeout = 3e5;
+      }
+      const headersTimeout = options.headersTimeout;
+      if (headersTimeout !== void 0) {
+        validateInteger(headersTimeout, "headersTimeout", 0);
+        this.headersTimeout = headersTimeout;
+      } else {
+        this.headersTimeout = MathMin(6e4, this.requestTimeout);
+      }
+      if (this.requestTimeout > 0 && this.headersTimeout > 0 && this.headersTimeout > this.requestTimeout) {
+        throw new ERR_OUT_OF_RANGE("headersTimeout", "<= requestTimeout", headersTimeout);
+      }
+      const keepAliveTimeout = options.keepAliveTimeout;
+      if (keepAliveTimeout !== void 0) {
+        validateInteger(keepAliveTimeout, "keepAliveTimeout", 0);
+        this.keepAliveTimeout = keepAliveTimeout;
+      } else {
+        this.keepAliveTimeout = 5e3;
+      }
+      const keepAliveTimeoutBuffer = options.keepAliveTimeoutBuffer;
+      if (keepAliveTimeoutBuffer !== void 0) {
+        validateInteger(keepAliveTimeoutBuffer, "keepAliveTimeoutBuffer", 0);
+        this.keepAliveTimeoutBuffer = keepAliveTimeoutBuffer;
+      } else {
+        this.keepAliveTimeoutBuffer = 1e3;
+      }
+      const connectionsCheckingInterval = options.connectionsCheckingInterval;
+      if (connectionsCheckingInterval !== void 0) {
+        validateInteger(connectionsCheckingInterval, "connectionsCheckingInterval", 0);
+        this.connectionsCheckingInterval = connectionsCheckingInterval;
+      } else {
+        this.connectionsCheckingInterval = 3e4;
+      }
+      const requireHostHeader = options.requireHostHeader;
+      if (requireHostHeader !== void 0) {
+        validateBoolean(requireHostHeader, "options.requireHostHeader");
+        this.requireHostHeader = requireHostHeader;
+      } else {
+        this.requireHostHeader = true;
+      }
+      const joinDuplicateHeaders = options.joinDuplicateHeaders;
+      if (joinDuplicateHeaders !== void 0) {
+        validateBoolean(joinDuplicateHeaders, "options.joinDuplicateHeaders");
+      }
+      this.joinDuplicateHeaders = joinDuplicateHeaders;
+      const rejectNonStandardBodyWrites = options.rejectNonStandardBodyWrites;
+      if (rejectNonStandardBodyWrites !== void 0) {
+        validateBoolean(rejectNonStandardBodyWrites, "options.rejectNonStandardBodyWrites");
+        this.rejectNonStandardBodyWrites = rejectNonStandardBodyWrites;
+      } else {
+        this.rejectNonStandardBodyWrites = false;
+      }
+      const shouldUpgradeCallback = options.shouldUpgradeCallback;
+      if (shouldUpgradeCallback !== void 0) {
+        validateFunction(shouldUpgradeCallback, "options.shouldUpgradeCallback");
+        this.shouldUpgradeCallback = shouldUpgradeCallback;
+      } else {
+        this.shouldUpgradeCallback = function() {
+          return this.listenerCount("upgrade") > 0;
+        };
+      }
+    }
+    function setupConnectionsTracking() {
+      this[kConnections] ||= new ConnectionsList();
+      if (this[kConnectionsCheckingInterval]) {
+        clearInterval(this[kConnectionsCheckingInterval]);
+      }
+      this[kConnectionsCheckingInterval] = setInterval(checkConnections.bind(this), this.connectionsCheckingInterval).unref();
+    }
+    function httpServerPreClose(server) {
+      server.closeIdleConnections();
+      clearInterval(server[kConnectionsCheckingInterval]);
+    }
+    function Server(options, requestListener) {
+      if (!(this instanceof Server)) return new Server(options, requestListener);
+      if (typeof options === "function") {
+        requestListener = options;
+        options = kEmptyObject;
+      } else if (options == null) {
+        options = kEmptyObject;
+      } else {
+        validateObject(options, "options");
+      }
+      storeHTTPOptions.call(this, options);
+      const buf = options.keepAliveTimeoutBuffer;
+      this.keepAliveTimeoutBuffer = typeof buf === "number" && NumberIsFinite(buf) && buf >= 0 ? buf : 1e3;
+      net.Server.call(
+        this,
+        {
+          allowHalfOpen: true,
+          noDelay: options.noDelay ?? true,
+          keepAlive: options.keepAlive,
+          keepAliveInitialDelay: options.keepAliveInitialDelay,
+          highWaterMark: options.highWaterMark
+        }
+      );
+      if (requestListener) {
+        this.on("request", requestListener);
+      }
+      this.httpAllowHalfOpen = false;
+      this.on("connection", connectionListener);
+      this.on("listening", setupConnectionsTracking);
+      this.timeout = 0;
+      this.maxHeadersCount = null;
+      this.maxRequestsPerSocket = 0;
+      this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
+    }
+    ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
+    ObjectSetPrototypeOf(Server, net.Server);
+    Server.prototype.close = function close() {
+      httpServerPreClose(this);
+      ReflectApply(net.Server.prototype.close, this, arguments);
+      return this;
+    };
+    Server.prototype[SymbolAsyncDispose] = assignFunctionName(SymbolAsyncDispose, async function() {
+      await promisify(this.close).call(this);
+    });
+    Server.prototype.closeAllConnections = function closeAllConnections() {
+      if (!this[kConnections]) {
+        return;
+      }
+      const connections = this[kConnections].all();
+      for (let i = 0, l = connections.length; i < l; i++) {
+        connections[i].socket.destroy();
+      }
+    };
+    Server.prototype.closeIdleConnections = function closeIdleConnections() {
+      if (!this[kConnections]) {
+        return;
+      }
+      const connections = this[kConnections].idle();
+      for (let i = 0, l = connections.length; i < l; i++) {
+        if (connections[i].socket._httpMessage && !connections[i].socket._httpMessage.finished) {
+          continue;
+        }
+        connections[i].socket.destroy();
+      }
+    };
+    Server.prototype.setTimeout = function setTimeout2(msecs, callback) {
+      this.timeout = msecs;
+      if (callback)
+        this.on("timeout", callback);
+      return this;
+    };
+    Server.prototype[EE.captureRejectionSymbol] = assignFunctionName(EE.captureRejectionSymbol, function(err, event, ...args) {
+      switch (event) {
+        case "request": {
+          const { 1: res } = args;
+          if (!res.headersSent && !res.writableEnded) {
+            const names = res.getHeaderNames();
+            for (let i = 0; i < names.length; i++) {
+              res.removeHeader(names[i]);
+            }
+            res.statusCode = 500;
+            res.end(STATUS_CODES[500]);
+          } else {
+            res.destroy();
+          }
+          break;
+        }
+        default:
+          net.Server.prototype[SymbolFor("nodejs.rejection")].apply(this, arguments);
+      }
+    });
+    function checkConnections() {
+      if (this.headersTimeout === 0 && this.requestTimeout === 0) {
+        return;
+      }
+      const expired = this[kConnections].expired(this.headersTimeout, this.requestTimeout);
+      for (let i = 0; i < expired.length; i++) {
+        const socket = expired[i].socket;
+        if (socket) {
+          onRequestTimeout(socket);
+        }
+      }
+    }
+    function connectionListener(socket) {
+      defaultTriggerAsyncIdScope(
+        getOrSetAsyncId(socket),
+        connectionListenerInternal,
+        this,
+        socket
+      );
+    }
+    function connectionListenerInternal(server, socket) {
+      debug("SERVER new http connection");
+      socket.server = server;
+      if (server.timeout && typeof socket.setTimeout === "function")
+        socket.setTimeout(server.timeout);
+      socket.on("timeout", socketOnTimeout);
+      const parser = parsers.alloc();
+      const lenient = server.insecureHTTPParser === void 0 ? isLenient() : server.insecureHTTPParser;
+      parser.initialize(
+        HTTPParser.REQUEST,
+        new HTTPServerAsyncResource("HTTPINCOMINGMESSAGE", socket),
+        server.maxHeaderSize || 0,
+        lenient ? kLenientAll : kLenientNone,
+        server[kConnections]
+      );
+      parser.socket = socket;
+      socket.parser = parser;
+      if (typeof server.maxHeadersCount === "number") {
+        parser.maxHeaderPairs = server.maxHeadersCount << 1;
+      }
+      const state = {
+        onData: null,
+        onEnd: null,
+        onClose: null,
+        onDrain: null,
+        outgoing: [],
+        incoming: [],
+        // `outgoingData` is an approximate amount of bytes queued through all
+        // inactive responses. If more data than the high watermark is queued - we
+        // need to pause TCP socket/HTTP parser, and wait until the data will be
+        // sent to the client.
+        outgoingData: 0,
+        requestsCount: 0,
+        keepAliveTimeoutSet: false
+      };
+      state.onData = socketOnData.bind(
+        void 0,
+        server,
+        socket,
+        parser,
+        state
+      );
+      state.onEnd = socketOnEnd.bind(
+        void 0,
+        server,
+        socket,
+        parser,
+        state
+      );
+      state.onClose = socketOnClose.bind(
+        void 0,
+        socket,
+        state
+      );
+      state.onDrain = socketOnDrain.bind(
+        void 0,
+        socket,
+        state
+      );
+      socket.on("data", state.onData);
+      socket.on("error", socketOnError);
+      socket.on("end", state.onEnd);
+      socket.on("close", state.onClose);
+      socket.on("drain", state.onDrain);
+      parser.onIncoming = parserOnIncoming.bind(
+        void 0,
+        server,
+        socket,
+        state
+      );
+      socket.on("resume", onSocketResume);
+      socket.on("pause", onSocketPause);
+      socket.on = generateSocketListenerWrapper("on");
+      socket.addListener = generateSocketListenerWrapper("addListener");
+      socket.prependListener = generateSocketListenerWrapper("prependListener");
+      socket.setEncoding = socketSetEncoding;
+      if (socket._handle?.isStreamBase && !socket._handle._consumed) {
+        parser._consumed = true;
+        socket._handle._consumed = true;
+        parser.consume(socket._handle);
+      }
+      parser[kOnExecute] = onParserExecute.bind(
+        void 0,
+        server,
+        socket,
+        parser,
+        state
+      );
+      parser[kOnTimeout] = onParserTimeout.bind(
+        void 0,
+        server,
+        socket
+      );
+      socket._paused = false;
+    }
+    function socketSetEncoding() {
+      throw new ERR_HTTP_SOCKET_ENCODING();
+    }
+    function updateOutgoingData(socket, state, delta) {
+      state.outgoingData += delta;
+      socketOnDrain(socket, state);
+    }
+    function socketOnDrain(socket, state) {
+      const needPause = state.outgoingData > socket.writableHighWaterMark;
+      if (socket._paused && !needPause) {
+        socket._paused = false;
+        if (socket.parser)
+          socket.parser.resume();
+        socket.resume();
+      }
+      const msg = socket._httpMessage;
+      if (msg && !msg.finished && msg[kNeedDrain]) {
+        msg[kNeedDrain] = false;
+        msg.emit("drain");
+      }
+    }
+    function socketOnTimeout() {
+      const req = this.parser?.incoming;
+      const reqTimeout = req && !req.complete && req.emit("timeout", this);
+      const res = this._httpMessage;
+      const resTimeout = res && res.emit("timeout", this);
+      const serverTimeout = this.server.emit("timeout", this);
+      if (!reqTimeout && !resTimeout && !serverTimeout)
+        this.destroy();
+    }
+    function socketOnClose(socket, state) {
+      debug("server socket close");
+      freeParser(socket.parser, null, socket);
+      abortIncoming(state.incoming);
+    }
+    function abortIncoming(incoming) {
+      while (incoming.length) {
+        const req = incoming.shift();
+        req.destroy(new ConnResetException("aborted"));
+      }
+    }
+    function socketOnEnd(server, socket, parser, state) {
+      const ret = parser.finish();
+      if (ret instanceof Error2) {
+        debug("parse error");
+        socketOnError.call(socket, ret);
+      } else if (!server.httpAllowHalfOpen) {
+        socket.end();
+      } else if (state.outgoing.length) {
+        state.outgoing[state.outgoing.length - 1]._last = true;
+      } else if (socket._httpMessage) {
+        socket._httpMessage._last = true;
+      } else {
+        socket.end();
+      }
+    }
+    function socketOnData(server, socket, parser, state, d) {
+      assert(!socket._paused);
+      debug("SERVER socketOnData %d", d.length);
+      const ret = parser.execute(d);
+      onParserExecuteCommon(server, socket, parser, state, ret, d);
+    }
+    function onRequestTimeout(socket) {
+      socketOnError.call(socket, new ERR_HTTP_REQUEST_TIMEOUT());
+    }
+    function onParserExecute(server, socket, parser, state, ret) {
+      socket._unrefTimer();
+      debug("SERVER socketOnParserExecute %d", ret);
+      onParserExecuteCommon(server, socket, parser, state, ret, void 0);
+    }
+    function onParserTimeout(server, socket) {
+      const serverTimeout = server.emit("timeout", socket);
+      if (!serverTimeout)
+        socket.destroy();
+    }
+    var noop = () => {
+    };
+    var badRequestResponse = Buffer2.from(
+      `HTTP/1.1 400 ${STATUS_CODES[400]}\r
+Connection: close\r
+\r
+`,
+      "ascii"
+    );
+    var requestTimeoutResponse = Buffer2.from(
+      `HTTP/1.1 408 ${STATUS_CODES[408]}\r
+Connection: close\r
+\r
+`,
+      "ascii"
+    );
+    var requestHeaderFieldsTooLargeResponse = Buffer2.from(
+      `HTTP/1.1 431 ${STATUS_CODES[431]}\r
+Connection: close\r
+\r
+`,
+      "ascii"
+    );
+    var requestChunkExtensionsTooLargeResponse = Buffer2.from(
+      `HTTP/1.1 413 ${STATUS_CODES[413]}\r
+Connection: close\r
+\r
+`,
+      "ascii"
+    );
+    function socketOnError(e) {
+      this.removeListener("error", socketOnError);
+      if (this.listenerCount("error", noop) === 0) {
+        this.on("error", noop);
+      }
+      if (!this.server.emit("clientError", e, this)) {
+        if (this.writable && (!this._httpMessage || !this._httpMessage._headerSent)) {
+          let response;
+          switch (e.code) {
+            case "HPE_HEADER_OVERFLOW":
+              response = requestHeaderFieldsTooLargeResponse;
+              break;
+            case "HPE_CHUNK_EXTENSIONS_OVERFLOW":
+              response = requestChunkExtensionsTooLargeResponse;
+              break;
+            case "ERR_HTTP_REQUEST_TIMEOUT":
+              response = requestTimeoutResponse;
+              break;
+            default:
+              response = badRequestResponse;
+              break;
+          }
+          this.write(response);
+        }
+        this.destroy(e);
+      }
+    }
+    function onParserExecuteCommon(server, socket, parser, state, ret, d) {
+      if (ret instanceof Error2) {
+        prepareError(ret, parser, d);
+        debug("parse error", ret);
+        socketOnError.call(socket, ret);
+      } else if (parser.incoming?.upgrade) {
+        const req = parser.incoming;
+        debug("SERVER upgrade or connect", req.method);
+        d ||= parser.getCurrentBuffer();
+        socket.removeListener("data", state.onData);
+        socket.removeListener("end", state.onEnd);
+        socket.removeListener("close", state.onClose);
+        socket.removeListener("drain", state.onDrain);
+        socket.removeListener("error", socketOnError);
+        socket.removeListener("timeout", socketOnTimeout);
+        unconsume(parser, socket);
+        parser.finish();
+        freeParser(parser, req, socket);
+        parser = null;
+        const eventName = req.method === "CONNECT" ? "connect" : "upgrade";
+        if (server.listenerCount(eventName) > 0) {
+          debug("SERVER have listener for %s", eventName);
+          const bodyHead = d.slice(ret, d.length);
+          socket.readableFlowing = null;
+          server.emit(eventName, req, socket, bodyHead);
+        } else {
+          socket.destroy();
+        }
+      } else if (parser.incoming && parser.incoming.method === "PRI") {
+        debug("SERVER got PRI request");
+        socket.destroy();
+      }
+      if (socket._paused && socket.parser) {
+        debug("pause parser");
+        socket.parser.pause();
+      }
+    }
+    function clearIncoming(req) {
+      req ||= this;
+      const parser = req.socket?.parser;
+      if (parser && parser.incoming === req) {
+        if (req.readableEnded) {
+          parser.incoming = null;
+        } else {
+          req.on("end", clearIncoming);
+        }
+      }
+    }
+    function resOnFinish(req, res, socket, state, server) {
+      if (onResponseFinishChannel.hasSubscribers) {
+        onResponseFinishChannel.publish({
+          request: req,
+          response: res,
+          socket,
+          server
+        });
+      }
+      assert(state.incoming.length === 0 || state.incoming[0] === req);
+      state.incoming.shift();
+      if (!req._consuming && !req._readableState.resumeScheduled)
+        req._dump();
+      res.detachSocket(socket);
+      clearIncoming(req);
+      globalThis.process.nextTick(emitCloseNT, res);
+      if (res._last) {
+        if (typeof socket.destroySoon === "function") {
+          socket.destroySoon();
+        } else {
+          socket.end();
+        }
+      } else if (state.outgoing.length === 0) {
+        const keepAliveTimeout = NumberIsFinite(server.keepAliveTimeout) && server.keepAliveTimeout >= 0 ? server.keepAliveTimeout : 0;
+        const keepAliveTimeoutBuffer = NumberIsFinite(server.keepAliveTimeoutBuffer) && server.keepAliveTimeoutBuffer >= 0 ? server.keepAliveTimeoutBuffer : 1e3;
+        if (keepAliveTimeout && typeof socket.setTimeout === "function") {
+          socket.setTimeout(keepAliveTimeout + keepAliveTimeoutBuffer);
+          state.keepAliveTimeoutSet = true;
+        }
+      } else {
+        const m = state.outgoing.shift();
+        if (m) {
+          m.assignSocket(socket);
+        }
+      }
+    }
+    function emitCloseNT(self2) {
+      if (!self2._closed) {
+        self2.destroyed = true;
+        self2._closed = true;
+        self2.emit("close");
+      }
+    }
+    function parserOnIncoming(server, socket, state, req, keepAlive) {
+      resetSocketTimeout(server, socket, state);
+      if (req.upgrade) {
+        req.upgrade = req.method === "CONNECT" || !!server.shouldUpgradeCallback(req);
+        if (req.upgrade)
+          return 2;
+      }
+      state.incoming.push(req);
+      if (!socket._paused) {
+        const ws = socket._writableState;
+        if (ws.needDrain || state.outgoingData >= socket.writableHighWaterMark) {
+          socket._paused = true;
+          socket.pause();
+        }
+      }
+      const res = new server[kServerResponse](
+        req,
+        {
+          highWaterMark: socket.writableHighWaterMark,
+          rejectNonStandardBodyWrites: server.rejectNonStandardBodyWrites
+        }
+      );
+      res._keepAliveTimeout = server.keepAliveTimeout;
+      res._maxRequestsPerSocket = server.maxRequestsPerSocket;
+      res._onPendingData = updateOutgoingData.bind(
+        void 0,
+        socket,
+        state
+      );
+      res.shouldKeepAlive = keepAlive;
+      res[kUniqueHeaders] = server[kUniqueHeaders];
+      if (onRequestStartChannel.hasSubscribers) {
+        onRequestStartChannel.publish({
+          request: req,
+          response: res,
+          socket,
+          server
+        });
+      }
+      if (socket._httpMessage) {
+        state.outgoing.push(res);
+      } else {
+        res.assignSocket(socket);
+      }
+      res.on(
+        "finish",
+        resOnFinish.bind(
+          void 0,
+          req,
+          res,
+          socket,
+          state,
+          server
+        )
+      );
+      let handled = false;
+      if (req.httpVersionMajor === 1 && req.httpVersionMinor === 1) {
+        if (server.requireHostHeader && req.headers.host === void 0) {
+          res.writeHead(400, ["Connection", "close"]);
+          res.end();
+          return 0;
+        }
+        const isRequestsLimitSet = typeof server.maxRequestsPerSocket === "number" && server.maxRequestsPerSocket > 0;
+        if (isRequestsLimitSet) {
+          state.requestsCount++;
+          res.maxRequestsOnConnectionReached = server.maxRequestsPerSocket <= state.requestsCount;
+        }
+        if (isRequestsLimitSet && server.maxRequestsPerSocket < state.requestsCount) {
+          handled = true;
+          server.emit("dropRequest", req, socket);
+          res.writeHead(503);
+          res.end();
+        } else if (req.headers.expect !== void 0) {
+          handled = true;
+          if (continueExpression.test(req.headers.expect)) {
+            res._expect_continue = true;
+            if (server.listenerCount("checkContinue") > 0) {
+              server.emit("checkContinue", req, res);
+            } else {
+              res.writeContinue();
+              server.emit("request", req, res);
+            }
+          } else if (server.listenerCount("checkExpectation") > 0) {
+            server.emit("checkExpectation", req, res);
+          } else {
+            res.writeHead(417);
+            res.end();
+          }
+        }
+      }
+      if (!handled) {
+        server.emit("request", req, res);
+      }
+      return 0;
+    }
+    function resetSocketTimeout(server, socket, state) {
+      if (!state.keepAliveTimeoutSet)
+        return;
+      socket.setTimeout(server.timeout || 0);
+      state.keepAliveTimeoutSet = false;
+    }
+    function onSocketResume() {
+      if (this._paused) {
+        this.pause();
+        return;
+      }
+      if (this._handle && !this._handle.reading) {
+        this._handle.reading = true;
+        this._handle.readStart();
+      }
+    }
+    function onSocketPause() {
+      if (this._handle?.reading) {
+        this._handle.reading = false;
+        this._handle.readStop();
+      }
+    }
+    function unconsume(parser, socket) {
+      if (socket._handle) {
+        if (parser._consumed)
+          parser.unconsume();
+        parser._consumed = false;
+        socket.removeListener("pause", onSocketPause);
+        socket.removeListener("resume", onSocketResume);
+      }
+    }
+    function generateSocketListenerWrapper(originalFnName) {
+      return function socketListenerWrap(ev, fn) {
+        const res = net.Socket.prototype[originalFnName].call(
+          this,
+          ev,
+          fn
+        );
+        if (!this.parser) {
+          this.on = net.Socket.prototype.on;
+          this.addListener = net.Socket.prototype.addListener;
+          this.prependListener = net.Socket.prototype.prependListener;
+          return res;
+        }
+        if (ev === "data" || ev === "readable")
+          unconsume(this.parser, this);
+        return res;
+      };
+    }
+    module.exports = {
+      STATUS_CODES,
+      Server,
+      ServerResponse,
+      setupConnectionsTracking,
+      storeHTTPOptions,
+      _connectionListener: connectionListener,
+      kServerResponse,
+      httpServerPreClose,
+      kConnectionsCheckingInterval
+    };
+  }
+});
+
 // ../lib/internal/http2/util.js
 var require_util3 = __commonJS({
   "../lib/internal/http2/util.js"(exports2, module) {
@@ -78753,9 +80727,9 @@ var require_core = __commonJS({
     var EventEmitter2 = require_events();
     var { addAbortListener } = require_abort_listener();
     var fs = require_fs();
-    var http = require_http2();
+    var http = require_http();
     var { readUInt16BE, readUInt32BE } = require_buffer();
-    var { URL: URL2, getURLOrigin } = require_url();
+    var { URL: URL2, getURLOrigin } = require_url2();
     var net = require_net2();
     var { Duplex } = require_stream();
     var tls = require_tls();
@@ -78832,7 +80806,7 @@ var require_core = __commonJS({
       validateUint32
     } = require_validators();
     var fsPromisesInternal = require_promises3();
-    var { utcDate } = require_http();
+    var { utcDate } = require_http2();
     var {
       Http2ServerRequest,
       Http2ServerResponse,
@@ -82819,7 +84793,7 @@ var require_undici = __commonJS({
         "use strict";
         var assert = require_assert3();
         var { kDestroyed, kBodyUsed, kListeners, kBody } = require_symbols2();
-        var { IncomingMessage } = require_http2();
+        var { IncomingMessage } = require_http();
         var stream = require_stream();
         var net = require_net2();
         var { stringify } = require_querystring2();
@@ -84130,7 +86104,7 @@ var require_undici = __commonJS({
         };
       }
     });
-    var require_request = __commonJS3({
+    var require_request2 = __commonJS3({
       "lib/core/request.js"(exports22, module2) {
         "use strict";
         var {
@@ -89855,11 +91829,11 @@ ${len.toString(16)}\r
         "use strict";
         var assert = require_assert3();
         var net = require_net2();
-        var http = require_http2();
+        var http = require_http();
         var util = require_util6();
         var { ClientStats } = require_stats();
         var { channels } = require_diagnostics();
-        var Request = require_request();
+        var Request = require_request2();
         var DispatcherBase = require_dispatcher_base();
         var {
           InvalidArgumentError,
@@ -91463,7 +93437,7 @@ ${len.toString(16)}\r
         };
       }
     });
-    var require_response = __commonJS3({
+    var require_response2 = __commonJS3({
       "lib/web/fetch/response.js"(exports22, module2) {
         "use strict";
         var { Headers, HeadersList, fill, getHeadersGuard, setHeadersGuard, setHeadersList } = require_headers();
@@ -91896,7 +93870,7 @@ ${len.toString(16)}\r
         };
       }
     });
-    var require_request2 = __commonJS3({
+    var require_request22 = __commonJS3({
       "lib/web/fetch/request.js"(exports22, module2) {
         "use strict";
         var { extractBody, mixinBody, cloneBody, bodyUnusable } = require_body();
@@ -92799,9 +94773,9 @@ ${len.toString(16)}\r
           makeResponse,
           fromInnerResponse,
           getResponseState
-        } = require_response();
+        } = require_response2();
         var { HeadersList } = require_headers();
-        var { Request, cloneRequest, getRequestDispatcher, getRequestState } = require_request2();
+        var { Request, cloneRequest, getRequestDispatcher, getRequestState } = require_request22();
         var zlib = require_zlib();
         var {
           makePolicyContainer,
@@ -92850,7 +94824,7 @@ ${len.toString(16)}\r
         var { dataURLProcessor, serializeAMimeType, minimizeSupportedMimeType } = require_data_url2();
         var { getGlobalDispatcher: getGlobalDispatcher2 } = require_global22();
         var { webidl } = require_webidl3();
-        var { STATUS_CODES } = require_http2();
+        var { STATUS_CODES } = require_http();
         var { bytesMatch } = require_subresource_integrity();
         var { createDeferredPromise } = require_promise();
         var hasZstd = typeof zlib.createZstdDecompress === "function";
@@ -94502,7 +96476,7 @@ ${len.toString(16)}\r
         "use strict";
         var { uid, states, sentCloseFrameState, emptyBuffer, opcodes } = require_constants4();
         var { parseExtensions, isClosed, isClosing, isEstablished, validateCloseCodeAndReason } = require_util32();
-        var { makeRequest } = require_request2();
+        var { makeRequest } = require_request22();
         var { fetching } = require_fetch();
         var { Headers, getHeadersList } = require_headers();
         var { getDecodeSplit } = require_util22();
@@ -95841,12 +97815,12 @@ ${value}`;
         "use strict";
         var { pipeline } = require_stream();
         var { fetching } = require_fetch();
-        var { makeRequest } = require_request2();
+        var { makeRequest } = require_request22();
         var { webidl } = require_webidl3();
         var { EventSourceStream } = require_eventsource_stream();
         var { parseMIMEType } = require_data_url2();
         var { createFastMessageEvent: createFastMessageEvent2 } = require_events2();
-        var { isNetworkError } = require_response();
+        var { isNetworkError } = require_response2();
         var { kEnumerableProperty } = require_util6();
         var { environmentSettingsObject } = require_util22();
         var experimentalWarned = false;
@@ -97384,8 +99358,8 @@ ${value}`;
     }, "fetch");
     module.exports.FormData = require_formdata().FormData;
     module.exports.Headers = require_headers().Headers;
-    module.exports.Response = require_response().Response;
-    module.exports.Request = require_request2().Request;
+    module.exports.Response = require_response2().Response;
+    module.exports.Request = require_request22().Request;
     var { CloseEvent, ErrorEvent, MessageEvent, createFastMessageEvent } = require_events2();
     module.exports.WebSocket = require_websocket().WebSocket;
     module.exports.CloseEvent = CloseEvent;
@@ -104663,7 +106637,7 @@ var require_util5 = __commonJS({
     var cachedCWD;
     function getCWDURL() {
       const { sep } = require_path();
-      const { pathToFileURL } = require_url();
+      const { pathToFileURL } = require_url2();
       let cwd;
       try {
         cwd = globalThis.process.cwd();
@@ -105344,11 +107318,11 @@ var require_inspect = __commonJS({
     var hexSlice;
     var internalUrl;
     function pathToFileUrlHref(filepath) {
-      internalUrl ??= require_url();
+      internalUrl ??= require_url2();
       return internalUrl.pathToFileURL(filepath).href;
     }
     function isURL(value) {
-      internalUrl ??= require_url();
+      internalUrl ??= require_url2();
       return typeof value.href === "string" && value instanceof internalUrl.URL;
     }
     var builtInObjects = new SafeSet(
@@ -108322,8 +110296,6 @@ var require_async_hooks = __commonJS({
 
 export {
   require_assert,
-  require_options,
-  require_net,
   require_async_hooks,
   require_utils2 as require_utils,
   require_webidl,
@@ -108350,24 +110322,19 @@ export {
   require_global,
   require_assert3 as require_assert2,
   require_querystring2 as require_querystring,
-  require_url,
   require_blob,
   require_stream,
   require_util2,
   require_abort_listener,
   require_events,
-  require_dns,
-  require_net2,
   require_http,
+  require_dns,
+  require_net2 as require_net,
   require_crypto,
   require_tls,
-  require_http_agent,
-  require_http_client,
-  require_http_server,
-  require_http2,
   require_zlib,
   require_perf_hooks,
-  require_http22 as require_http23,
+  require_http22 as require_http2,
   registerSpawnHandler,
   setDefaultSpawnHandler,
   spawn,
@@ -108387,3 +110354,8 @@ export {
 };
 /*! formdata-polyfill. MIT License. Jimmy Wärting <https://jimmy.warting.se/opensource> */
 /*! ws. MIT License. Einar Otto Stangvik <einaros@gmail.com> */
+/*! Bundled license information:
+
+safe-buffer/index.js:
+  (*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> *)
+*/

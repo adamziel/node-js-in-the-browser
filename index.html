@@ -11,6 +11,7 @@
 	<script type="module">
 		globalThis.SharedArrayBuffer = ArrayBuffer;
 		globalThis.primordials = { };
+		globalThis.global = globalThis;
 		import * as builtins from "./src/builtins.js";
 		const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 		const globalFs = new InMemoryFileSystem();
@@ -1811,6 +1812,7 @@
 		globalThis.coreModules.events = events.default;
 
 		const http = await import("./modules/http.js");
+		console.log({http});
 		globalThis.coreModules.http = http.default;
 
 		const http2 = await import("./modules/http2.js");
@@ -1870,7 +1872,29 @@
 		
 		// const workerThreads = await import("./modules/worker_threads.js");
 		// console.log(workerThreads.default);
-		
+
+		const previousFetch = globalThis.fetch;
+		globalThis.fetch = async (url, ...args) => {
+			if (typeof url === 'string' && url.startsWith('https://')) {
+				url = `http://127.0.0.1:8974/?${url}`;
+			}
+
+			const result = await previousFetch(url, ...args);
+
+			// Strip content-encoding header to prevent npm from trying
+			// to decompress the already-decompressed fetch() response.
+			if (result.headers.has('content-encoding')) {
+				const newHeaders = new Headers(result.headers);
+				newHeaders.delete('content-encoding');
+				
+				return new Response(result.body, {
+					status: result.status,
+					statusText: result.statusText,
+					headers: newHeaders
+				});
+			}
+			return result;
+		};
 
 		const Module = await import("./src/module.js");
 		globalThis.coreModules.module = Module;
