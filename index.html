@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Node.js Web Polyfills</title>
+</head>
+<body>
+	<h1>Node.js Web Polyfills</h1>
+	
+	<script type="module">
+		globalThis.SharedArrayBuffer = ArrayBuffer;
+		globalThis.primordials = { };
+		import * as builtins from "./src/builtins.js";
+		globalThis.internalModules = {
+			builtins: {
+				...builtins 
+			},
+			crypto: {
+				getBundledRootCertificates() {},
+				getExtraCACertificates() {},
+				getSystemCACertificates() {},
+				resetRootCertStore() {},
+				getUserRootCertificates() {},
+				getSSLCiphers() {},
+				startLoadingCertificatesOffThread() {},
+				KeyObjectHandle: null,
+				createNativeKeyObjectClass() {
+					return [null, null, null, null];
+				},
+				kKeyTypeSecret: null,
+				kKeyTypePublic: null,
+				kKeyTypePrivate: null,
+				kKeyFormatPEM: null,
+				kKeyFormatDER: null,
+				kKeyFormatJWK: null,
+				kKeyEncodingPKCS1: null,
+				kKeyEncodingPKCS8: null,
+				kKeyEncodingSPKI: null,
+				kKeyEncodingSEC1: null,
+				EVP_PKEY_ML_DSA_44: null,
+				EVP_PKEY_ML_DSA_65: null,
+				EVP_PKEY_ML_DSA_87: null
+			},
+			util: {
+				privateSymbols: {
+					arrow_message_private_symbol: 1,
+					contextify_context_private_symbol: 2,
+					decorated_private_symbol: 3,
+					napi_type_tag: 4,
+					napi_wrapper: 5,
+					untransferable_object_private_symbol: 6,
+					exiting_aliased_Uint32Array: 7,
+				},
+				defineLazyProperties: (obj, props) => {
+					for (const [key, get] of Object.entries(props)) {
+						Object.defineProperty(obj, key, {
+							configurable: true,
+							enumerable: true,
+							get() {
+								const value = get;
+								Object.defineProperty(obj, key, {
+									value,
+									writable: false,
+									configurable: false,
+									enumerable: true
+								});
+								return value;
+							}
+						});
+					}
+				},
+			},
+			options: {
+				getCLIOptionsValues: () => ({}),
+				getCLIOptionsInfo: () => ({}),
+				getOptionsAsFlags: () => ({}),
+				getEmbedderOptions: () => ({}),
+				getEnvOptionsInputType: () => ({}),
+				getNamespaceOptionsInputType: () => ({}),
+			},
+			config: {
+				get: () => ({}),
+			},
+			fs: {
+				FSReqCallback: class FSReqCallback {
+					constructor() {
+						this.cb = null;
+					}
+				},
+				constants: {},
+				open() {
+					console.log("open");
+				},
+				rename() {
+					console.log("rename");
+				},
+				existsSync() {
+					return false;
+				}
+			},
+			mksnapshot: {
+				setSerializeCallback() {},
+				setDeserializeCallback() {},
+				setDeserializeMainFunction() {},
+				isBuildingSnapshotBuffer: []
+			},
+			"internal/errors": {
+				exitCodes: {}
+			},
+			errors: {
+				exitCodes: {}
+			},
+			string_decoder: {
+				// @TODO
+				encodings: {}
+			},
+			buffer: {},
+			types: {},
+			timers: {
+				timeoutInfo: []
+			},
+			trace_events: {
+				getCategoryEnabledBuffer(){}
+			},
+			credentials: {},
+			performance: {
+				constants: {},
+				setupObservers() {} 
+			},
+			js_stream: {
+				JSStream: class JSStream {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			blob: {},
+			encoding_binding: {},
+			process_methods: { hrtimeBuffer: {} },
+			url_pattern: {},
+			url: {},
+			permission: {},
+			fs_dir: {},
+			cares_wrap: {
+				ChannelWrap: class ChannelWrap {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			stream_wrap: {},
+			pipe_wrap: {},
+			tls_wrap: {
+				TLSWrap: class TLSWrap {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			http_parser: {
+				HTTPParser: class HTTPParser {
+					constructor() {
+						this.persistent = false;
+					}
+				},
+				methods: [],
+				allMethods: [],
+			},
+			tcp_wrap: {
+				TCP: class TCP {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			tty_wrap: {
+				Tty: class Tty {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			fs_event_wrap: {
+				FSEvent: class FSEvent {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			uv: {},
+			os: {
+				getOSInformation() {
+					return ["Linux", "5.15.0-56-generic", "5.15.0-56-generic"];
+				},
+				getHomeDirectory() {
+					return "/home/user";
+				},
+				getHostname() {
+					return "localhost";
+				},
+				getInterfaceAddresses() {
+					return [];
+				},
+				getUptime() {
+					return 1000;
+				},
+				getAvailableParallelism() {
+					return 10;
+				},
+				getTotalMem() {
+					return 1000;
+				},
+				getFreeMem() {
+					return 100;
+				},
+			},
+			zlib: {
+				Zlib: class Zlib {
+					constructor() {
+						this.persistent = false;
+					}
+				}
+			},
+			messaging: {
+				DOMException: class DOMException {
+					constructor(message) {
+						this.message = message;
+					}
+				}
+			},
+			async_wrap: {
+				constants: {}
+			},
+			async_context_frame: {},
+			task_queue: {
+				promiseRejectEvents: {}
+			},
+			symbols: {},
+			constants: {
+				zlib: {
+					// Zlib flush levels
+					Z_NO_FLUSH: 0,
+					Z_BLOCK: 5,
+					Z_PARTIAL_FLUSH: 1,
+					Z_SYNC_FLUSH: 2,
+					Z_FULL_FLUSH: 3,
+					Z_FINISH: 4,
+					// Zlib option values
+					Z_MIN_CHUNK: 64,
+					Z_MIN_WINDOWBITS: 8,
+					Z_MAX_WINDOWBITS: 15,
+					Z_MIN_LEVEL: -1,
+					Z_MAX_LEVEL: 9,
+					Z_MIN_MEMLEVEL: 1		,
+					Z_MAX_MEMLEVEL: 9,
+					Z_DEFAULT_CHUNK: 16384		,
+					Z_DEFAULT_COMPRESSION: -1,
+					Z_DEFAULT_STRATEGY: 0,
+					Z_DEFAULT_WINDOWBITS: 15,
+					Z_DEFAULT_MEMLEVEL: 8,
+					Z_FIXED: 4,
+					// Node's compression stream modes (node_zlib_mode)
+					DEFLATE: 1,
+					DEFLATERAW: 5,
+					INFLATE: 2,
+					INFLATERAW: 6,
+					GZIP: 3,
+					GUNZIP: 4,
+					UNZIP: 7,
+					BROTLI_DECODE: 8,
+					BROTLI_ENCODE: 9,
+					ZSTD_COMPRESS: 10,
+					ZSTD_DECOMPRESS: 11,
+					// Brotli operations (~flush levels)
+					BROTLI_OPERATION_PROCESS: 0,
+					BROTLI_OPERATION_FLUSH: 1,
+					BROTLI_OPERATION_FINISH: 2,
+					BROTLI_OPERATION_EMIT_METADATA: 3,
+					// Zstd end directives (~flush levels)
+					ZSTD_e_continue: 0,
+					ZSTD_e_flush: 1,
+					ZSTD_e_end: 2,
+				},
+				fs: {
+					O_RDONLY: 0,
+					O_WRONLY: 1,
+					O_RDWR: 2,
+					O_CREAT: 4,
+					O_EXCL: 8,
+				},
+				crypto: {
+					SSL_OP_CIPHER_SERVER_PREFERENCE: 4194304,
+					TLS1_VERSION: 769,
+					TLS1_1_VERSION: 770,
+					TLS1_2_VERSION: 771,
+					TLS1_3_VERSION: 772,
+					SSL_OP_NO_TLSv1: 67108864,
+					SSL_OP_NO_TLSv1_1: 268435456,
+					SSL_OP_NO_TLSv1_2: 134217728,
+				}
+			},
+			// @TODO: Implement those modules
+			module_wrap: { ModuleWrap: class ModuleWrap {
+				constructor() {
+					this.exports = {};
+				}
+			} }
+		};
+		console.log(globalThis.internalModules);
+
+		await import("./modules/primordials.js");
+		// import * as myPrimordials from "./src/primordials.js";
+		// globalThis.primordials = { ...myPrimordials, ...globalThis.primordials };
+		// console.log(globalThis.primordials);
+
+		globalThis.getInternalBinding = 
+		globalThis.internalBinding = function(moduleName) {
+			if(internalModules[moduleName]) {
+				const module = internalModules[moduleName];
+				if(moduleName === "errors") {
+					return { ...module, exitCodes: module.codes };
+				}
+				return module;
+			}
+			throw new Error(`Unknown module "${moduleName}"`)
+		}
+		globalThis.coreModules = {};
+
+		const process = await import("./src/process.js");
+		globalThis.process = { ...process };
+
+		const types = await import("./modules/internal/types.js");
+		globalThis.internalModules.util = { types: {...types}, ...globalThis.internalModules.util };
+		globalThis.internalModules.types = { ...types };
+
+		const internalConstants = await import("./modules/internal/constants.js");
+		globalThis.internalModules.constants = { 
+			...globalThis.internalModules.constants,
+			...internalConstants,
+			os: {
+				errno: {
+					EINVAL: 22,
+					EACCES: 13,
+					ENOENT: 2,
+					ENOTDIR: 20,
+					ENOTEMPTY: 66,
+					EEXIST: 17,
+					EROFS: 30,
+					EISDIR: 21,
+					ETIMEDOUT: 60,
+					ECONNREFUSED: 61,
+					ECONNRESET: 54,
+					ECONNABORTED: 53,
+					ECONNREFUSED: 61,
+					ECONNRESET: 54,
+				}
+			}
+		};
+		globalThis.internalModules.util = { 
+			constants: {...internalConstants},
+			...globalThis.internalModules.util
+		};
+
+		const buffer = await import("./modules/buffer.js");
+		globalThis.internalModules.buffer = { buffer: {...buffer}, ...globalThis.internalModules.buffer };
+
+		const stringDecoder = await import("./modules/string_decoder.js");
+		globalThis.internalModules.string_decoder = { stringDecoder: {...stringDecoder}, ...globalThis.internalModules.string_decoder };
+
+		const inspect = await import("./modules/util/inspect.js");
+		globalThis.internalModules.util = { inspect: {...inspect}, ...globalThis.internalModules.util };
+
+		const util = await import("./modules/util.js");
+		globalThis.internalModules.util = { 
+			...globalThis.internalModules.util,
+			...util 
+		};
+
+		const errors = await import("./modules/errors.js");
+		globalThis.internalModules.errors = {
+			...errors.default,
+			codes: errors.default.codes
+		 };
+		console.log(globalThis.internalModules.errors);
+
+		const realm = await import("./modules/realm.js");
+		globalThis.realm = { ...realm };
+
+		const path = await import("./modules/path.js");
+		console.log(path.default.join("a", "b", "c"));
+		globalThis.coreModules.path = path.default;
+
+		const stream = await import("./modules/stream.js");
+		globalThis.coreModules.stream = stream.default;
+
+		const blob = await import("./modules/blob.js");
+		globalThis.coreModules.blob = blob.default;
+
+		const fs = await import("./modules/fs.js");
+		globalThis.coreModules.fs = fs.default;
+
+
+		const http = await import("./modules/http.js");
+		globalThis.coreModules.http = http.default;
+
+		const crypto = await import("./modules/crypto.js");
+		globalThis.coreModules.crypto = crypto.default;
+
+		const https = await import("./modules/https.js");
+		globalThis.coreModules.https = https.default;
+
+		const tls = await import("./modules/tls.js");
+		globalThis.coreModules.tls = tls.default;
+
+		const net = await import("./modules/net.js");
+		globalThis.coreModules.net = net.default;
+
+		const url = await import("./modules/url.js");
+		globalThis.coreModules.url = url.default;
+
+		const zlib = await import("./modules/zlib.js");
+		globalThis.coreModules.zlib = zlib.default;
+
+		const dns = await import("./modules/dns.js");
+		globalThis.coreModules.dns = dns.default;
+
+		const readline = await import("./modules/readline.js");
+		globalThis.coreModules.readline = readline.default;
+
+		const querystring = await import("./modules/querystring.js");
+		globalThis.coreModules.querystring = querystring.default;
+
+		const console2 = await import("./modules/console.js");
+		globalThis.coreModules.console = console2.default;
+
+		const tty = await import("./modules/tty.js");
+		globalThis.coreModules.tty = tty.default;
+
+		// const vm = await import("./modules/vm.js");
+		// console.log(vm.default);
+
+		// const workerThreads = await import("./modules/worker_threads.js");
+		// console.log(workerThreads.default);
+		
+		const { Module } = await import("./src/module.js");
+
+		function myNodeModule() {
+			const fs = require('fs');
+			const Module = require('module');
+			const args = process.argv;
+
+			async function doRun() {
+				const npmResponse = await fetch('/npm-single.js');
+				const npmCode = await npmResponse.text();
+
+				const defaultInputResponse = await fetch('/default-input.js');
+				const defaultInputCode = await defaultInputResponse.text();
+
+				if (!fs.existsSync('/.npm')) {
+					fs.mkdirSync('/.npm');
+				}
+				if (!fs.existsSync('/bin')) {
+					fs.mkdirSync('/bin');
+				}
+				if (!fs.existsSync('/bin/project')) {
+					fs.mkdirSync('/bin/project');
+				}
+				fs.writeFileSync('/bin/node', '', {
+					mode: 0o755,
+				});
+				fs.writeFileSync('/bin/npm', npmCode, {
+					mode: 0o755,
+				});
+				fs.writeFileSync('/bin/default-input.js', defaultInputCode);
+				fs.writeFileSync(
+					'/bin/project/package.json',
+					JSON.stringify({
+						name: 'my-test-app',
+						version: '1.0.0',
+						dependencies: {
+							webpack: '*',
+						},
+					})
+				);
+				fs.writeFileSync(
+					'/package.json',
+					JSON.stringify({
+						name: 'my-test-app',
+						version: '1.0.0',
+						dependencies: {
+							webpack: '*',
+						},
+					})
+				);
+
+				const command = args[0];
+				if (args[1] === 'npm') {
+					Module.runMain({ code: npmCode, path: args[0] });
+				} else if (command === 'ls') {
+					const files = fs.readdirSync(args[1] || process.cwd()).sort();
+					process.stdout.write('\n' + files.join('\n') + '\n');
+					// process.exit(0);
+				} else if (command === 'pwd') {
+					process.stdout.write('\n' + process.cwd() + '\n');
+					// process.exit(0);
+				} else {
+					process.stderr.write('\ncommand not found: ' + command + '\n');
+					// process.exit(1);
+				}
+			}
+			doRun();
+		}
+
+		try {
+			Module.runMain({
+				code: `(${myNodeModule})()`,
+				path: 'main-module.js',
+			});
+		} catch (e) {
+			if (e instanceof Error && e.message.startsWith('process.exit(')) {
+				// This is a normal exit, captured by our process.exit polyfill.
+			} else {
+				// This is an unexpected error.
+				console.error('Worker error:', e);
+				const errorMessage = e instanceof Error ? e.stack : String(e);
+				postToTerminal(`\r\n\x1b[31m${errorMessage}\x1b[0m`);
+			}
+		} finally {
+			self.postMessage({ type: 'status', data: 'finished' });
+		}
+	</script>
+</body>
+</html>

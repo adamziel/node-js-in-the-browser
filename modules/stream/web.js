@@ -12,10 +12,13 @@ import {
   require_webidl,
   require_writablestream,
   require_zlib
-} from "../chunk-UG7WRN5Z.js";
+} from "../chunk-6IAZD3U5.js";
+import "../chunk-3AM4K3TZ.js";
+import "../chunk-MSO2SOE4.js";
+import "../chunk-YXQLIKKQ.js";
 import {
   __commonJS
-} from "../chunk-EKOWL7XK.js";
+} from "../chunk-GI5RMYH6.js";
 
 // ../lib/internal/webstreams/transformstream.js
 var require_transformstream = __commonJS({

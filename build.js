@@ -6,14 +6,18 @@ fs.rmSync('modules', { recursive: true, force: true });
 fs.mkdirSync('modules');
 
 const entryPoints = {
-	// process: '../lib/internal/process.js',
+	primordials: '../lib/internal/per_context/primordials.js',
+	realm: '../lib/internal/bootstrap/realm.js',
 	async_hooks: '../lib/internal/async_hooks.js',
 	assert: '../lib/assert.js',
-	buffer: '../lib/buffer.js',
+	buffer: './src/buffer-polyfill.js',
+	blob: '../lib/internal/blob.js',
 	console: '../lib/console.js',
 	constants: '../lib/constants.js',
+	"internal/constants": '../lib/internal/constants.js',
 	crypto: '../lib/crypto.js',
 	events: '../lib/events.js',
+	errors: '../lib/internal/errors.js',
 	http: '../lib/http.js',
 	https: '../lib/https.js',
 	fs: '../lib/fs.js',
@@ -27,8 +31,11 @@ const entryPoints = {
 	tty: '../lib/tty.js',
 	url: '../lib/url.js',
 	perf_hooks: '../lib/perf_hooks.js',
+	string_decoder: '../lib/string_decoder.js',
 	util: '../lib/util.js',
 	"util/types": '../lib/internal/util/types.js',
+	"internal/types": '../lib/internal/util/types.js',
+	'util/inspect': '../lib/internal/util/inspect.js',
 	zlib: '../lib/zlib.js',
 	'stream/web': '../lib/stream/web.js',
 	vm: '../lib/vm.js',
@@ -49,6 +56,7 @@ const entryPoints = {
 	// 'dns/promises': '.build-tmp/dns-promises.js',
 	// 'util/types': '.build-tmp/util-types.js',
 };
+
 
 const nodePolyfillPlugin = {
 	name: 'node-polyfill',

@@ -1,5 +1,15 @@
 import {
-  require_buffer
-} from "./chunk-UG7WRN5Z.js";
-import "./chunk-EKOWL7XK.js";
-export default require_buffer();
+  Buffer,
+  INSPECT_MAX_BYTES,
+  SlowBuffer,
+  init_buffer_polyfill,
+  kMaxLength
+} from "./chunk-YXQLIKKQ.js";
+import "./chunk-GI5RMYH6.js";
+init_buffer_polyfill();
+export {
+  Buffer,
+  INSPECT_MAX_BYTES,
+  SlowBuffer,
+  kMaxLength
+};
