@@ -591,6 +591,18 @@ crypto: {
 		writeFile(path, data, options, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.writeFileSync(path, data, options), kUsePromises);
 		},
+		rmSync(path, maxRetries, recursive, retryDelay) {
+			return globalFs.rmSync(path, maxRetries, recursive, retryDelay);
+		},
+		cpSyncCheckPaths(src, dest, dereference, recursive) {
+			return globalFs.cpSyncCheckPaths(src, dest, dereference, recursive);
+		},
+		cpSync(src, dest, options) {
+			return globalFs.cpSync(src, dest, options);
+		},
+		symlink(target, path, type, kUsePromises) {
+			return maybePromiseFromSync(() => globalFs.symlinkSync(target, path, type), kUsePromises);
+		},
 		appendFile(path, data, options, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.appendFileSync(path, data, options), kUsePromises);
 		},

@@ -1087,6 +1087,179 @@ export class InMemoryFileSystem {
 	}
 }
 
+	// rmSync - synchronous recursive remove
+	// Signature: rmSync(path, maxRetries, recursive, retryDelay)
+	rmSync(path, maxRetries = 0, recursive = false, retryDelay = 100) {
+		const { node, blockedBy, missingParent } = this.walk(path);
+		
+		// If file doesn't exist, just return (force mode behavior)
+		if (missingParent || !node) {
+			return;
+		}
+		
+		if (blockedBy) {
+			throw createFsError('ENOTDIR', `ENOTDIR: not a directory, rm '${path}'`);
+		}
+		
+		// If it's a directory and recursive is false, throw error
+		if (node.type === 'dir' && !recursive) {
+			throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, rm '${path}'`);
+		}
+		
+		// Use existing rmSync logic for directories, unlinkSync for files
+		if (node.type === 'dir') {
+			this.rmdirSync(path, { recursive: true });
+		} else {
+			this.unlinkSync(path);
+		}
+	}
+
+	// cpSyncCheckPaths - validates paths before copying
+	// Signature: cpSyncCheckPaths(src, dest, dereference, recursive)
+	cpSyncCheckPaths(src, dest, dereference = false, recursive = false) {
+		const srcResult = this.walk(src);
+		
+		if (!srcResult.node) {
+			throw createFsError('ENOENT', `ENOENT: no such file or directory, stat '${src}'`);
+		}
+		
+		if (srcResult.blockedBy) {
+			throw createFsError('ENOTDIR', `ENOTDIR: not a directory, stat '${src}'`);
+		}
+		
+		const destResult = this.walk(dest);
+		const srcIsDir = srcResult.node.type === 'dir';
+		const destExists = !!destResult.node;
+		
+		// Check if source is inside destination
+		if (srcIsDir && recursive) {
+			const srcPath = src.endsWith('/') ? src : src + '/';
+			const destPath = dest.endsWith('/') ? dest : dest + '/';
+			
+			if (destPath.startsWith(srcPath)) {
+				throw createFsError('EINVAL', `EINVAL: cannot copy '${src}' to a subdirectory of itself, '${dest}'`);
+			}
+		}
+		
+		// If destination exists and is a different type, throw error
+		if (destExists) {
+			const destIsDir = destResult.node.type === 'dir';
+			
+			if (srcIsDir && !destIsDir) {
+				throw createFsError('ENOTDIR', `ENOTDIR: not a directory, cp '${dest}'`);
+			}
+			
+			if (!srcIsDir && destIsDir) {
+				throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, cp '${dest}'`);
+			}
+		}
+		
+		return true;
+	}
+
+	// cpSync - synchronous recursive copy
+	cpSync(src, dest, options = {}) {
+		const {
+			dereference = false,
+			errorOnExist = false,
+			filter = null,
+			force = true,
+			preserveTimestamps = false,
+			recursive = false,
+			verbatimSymlinks = false
+		} = options;
+		
+		// Apply filter if provided
+		if (filter && typeof filter === 'function') {
+			if (!filter(src, dest)) {
+				return;
+			}
+		}
+		
+		// Check paths validity
+		this.cpSyncCheckPaths(src, dest, dereference, recursive);
+		
+		const srcResult = this.walk(src);
+		const srcNode = srcResult.node;
+		
+		if (!srcNode) {
+			throw createFsError('ENOENT', `ENOENT: no such file or directory, cp '${src}'`);
+		}
+		
+		// Handle file copy
+		if (srcNode.type === 'file') {
+			const destResult = this.walk(dest);
+			
+			if (destResult.node && errorOnExist) {
+				throw createFsError('EEXIST', `EEXIST: file already exists, cp '${dest}'`);
+			}
+			
+			if (destResult.node && !force) {
+				return; // Skip existing
+			}
+			
+			// Copy the file
+			this.writeFileSync(dest, cloneBuffer(srcNode.content), { mode: srcNode.mode });
+			
+			// Preserve timestamps if requested
+			if (preserveTimestamps) {
+				const destNode = this.walk(dest).node;
+				if (destNode) {
+					destNode.atime = srcNode.atime;
+					destNode.mtime = srcNode.mtime;
+				}
+			}
+			
+			return;
+		}
+		
+		// Handle directory copy
+		if (srcNode.type === 'dir') {
+			if (!recursive) {
+				throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, cp '${src}'`);
+			}
+			
+			// Create destination directory
+			const destResult = this.walk(dest);
+			if (!destResult.node) {
+				this.mkdirSync(dest, { recursive: true, mode: srcNode.mode });
+			}
+			
+			// Copy all children
+			for (const [name, childNode] of srcNode.children.entries()) {
+				const childSrc = `${src}/${name}`;
+				const childDest = `${dest}/${name}`;
+				
+				// Apply filter to children
+				if (filter && typeof filter === 'function') {
+					if (!filter(childSrc, childDest)) {
+						continue;
+					}
+				}
+				
+				this.cpSync(childSrc, childDest, options);
+			}
+			
+			// Preserve timestamps if requested
+			if (preserveTimestamps) {
+				const destNode = this.walk(dest).node;
+				if (destNode) {
+					destNode.atime = srcNode.atime;
+					destNode.mtime = srcNode.mtime;
+				}
+			}
+		}
+	}
+
+	// symlinkSync - create symbolic link
+	// Note: In-memory filesystem doesn't truly support symlinks, 
+	// but we can simulate basic behavior by creating a special node type
+	symlinkSync(target, path, type = 'file') {
+		// For now, throw ENOSYS (not implemented) as symlinks require special handling
+		// that's beyond the scope of a simple in-memory filesystem
+		throw createFsError('ENOSYS', `ENOSYS: function not implemented, symlink '${target}' -> '${path}'`);
+	}
+
 // Async wrappers for FSReqCallback pattern
 readFileAsync(path, options, req) {
 	setImmediate(() => {
