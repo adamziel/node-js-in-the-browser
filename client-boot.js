@@ -603,8 +603,14 @@ crypto: {
 		symlink(target, path, type, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.symlinkSync(target, path, type), kUsePromises);
 		},
-		appendFile(path, data, options, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.appendFileSync(path, data, options), kUsePromises);
+		readBuffers(fd, buffers, position, kUsePromises) {
+			return maybePromiseFromSync(() => globalFs.readBuffers(fd, buffers, position), kUsePromises);
+		},
+		mkdtemp(prefix, encoding, kUsePromises) {
+			return maybePromiseFromSync(() => globalFs.mkdtemp(prefix, encoding), kUsePromises);
+		},
+		ftruncate(fd, len, kUsePromises) {
+			return maybePromiseFromSync(() => globalFs.ftruncateSync(fd, len), kUsePromises);
 		},
 		truncate(path, len, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.truncateSync(path, len), kUsePromises);
@@ -663,8 +669,8 @@ crypto: {
 			return globalFs.writeBuffersSync(fd, buffers, position);
 		}, kUsePromises);
 	},
-	writeFileUtf8(path, data, mode, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.writeFileUtf8(path, data, mode), kUsePromises);
+	writeFileUtf8(path, data, flags, mode, kUsePromises) {
+		return maybePromiseFromSync(() => globalFs.writeFileUtf8(path, data, flags, mode), kUsePromises);
 	},
 	access(path, mode, kUsePromises) {
 		// Check file access permissions
@@ -957,7 +963,14 @@ types: {
 	url_pattern: {},
 	url: {},
 	permission: {},
-	fs_dir: {},
+	fs_dir: {
+		opendirSync(path) {
+			return globalFs.opendirSync(path);
+		},
+		opendir(path, encoding, kUsePromises) {
+			return maybePromiseFromSync(() => globalFs.opendirSync(path), kUsePromises);
+		}
+	},
 	cares_wrap: {
 		ChannelWrap: class ChannelWrap {
 			constructor() {
@@ -2030,6 +2043,7 @@ const blob = await import("./modules/blob.js");
 globalThis.coreModules.blob = blob.default;
 
 const fs = await import("./modules/fs.js");
+console.log('fs', fs);
 globalThis.coreModules.fs = fs.default;
 
 const fsPromises = await import("./modules/fs/promises.js");

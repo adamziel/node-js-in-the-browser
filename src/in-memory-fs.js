@@ -275,6 +275,11 @@ export class InternalFileHandle {
 		return this.fs.ftruncateSync(this.fd, len);
 	}
 
+	ftruncate(len = 0) {
+		// Alias for truncate - both do the same thing
+		return this.truncate(len);
+	}
+
 	utimes(atime, mtime) {
 		if (this.fd === undefined) {
 			throw createFsError('EBADF', 'EBADF: bad file descriptor, futimes');
@@ -1045,7 +1050,7 @@ export class InMemoryFileSystem {
 		return totalWritten;
 	}
 
-	writeFileUtf8(path, data, mode) {
+	writeFileUtf8(path, data, flags, mode) {
 		try {
 			// Convert string to UTF-8 bytes
 			const bytes = toUint8Array(data, 'utf8');
@@ -1066,15 +1071,41 @@ export class InMemoryFileSystem {
 				throw createFsError('EISDIR', `EISDIR: illegal operation on a directory, open '${path}'`);
 			}
 
+			// Check flags for append mode
+			// O_APPEND = 8, check if append flag is set
+			const isAppend = (flags & 8) !== 0;
+			// O_EXCL = 2048, check if exclusive flag is set
+			const isExclusive = (flags & 2048) !== 0;
+
 			if (node && node.type === 'file') {
-				// Update existing file
-				node.content = bytes;
+				// File exists
+				if (isExclusive) {
+					// wx or wx+ flag - fail if file exists
+					throw createFsError('EEXIST', `EEXIST: file already exists, open '${path}'`);
+				}
+				
+				if (isAppend) {
+					// Append mode - concatenate new data
+					const newContent = new Uint8Array(node.content.length + bytes.length);
+					newContent.set(node.content);
+					newContent.set(bytes, node.content.length);
+					node.content = newContent;
+				} else {
+					// Write mode - replace content
+					node.content = bytes;
+				}
+				
 				if (mode !== undefined) {
 					node.mode = mode;
 				}
 				updateTimestamps(node, 'modify');
 				updateDirectoryTimestamp(parent);
 				return;
+			}
+
+			// File doesn't exist
+			if (isExclusive) {
+				// This is fine - wx creates the file if it doesn't exist
 			}
 
 			// Create new file
@@ -1258,6 +1289,101 @@ export class InMemoryFileSystem {
 		// For now, throw ENOSYS (not implemented) as symlinks require special handling
 		// that's beyond the scope of a simple in-memory filesystem
 		throw createFsError('ENOSYS', `ENOSYS: function not implemented, symlink '${target}' -> '${path}'`);
+	}
+
+	// opendirSync - opens a directory and returns a DirHandle
+	// This is used by the Dir class in Node.js
+	opendirSync(path) {
+		const { node, blockedBy, missingParent } = this.walk(path);
+		
+		if (missingParent || !node) {
+			throw createFsError('ENOENT', `ENOENT: no such file or directory, opendir '${path}'`);
+		}
+		
+		if (blockedBy || node.type !== 'dir') {
+			throw createFsError('ENOTDIR', `ENOTDIR: not a directory, opendir '${path}'`);
+		}
+		
+		// Return a handle object that can be used to read directory entries
+		// This mimics the DirHandle from Node.js C++ bindings
+		return {
+			path,
+			node,
+			entries: null,
+			position: 0,
+			
+			// Read directory entries
+			read(encoding, bufferSize) {
+				if (!this.entries) {
+					this.entries = Array.from(this.node.children.entries());
+				}
+				
+				if (this.position >= this.entries.length) {
+					return null; // EOF
+				}
+				
+				const [name, childNode] = this.entries[this.position];
+				this.position++;
+				
+				return name;
+			},
+			
+			// Close the directory handle
+			close() {
+				this.entries = null;
+				this.position = 0;
+			}
+		};
+	}
+
+	// readBuffers - read into multiple buffers (vectored I/O)
+	// Signature: readBuffers(fd, buffers, position)
+	readBuffers(fd, buffers, position) {
+		const openFile = this.openFiles.get(fd);
+		if (!openFile) {
+			throw createFsError('EBADF', `EBADF: bad file descriptor, read`);
+		}
+		
+		// Determine read position
+		const readPosition = (position !== null && position !== undefined && position >= 0)
+			? position
+			: openFile.position;
+		
+		const { node: fileNode } = openFile;
+		let totalBytesRead = 0;
+		let currentPosition = readPosition;
+		
+		// Read into each buffer sequentially
+		for (const buffer of buffers) {
+			const availableBytes = Math.max(0, fileNode.content.length - currentPosition);
+			const bytesToRead = Math.min(buffer.length, availableBytes);
+			
+			if (bytesToRead > 0) {
+				buffer.set(fileNode.content.subarray(currentPosition, currentPosition + bytesToRead), 0);
+				currentPosition += bytesToRead;
+				totalBytesRead += bytesToRead;
+			}
+			
+			// Stop if we've reached EOF
+			if (bytesToRead < buffer.length) {
+				break;
+			}
+		}
+		
+		// Update position if using current position (not absolute position)
+		if (position === null || position === undefined || position < 0) {
+			openFile.position = currentPosition;
+		}
+		
+		updateTimestamps(fileNode, 'access');
+		return totalBytesRead;
+	}
+
+	// mkdtemp - create a temporary directory with unique name
+	// Signature: mkdtemp(prefix, encoding)
+	mkdtemp(prefix, encoding) {
+		// Note: encoding parameter is for the return value, not used in our simple implementation
+		return this.mkdtempSync(prefix);
 	}
 
 // Async wrappers for FSReqCallback pattern
