@@ -493,7 +493,7 @@ export class InMemoryFileSystem {
         if (encoding) {
             return entries.map((entry) => Buffer.from(entry).toString(encoding));
         }
-        return entries;
+        return entries || [];
     }
     statSync(path) {
         const { node, blockedBy, missingParent } = this.walk(path);
@@ -517,6 +517,40 @@ export class InMemoryFileSystem {
             throw createFsError('EBADF', `EBADF: bad file descriptor, fstat`);
         }
         return new Stats(openFile.node);
+    }
+    
+    // Convert Stats object to array format for binding compatibility
+    statsToArray(stats, useBigint = false) {
+        const ArrayType = useBigint ? BigInt64Array : Float64Array;
+        const arr = new ArrayType(18);
+        
+        // Convert to appropriate type
+        const toType = useBigint ? BigInt : Number;
+        
+        // Fill array in the order expected by Node.js
+        // See FsStatsOffset in src/node_file.h
+        arr[0] = toType(0);  // dev
+        arr[1] = toType(stats.mode);  // mode
+        arr[2] = toType(1);  // nlink
+        arr[3] = toType(0);  // uid
+        arr[4] = toType(0);  // gid
+        arr[5] = toType(0);  // rdev
+        arr[6] = toType(4096);  // blksize
+        arr[7] = toType(0);  // ino
+        arr[8] = toType(stats.size);  // size
+        arr[9] = toType(Math.ceil(stats.size / 512));  // blocks
+        
+        // Time values - split into seconds and nanoseconds
+        arr[10] = toType(Math.floor(stats.atimeMs / 1000));  // atimeSec
+        arr[11] = toType((stats.atimeMs % 1000) * 1000000);  // atimeNsec
+        arr[12] = toType(Math.floor(stats.mtimeMs / 1000));  // mtimeSec
+        arr[13] = toType((stats.mtimeMs % 1000) * 1000000);  // mtimeNsec
+        arr[14] = toType(Math.floor(stats.ctimeMs / 1000));  // ctimeSec
+        arr[15] = toType((stats.ctimeMs % 1000) * 1000000);  // ctimeNsec
+        arr[16] = toType(Math.floor(stats.birthtimeMs / 1000));  // birthtimeSec
+        arr[17] = toType((stats.birthtimeMs % 1000) * 1000000);  // birthtimeNsec
+        
+        return arr;
     }
     unlinkSync(path) {
         const result = this.walk(path);
@@ -968,6 +1002,49 @@ export class InMemoryFileSystem {
 		}
 	}
 
+	writeBuffersSync(fd, buffers, position) {
+		const openFile = this.openFiles.get(fd);
+		if (!openFile) {
+			throw createFsError('EBADF', `EBADF: bad file descriptor, writev`);
+		}
+
+		let writePosition;
+		if (position === null || position === undefined || position < 0) {
+			writePosition = openFile.position;
+		} else {
+			writePosition = position;
+		}
+
+		const { node: fileNode } = openFile;
+		let totalWritten = 0;
+
+		for (const buffer of buffers) {
+			const bufferToWrite = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+			const endPosition = writePosition + bufferToWrite.length;
+
+			// Expand or write to content
+			if (endPosition > fileNode.content.length) {
+				const newContent = new Uint8Array(endPosition);
+				newContent.set(fileNode.content);
+				newContent.set(bufferToWrite, writePosition);
+				fileNode.content = newContent;
+			} else {
+				fileNode.content.set(bufferToWrite, writePosition);
+			}
+
+			writePosition += bufferToWrite.length;
+			totalWritten += bufferToWrite.length;
+		}
+
+		// Update position if not using absolute position
+		if (position === null || position === undefined || position < 0) {
+			openFile.position = writePosition;
+		}
+
+		updateTimestamps(fileNode, 'modify');
+		return totalWritten;
+	}
+
 	writeFileUtf8(path, data, mode) {
 		try {
 			// Convert string to UTF-8 bytes
@@ -1208,7 +1285,7 @@ renameAsync(oldPath, newPath, req) {
 	
 }
 
-function promiseFromSync(syncFn) {
+export function promiseFromSync(syncFn) {
 	return new Promise((resolve, reject) => {
 		try {
 			resolve(syncFn());

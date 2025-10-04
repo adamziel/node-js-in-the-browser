@@ -1,3 +1,39 @@
+const urlModule = require('../node_modules/url/url.js');
+
+// class Url extends urlModule.Url {
+// 	constructor(urlStr, base) {
+// 		super();
+// 		const parsed = new URL(urlStr, base);
+// 		this.protocol = parsed.protocol;
+// 		this.slashes = parsed.href.includes('//');
+// 		this.auth = parsed.username ? `${parsed.username}:${parsed.password}` : null;
+// 		this.host = parsed.host;
+// 		this.port = parsed.port;
+// 		this.hostname = parsed.hostname;
+// 		this.hash = parsed.hash;
+// 		this.search = parsed.search;
+// 		this.query = parsed.searchParams.toString();
+// 		this.pathname = parsed.pathname;
+// 		this.path = `${parsed.pathname}${parsed.search}`;
+// 		this.href = parsed.href;
+// 	}
+// }
+
+// module.exports = {
+// 	...urlModule,
+// 	urlParse: (urlStr, base) => {
+// 		return new Url(urlStr, base);
+// 	},
+// 	Url: Url,
+// 	URL: Url,
+// };
+
+// module.exports = {
+// 	...urlModule,
+// 	Url: window.URL, //urlModule.Url,
+// 	URL: window.URL, //urlModule.Url,
+// };
+
 // Parse a URL string into its components
 function urlParse(urlStr, parseQueryString, slashesDenoteHost) {
 	if (!urlStr) {
@@ -27,7 +63,7 @@ function urlParse(urlStr, parseQueryString, slashesDenoteHost) {
 		// Try to use native URL parser
 		const parsed = new URL(urlStr);
 		
-		result.protocol = parsed.protocol.slice(0, -1); // Remove trailing ':'
+		result.protocol = parsed.protocol;//.slice(0, -1); // Remove trailing ':'
 		result.slashes = true;
 		result.host = parsed.host;
 		result.hostname = parsed.hostname;

@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { URL } from 'node:url';
+import { createGunzip, createInflate, createBrotliDecompress } from 'node:zlib';
 
 const PORT = 8974;
 
@@ -67,8 +68,29 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
         const exposedHeaders = Object.keys(headers).join(', ');
         headers['access-control-expose-headers'] = exposedHeaders;
         
+        // Decode content-encoding if present
+        const contentEncoding = headers['content-encoding'];
+        let stream = proxyRes;
+        
+        if (contentEncoding) {
+            // Remove content-encoding header since we're decoding it
+            delete headers['content-encoding'];
+            
+            // Create appropriate decompression stream
+            if (contentEncoding.includes('gzip')) {
+                stream = proxyRes.pipe(createGunzip());
+            } else if (contentEncoding.includes('deflate')) {
+                stream = proxyRes.pipe(createInflate());
+            } else if (contentEncoding.includes('br')) {
+                stream = proxyRes.pipe(createBrotliDecompress());
+            }
+            
+            // Remove content-length since decoded size will differ
+            delete headers['content-length'];
+        }
+        
         res.writeHead(proxyRes.statusCode, headers);
-        proxyRes.pipe(res, { end: true });
+        stream.pipe(res, { end: true });
     });
 
     req.pipe(proxyReq, { end: true });

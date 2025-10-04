@@ -8,7 +8,7 @@ import {
 } from "./chunk-XQ4ZUWQW.js";
 import {
   require_url
-} from "./chunk-DOFOK6V2.js";
+} from "./chunk-S7IN3ERN.js";
 import {
   require_constants
 } from "./chunk-UYUMXBC2.js";
@@ -19468,8 +19468,15 @@ var require_promises3 = __commonJS({
       const encoding = options?.encoding;
       const decoder = encoding && new StringDecoder(encoding);
       checkAborted(signal);
+      let mypromise;
+      try {
+        mypromise = binding.fstat(filehandle.fd, false, kUsePromises);
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
       const statFields = await PromisePrototypeThen(
-        binding.fstat(filehandle.fd, false, kUsePromises),
+        mypromise,
         void 0,
         handleErrorFromBinding
       );

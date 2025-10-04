@@ -4957,15 +4957,9 @@ var require_from_url = __commonJS({
       if (!parsed) {
         return;
       }
-      console.log(parsed);
-      try {
       const gitHostShortcut = gitHosts.byShortcut[parsed.protocol];
       const gitHostDomain = gitHosts.byDomain[parsed.hostname.startsWith("www.") ? parsed.hostname.slice(4) : parsed.hostname];
       const gitHostName = gitHostShortcut || gitHostDomain;
-      } catch (err) {
-        console.trace(err);
-        throw err;
-      }
       if (!gitHostName) {
         return;
       }
@@ -7226,6 +7220,9 @@ var require_commonjs2 = __commonJS({
           this.on(DESTROYED, () => reject(new Error("stream destroyed")));
           this.on("error", (er) => reject(er));
           this.on("end", () => resolve());
+          setTimeout(() => {
+            resolve();
+          }, 3000);
         });
       }
       /**
@@ -7280,6 +7277,9 @@ var require_commonjs2 = __commonJS({
             this.once("error", onerr);
             this.once("end", onend);
             this.once("data", ondata);
+            setTimeout(() => {
+              resolve();
+            }, 6000);
           });
         };
         return {
@@ -12329,7 +12329,11 @@ var require_body = __commonJS({
             upstream.pipe(stream);
           }
           resolve();
-        }).then(() => stream.concat()).then((buf) => {
+        }).then(() => {
+          debugger;
+          return stream.concat()
+        }).then((buf) => {
+          // HERE IS THE FETCH PROBLEM!
           clearTimeout(resTimeout);
           return buf;
         }).catch((er) => {
@@ -13237,7 +13241,9 @@ var require_lib8 = __commonJS({
             /* istanbul ignore next */
             (er) => body.emit("error", er)
           );
-          res.on("data", (chunk) => body.write(chunk));
+          res.on("data", (chunk) => {
+            body.write(chunk)
+          });
           res.on("end", () => body.end());
           const responseOptions = {
             url: request.url,
@@ -15945,6 +15951,10 @@ var require_minipass2 = __commonJS({
           this.on(DESTROYED, () => reject(new Error("stream destroyed")));
           this.on("error", (er) => reject(er));
           this.on("end", () => resolve());
+          // @TODO: THIS DOES NOT WORK ON THE SECOND STREAM!
+          setTimeout(() => {
+            resolve();
+          }, 3000);
         });
       }
       // for await (let chunk of stream)
@@ -16573,6 +16583,9 @@ var require_minipass3 = __commonJS({
           this.on(DESTROYED, () => reject(new Error("stream destroyed")));
           this.on("error", (er) => reject(er));
           this.on("end", () => resolve());
+          setTimeout(() => {
+            resolve();
+          }, 3000);
         });
       }
       // for await (let chunk of stream)
@@ -18609,6 +18622,7 @@ var require_read = __commonJS({
     async function read(cache, integrity, opts = {}) {
       const { size } = opts;
       const { stat, cpath, sri } = await withContentSri(cache, integrity, async (cpath2, sri2) => {
+        // console.log({cache, integrity, cpath2, sri2})
         const stat2 = size ? { size } : await fs.stat(cpath2);
         return { stat: stat2, cpath: cpath2, sri: sri2 };
       });
@@ -18644,6 +18658,7 @@ var require_read = __commonJS({
       const stream = new Pipeline();
       Promise.resolve().then(async () => {
         const { stat, cpath, sri } = await withContentSri(cache, integrity, async (cpath2, sri2) => {
+          // console.log({cache, integrity, cpath2, sri2})
           const stat2 = size ? { size } : await fs.stat(cpath2);
           return { stat: stat2, cpath: cpath2, sri: sri2 };
         });
@@ -18657,6 +18672,7 @@ var require_read = __commonJS({
     module2.exports.copy = copy;
     function copy(cache, integrity, dest) {
       return withContentSri(cache, integrity, (cpath) => {
+        console.log('copy', { cpath, dest });
         return fs.copyFile(cpath, dest);
       });
     }
@@ -18667,6 +18683,7 @@ var require_read = __commonJS({
       }
       try {
         return await withContentSri(cache, integrity, async (cpath, sri) => {
+          // console.log({cache, integrity, cpath, sri})
           const stat = await fs.stat(cpath);
           return { size: stat.size, sri, stat };
         });
@@ -18906,6 +18923,7 @@ var require_write = __commonJS({
     module2.exports = write;
     var moveOperations = /* @__PURE__ */ new Map();
     async function write(cache, data, opts = {}) {
+      concols.log('write')
       const { algorithms, size, integrity } = opts;
       if (typeof size === "number" && data.length !== size) {
         throw sizeError(size, data.length);
@@ -30902,6 +30920,7 @@ var require_lib16 = __commonJS({
     var { FetchError, Headers, Request, Response } = require_lib8();
     var configureOptions = require_options();
     var fetch = require_fetch();
+
     var makeFetchHappen = (url, opts) => {
       const options = configureOptions(opts);
       const request = new Request(url, options);
@@ -42726,7 +42745,10 @@ var require_lib35 = __commonJS({
       const [dirEntries, bundleDeps] = await Promise.all([
         readdir(path, { withFileTypes: true }),
         currentDepth === 0 && pkg && pkg.bundleDependencies ? bundled({ path, packageJsonCache }) : null
-      ]).catch(() => []);
+      ]).catch((e) => {
+        console.error(e);
+        return []
+      });
       if (!dirEntries) {
         return result;
       }
@@ -48876,6 +48898,7 @@ var require_file = __commonJS({
         return ["file"];
       }
       manifest() {
+        console.log("manifest", this.package);
         if (this.package) {
           return Promise.resolve(this.package);
         }
@@ -59553,6 +59576,10 @@ var require_registry = __commonJS({
           return this.packumentCache.get(this.#cacheKey);
         }
         try {
+          const r = await window.fetch(this.packumentUrl);
+          return await r.json();
+
+          console.log('BEFORE FETCH!', this.packumentUrl);
           const res = await fetch(this.packumentUrl, {
             ...this.opts,
             headers: this.#headers(),
@@ -59560,7 +59587,10 @@ var require_registry = __commonJS({
             // never check integrity for packuments themselves
             integrity: null
           });
+          console.log('AFTER FETCH!', this.packumentUrl);
+          if(this.packumentUrl === 'https://registry.npmjs.org/webpack') debugger;
           const packument = await res.json();
+          console.log('AFTER FETCH!', this.packumentUrl, packument);
           const contentLength = res.headers.get("content-length");
           if (contentLength) {
             packument._contentLength = Number(contentLength);
@@ -59568,6 +59598,8 @@ var require_registry = __commonJS({
           this.packumentCache?.set(this.#cacheKey, packument);
           return packument;
         } catch (err) {
+          console.log('ERR!');
+          console.error(err);
           this.packumentCache?.delete(this.#cacheKey);
           if (err.code !== "E404" || this.fullMetadata) {
             throw err;
@@ -59732,6 +59764,7 @@ var require_registry = __commonJS({
                   };
                   await sigstore.verify(bundle, options);
                 } catch (e) {
+                  console.err(e);
                   throw Object.assign(new Error(
                     `${mani._id} failed to verify attestation: ${e.message}`
                   ), {
@@ -60153,7 +60186,10 @@ var require_lib40 = __commonJS({
       RemoteFetcher,
       resolve: (spec, opts) => get(spec, opts).resolve(),
       extract: (spec, dest, opts) => get(spec, opts).extract(dest),
-      manifest: (spec, opts) => get(spec, opts).manifest(),
+      manifest: (spec, opts) => {
+        const fetcher = get(spec, opts);
+        return fetcher.manifest()
+      },
       packument: (spec, opts) => get(spec, opts).packument(),
       tarball
     };
@@ -70797,7 +70833,6 @@ var require_shrinkwrap = __commonJS({
         } else {
           s.filename = resolve(s.path, "package-lock.json");
         }
-        console.log('resolve', s.path, "package-lock.json", "===", s.filename);
         s.loadedFromDisk = !!(sw || lock);
         s.type = basename(s.filename);
         return s;
@@ -71007,6 +71042,7 @@ var require_shrinkwrap = __commonJS({
             await assertNoNewer(this.path, data, lockTime, this.path, /* @__PURE__ */ new Set());
           }
         } catch (er) {
+          console.error(er);
           if (typeof this.filename === "string") {
             const rel = relpath(this.path, this.filename);
             log.verbose("shrinkwrap", `failed to load ${rel}`, er.message);
@@ -71691,6 +71727,8 @@ var require_build_ideal_tree = __commonJS({
           await this.#fixDepFlags();
           await this.#pruneFailedOptional();
           await this.#checkEngineAndPlatform();
+        } catch(e) {
+          console.error(e);
         } finally {
           timeEnd();
           this.finishTracker("idealTree");
@@ -72134,6 +72172,7 @@ This is a one-time fix-up, please be patient...
         if (this.#depsSeen.has(node) || node.root !== this.idealTree || hasShrinkwrap && !this.#complete) {
           return this.#buildDepStep();
         }
+
         this.#depsSeen.add(node);
         this.#currentDep = node;
         time.start(`idealTree:${node.location || "#root"}`);
@@ -72158,6 +72197,7 @@ This is a one-time fix-up, please be patient...
         }
         const tasks = [];
         const peerSource = this.#peerSetSource.get(node) || node;
+
         for (const edge of this.#problemEdges(node)) {
           if (edge.peerConflicted) {
             continue;
@@ -72262,7 +72302,8 @@ This is a one-time fix-up, please be patient...
       async #nodeFromEdge(edge, parent_, secondEdge, required) {
         const parent = parent_ || this.#virtualRoot(edge.from);
         const spec = npa.resolve(edge.name, edge.spec, edge.from.path);
-        const first = await this.#nodeFromSpec(edge.name, spec, parent, edge);
+        let first;
+          first = await this.#nodeFromSpec(edge.name, spec, parent, edge);
         const spec2 = secondEdge && npa.resolve(
           edge.name,
           secondEdge.spec,
@@ -72356,7 +72397,7 @@ This is a one-time fix-up, please be patient...
         if (this.#manifests.has(spec.raw)) {
           return this.#manifests.get(spec.raw);
         } else {
-          log.silly("fetch manifest", spec.raw.replace(spec.rawSpec, redact(spec.rawSpec)));
+          log.silly("===> fetch manifest", spec.raw.replace(spec.rawSpec, redact(spec.rawSpec)));
           const mani = await pacote.manifest(spec, options);
           this.#manifests.set(spec.raw, mani);
           return mani;
@@ -74395,11 +74436,16 @@ var require_reify = __commonJS({
               });
             }
           });
-          await pacote.extract(res, node.path, {
-            ...this.options,
-            resolved: node.resolved,
-            integrity: node.integrity
-          });
+          try {
+            await pacote.extract(res, node.path, {
+              ...this.options,
+              resolved: node.resolved,
+              integrity: node.integrity
+            });
+          } catch (e) {
+            console.error(e);
+            throw e;
+          }
           if (node.isInStore) {
             const { content: pkg } = await PackageJson.normalize(node.path);
             node.package.scripts = pkg.scripts;
@@ -82151,7 +82197,6 @@ var require_lib52 = __commonJS({
               o[k] = await this.#prompt(prompt, def, tx);
             } catch (er) {
               if (er.notValid) {
-                console.log(er.message);
                 i--;
               } else {
                 throw er;
@@ -82275,7 +82320,6 @@ var require_init_package_json = __commonJS({
         }
         return pkg.content;
       }
-      console.log(`About to write to ${msg}`);
       const ok = await read({ prompt: "Is this OK? ", default: "yes" });
       if (!ok || !ok.toLowerCase().startsWith("y")) {
         console.log("Aborted.");
