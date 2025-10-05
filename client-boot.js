@@ -363,21 +363,46 @@ crypto: {
 			untransferable_object_private_symbol: 6,
 			exiting_aliased_Uint32Array: 7,
 		},
-		defineLazyProperties: (obj, props) => {
-			for (const [key, get] of Object.entries(props)) {
-				Object.defineProperty(obj, key, {
-					configurable: true,
-					enumerable: true,
-					get() {
-						const value = get;
-						Object.defineProperty(obj, key, {
-							value,
-							writable: false,
-							configurable: false,
-							enumerable: true
-						});
+		defineLazyProperties: (target, id, keys, writable = true) => {
+			let mod;
+			for (let i = 0; i < keys.length; i++) {
+				const key = keys[i];
+				let value;
+				let setterCalled = false;
+
+				function get() {
+					if (setterCalled) {
 						return value;
 					}
+					// Lazy-load the module
+					if (!mod) {
+						// In the browser context, we use globalThis.coreModules to resolve internal modules
+						// Convert internal/ paths to the actual module
+						if (id.startsWith('internal/')) {
+							// For internal modules, try to load from built modules
+							const moduleKey = id.replace('internal/', '').replace(/\//g, '_');
+							// Try internalModules first, then coreModules
+							mod = globalThis.internalModules[moduleKey] || globalThis.coreModules[moduleKey] || {};
+						} else {
+							mod = globalThis.coreModules[id] || {};
+						}
+					}
+					if (value === undefined) {
+						value = mod[key];
+					}
+					return value;
+				}
+
+				function set(val) {
+					setterCalled = true;
+					value = val;
+				}
+
+				Object.defineProperty(target, key, {
+					enumerable: true,
+					configurable: true,
+					get,
+					set: writable ? set : undefined,
 				});
 			}
 		},
@@ -552,7 +577,12 @@ crypto: {
 				const UV_DIRENT_UNKNOWN = 0;
 				
 				for (const [name, childNode] of node.children.entries()) {
-					names.push(name);
+					// When encoding is 'buffer', return Buffer names; otherwise strings
+					if (encoding === 'buffer') {
+						names.push(globalThis.Buffer.from(name));
+					} else {
+						names.push(name);
+					}
 					
 					// Map the type string to UV_DIRENT constant
 					let typeConstant = UV_DIRENT_UNKNOWN;
@@ -566,7 +596,7 @@ crypto: {
 				}
 				
 				// Return tuple [names, types] like the native binding
-				return [names, types];
+				return withFileTypes ? [names, types] : names;
 			}, kUsePromises);
 		},
 		readFileUtf8(path, flags) {
@@ -704,11 +734,12 @@ crypto: {
 		rename(oldPath, newPath, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.renameSync(oldPath, newPath), kUsePromises);
 		},
-		rm(path, options, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.rmSync(path, options), kUsePromises);
+		rm(path, kUsePromises) {
+			console.log('rm', path, kUsePromises, arguments);
+			return maybePromiseFromSync(() => globalFs.rmSync(path), kUsePromises);
 		},
-		rmdir(path, options, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.rmdirSync(path, options), kUsePromises);
+		rmdir(path, kUsePromises) {
+			return maybePromiseFromSync(() => globalFs.rmdirSync(path), kUsePromises);
 		},
 		stat(path, useBigint, kUsePromises, throwIfNoEntry) {
 			// Native binding populates global statValues/bigintStatValues arrays

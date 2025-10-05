@@ -154,8 +154,14 @@ const parseOpenFlags = (flags) => {
 	}
 	return { readable, writable, append, create, exclusive, truncate };
 };
+const normalize = (input) => {
+	if (input instanceof Uint8Array) {
+		return new TextDecoder().decode(input)
+	}
+	return input.normalize('NFKD');
+};
 const splitPath = (input) => {
-	const normalised = input;  // normalize(input); // @TODO
+	const normalised = normalize(input); // @TODO
 	if (normalised === '/') {
 		return [];
 	}
@@ -507,9 +513,18 @@ export class InMemoryFileSystem {
         }
         const encoding = extractEncoding(options !== null && options !== void 0 ? options : null);
         const entries = Array.from(node.children.keys());
-        if (encoding) {
+        
+        // When encoding is 'buffer', return array of Buffers
+        if (encoding === 'buffer') {
+            return entries.map((entry) => Buffer.from(entry));
+        }
+        
+        // Otherwise return strings (with optional encoding conversion)
+        if (encoding && encoding !== 'utf8') {
             return entries.map((entry) => Buffer.from(entry).toString(encoding));
         }
+        
+        // Default: return strings as-is
         return entries || [];
     }
     statSync(path) {
