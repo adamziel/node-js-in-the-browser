@@ -609,7 +609,7 @@ describe('promise-based API nuances', () => {
         assert.strictEqual(entries.some((de) => de.isFile() && de.name === 'file.txt'), true);
         assert.strictEqual(entries.some((de) => de.isDirectory() && de.name === 'sub'), true);
     });
-    it.only('fsp.rm recursive removes directory trees', async () => {
+    it('fsp.rm recursive removes directory trees', async () => {
         const root = P(`prm-${rnd()}`);
         fs.mkdirSync(`${root}/a/b`, { recursive: true });
         fs.writeFileSync(`${root}/a/b/file.txt`, 'x');

@@ -5,6 +5,10 @@ import * as builtins from "./src/builtins.js";
 const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 const globalFs = new InMemoryFileSystem();
 
+// Global module registry for built modules to register their exports
+// This allows defineLazyProperties to access internal modules
+globalThis.__moduleRegistry = new Map();
+
 function maybePromiseFromSync(syncFn, kUsePromisesOrReq) {
 	// Sync call
 	if (kUsePromisesOrReq === undefined) {
@@ -364,45 +368,39 @@ crypto: {
 			exiting_aliased_Uint32Array: 7,
 		},
 		defineLazyProperties: (target, id, keys, writable = true) => {
-			let mod;
 			for (let i = 0; i < keys.length; i++) {
 				const key = keys[i];
 				let value;
 				let setterCalled = false;
 
-				function get() {
-					if (setterCalled) {
-						return value;
+				// Create a getter that will lazy-load the module
+				const getter = new Function('id', 'key', `
+					if (this.__lazyValue_${key}) {
+						return this.__lazyValue_${key};
 					}
-					// Lazy-load the module
+					
+					// Try to load from module registry
+					let mod = globalThis.__moduleRegistry.get('${id}');
+					
+					// Fallback to other locations
 					if (!mod) {
-						// In the browser context, we use globalThis.coreModules to resolve internal modules
-						// Convert internal/ paths to the actual module
-						if (id.startsWith('internal/')) {
-							// For internal modules, try to load from built modules
-							const moduleKey = id.replace('internal/', '').replace(/\//g, '_');
-							// Try internalModules first, then coreModules
-							mod = globalThis.internalModules[moduleKey] || globalThis.coreModules[moduleKey] || {};
-						} else {
-							mod = globalThis.coreModules[id] || {};
-						}
+						const moduleKey = '${id}'.replace('internal/', '').replace(/\\//g, '_');
+						mod = globalThis.internalModules[moduleKey] || globalThis.coreModules[moduleKey];
 					}
-					if (value === undefined) {
-						value = mod[key];
+					
+					if (mod && mod['${key}']) {
+						this.__lazyValue_${key} = mod['${key}'];
+						return this.__lazyValue_${key};
 					}
-					return value;
-				}
-
-				function set(val) {
-					setterCalled = true;
-					value = val;
-				}
+					
+					return undefined;
+				`);
 
 				Object.defineProperty(target, key, {
 					enumerable: true,
 					configurable: true,
-					get,
-					set: writable ? set : undefined,
+					get: getter,
+					set: writable ? function(val) { this[`__lazyValue_${key}`] = val; } : undefined,
 				});
 			}
 		},
@@ -2218,6 +2216,22 @@ globalThis.coreModules.blob = blob.default;
 
 const fs = await import("./modules/fs.js");
 console.log('fs', fs);
+
+// Register internal/fs/dir module so defineLazyProperties can find it
+// Access these properties to ensure they're loaded from the built module
+const DirClass = fs.default.Dir;
+const opendirFn = fs.default.opendir;
+const opendirSyncFn = fs.default.opendirSync;
+
+console.log('Loaded fs lazy properties:', { DirClass, opendirFn, opendirSyncFn });
+
+// Register in module registry for lazy loading
+globalThis.__moduleRegistry.set('internal/fs/dir', {
+	Dir: DirClass,
+	opendir: opendirFn,
+	opendirSync: opendirSyncFn
+});
+
 globalThis.coreModules.fs = fs.default;
 
 const fsPromises = await import("./modules/fs/promises.js");
