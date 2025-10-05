@@ -725,7 +725,7 @@ export class InMemoryFileSystem {
         updateDirectoryTimestamp(oldResult.parent);
         updateDirectoryTimestamp(newResult.parent);
     }
-    copyFileSync(src, dest) {
+    copyFileSync(src, dest, mode = 0) {
         const { node, blockedBy, missingParent } = this.walk(src);
         if (missingParent || blockedBy) {
             throw createFsError('ENOENT', `ENOENT: no such file or directory, copy '${src}'`);
@@ -733,6 +733,17 @@ export class InMemoryFileSystem {
         if (!node || node.type !== 'file') {
             throw createFsError('ENOENT', `ENOENT: no such file or directory, copy '${src}'`);
         }
+        
+        // Check if COPYFILE_EXCL flag is set (value is 1)
+        const COPYFILE_EXCL = 1;
+        if (mode & COPYFILE_EXCL) {
+            // Check if destination exists
+            const destResult = this.walk(dest);
+            if (destResult.node) {
+                throw createFsError('EEXIST', `EEXIST: file already exists, copyfile '${src}' -> '${dest}'`);
+            }
+        }
+        
         this.writeFileSync(dest, cloneBuffer(node.content));
     }
     appendFileSync(path, data, options) {

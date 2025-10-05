@@ -420,8 +420,22 @@ crypto: {
 			// We simulate this pattern
 		},
 		constants: {},
-		open(path, flags, mode, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.openSync(path, flags, mode), kUsePromises);
+		open(path, flags, mode, reqOrPromise) {
+			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
+			if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
+				// Async callback pattern
+				setImmediate(() => {
+					try {
+						const fd = globalFs.openSync(path, flags, mode);
+						reqOrPromise.oncomplete(null, fd);
+					} catch (err) {
+						reqOrPromise.oncomplete(err);
+					}
+				});
+				return;
+			}
+			// Promise or sync pattern
+			return maybePromiseFromSync(() => globalFs.openSync(path, flags, mode), reqOrPromise);
 		},
 		openFileHandle(path, flags, mode, usePromises) {
 			return globalFs.openFileHandle(path, flags, mode, usePromises);
@@ -714,7 +728,7 @@ crypto: {
 		}, kUsePromises);
 	},
 	copyFile(src, dest, mode, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.copyFileSync(src, dest), kUsePromises);
+		return maybePromiseFromSync(() => globalFs.copyFileSync(src, dest, mode), kUsePromises);
 	},
 	readlink(path, encoding, kUsePromises) {
 		// Symlinks are not fully supported in this polyfill
@@ -2166,3 +2180,5 @@ globalThis.coreModules.module = Module;
 export function runMain(options) {
 	return globalThis.coreModules.module.Module.runMain(options);
 }
+
+globalThis.setImmediate = setTimeout;
