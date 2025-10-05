@@ -4,7 +4,7 @@ import {
   SlowBuffer,
   init_buffer_polyfill,
   kMaxLength
-} from "./chunk-MPGL2DXN.js";
+} from "./chunk-2WV7NS2O.js";
 import "./chunk-2ESYSVXG.js";
 init_buffer_polyfill();
 export {

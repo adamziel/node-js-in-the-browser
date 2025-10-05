@@ -112,7 +112,7 @@ function encodeChunk (uint8, start, end) {
   return output.join('')
 }
 
-function fromByteArray (uint8) {
+export function fromByteArray (uint8) {
   var tmp
   var len = uint8.length
   var extraBytes = len % 3 // if we have 1 byte left, pad 2 bytes

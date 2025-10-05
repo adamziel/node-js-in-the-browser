@@ -440,9 +440,9 @@ crypto: {
 		// These hold stat data and are reused across stat calls
 		// Buffer is 2x the field count to hold 2 Stats instances (for StatWatcher)
 		statValues: new Float64Array(18 * 2),
-		bigintStatValues: new BigUint64Array(18 * 2),
+		bigintStatValues: new BigInt64Array(18 * 2),
 		statFsValues: new Float64Array(7),
-		bigintStatFsValues: new BigUint64Array(7),
+		bigintStatFsValues: new BigInt64Array(7),
 		kFsStatsFieldsNumber: 18,
 		constants: {},
 		open(path, flags, mode, reqOrPromise) {
