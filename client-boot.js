@@ -750,12 +750,7 @@ crypto: {
 		return maybePromiseFromSync(() => globalFs.copyFileSync(src, dest, mode), kUsePromises);
 	},
 	readlink(path, encoding, kUsePromises) {
-		// Symlinks are not fully supported in this polyfill
-		return maybePromiseFromSync(() => {
-			const error = new Error(`EINVAL: invalid argument, readlink '${path}'`);
-			error.code = 'EINVAL';
-			throw error;
-		}, kUsePromises);
+		return maybePromiseFromSync(() => globalFs.readlinkSync(path, encoding), kUsePromises);
 	},
 	realpath(path, encoding, kUsePromises) {
 		// Return the absolute path if file exists, otherwise throw ENOENT

@@ -1391,6 +1391,26 @@ export class InMemoryFileSystem {
 		updateDirectoryTimestamp(parent);
 	}
 
+	// readlinkSync - read the value of a symbolic link
+	readlinkSync(path, encoding = 'utf8') {
+		const { node, blockedBy, missingParent } = this.walk(path);
+		
+		if (missingParent || !node) {
+			throw createFsError('ENOENT', `ENOENT: no such file or directory, readlink '${path}'`);
+		}
+		
+		if (blockedBy) {
+			throw createFsError('ENOTDIR', `ENOTDIR: not a directory, readlink '${path}'`);
+		}
+		
+		if (node.type !== 'symlink') {
+			throw createFsError('EINVAL', `EINVAL: invalid argument, readlink '${path}'`);
+		}
+		
+		// Return the target path
+		return node.target;
+	}
+
 	// opendirSync - opens a directory and returns a DirHandle
 	// This is used by the Dir class in Node.js
 	opendirSync(path) {

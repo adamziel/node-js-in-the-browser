@@ -527,6 +527,113 @@ describe('AbortSignal on promises (if available)', () => {
         await assert.rejects(pr, { name: 'AbortError' });
     });
 });
+
+describe('callback descriptor workflows', () => {
+    it('fs.open with numeric flags and fs.read uses sequential offsets', (done) => {
+        const p = P(`cbfd-${rnd()}.txt`);
+        fs.writeFileSync(p, 'abcdef');
+        fs.open(p, fs.constants.O_RDONLY, (err, fd) => {
+            assert.ifError(err);
+            const first = Buffer.alloc(3);
+            fs.read(fd, first, 0, first.length, null, (err2, bytesRead1) => {
+                assert.ifError(err2);
+                assert.strictEqual(bytesRead1, 3);
+                assert.strictEqual(first.toString(), 'abc');
+                const second = Buffer.alloc(3);
+                fs.read(fd, second, 0, second.length, null, (err3, bytesRead2) => {
+                    assert.ifError(err3);
+                    assert.strictEqual(bytesRead2, 3);
+                    assert.strictEqual(second.toString(), 'def');
+                    fs.close(fd, (err4) => {
+                        assert.ifError(err4);
+                        done();
+                    });
+                });
+            });
+        });
+    });
+    it('fs.open with "wx" (callback) fails when file exists', (done) => {
+        const p = P(`cbwx-${rnd()}.txt`);
+        fs.writeFileSync(p, 'x');
+        fs.open(p, 'wx', (err, fd) => {
+            if (!err) {
+                fs.close(fd, () => done(new Error('expected EEXIST')));
+                return;
+            }
+            assert.strictEqual(err.code, 'EEXIST');
+            done();
+        });
+    });
+    it('fs.readFile accepts numeric file descriptors', (done) => {
+        const p = P(`cbfdread-${rnd()}.txt`);
+        fs.writeFileSync(p, 'readme');
+        const fd = fs.openSync(p, 'r');
+        fs.readFile(fd, 'utf8', (err, data) => {
+            assert.ifError(err);
+            assert.strictEqual(data, 'readme');
+            fs.close(fd, (closeErr) => {
+                assert.ifError(closeErr);
+                done();
+            });
+        });
+    });
+});
+
+describe('promise-based API nuances', () => {
+    it('fsp.mkdir recursive handles existing directories', async () => {
+        const root = P(`pmkdir-${rnd()}`);
+        const nested = `${root}/x/y`;
+        const first = await fsp.mkdir(nested, { recursive: true });
+        assert.strictEqual(fs.existsSync(nested), true);
+        const second = await fsp.mkdir(nested, { recursive: true });
+        assert.strictEqual(fs.existsSync(nested), true);
+        assert.ok(first === undefined || typeof first === 'string');
+        assert.strictEqual(second, undefined);
+    });
+    it('fsp.access resolves and rejects appropriately', async () => {
+        const p = P(`paccess-${rnd()}.txt`);
+        await fsp.writeFile(p, 'ok');
+        await fsp.access(p, fs.constants.R_OK | fs.constants.W_OK);
+        await assert.rejects(fsp.access(P(`missing-${rnd()}.txt`)), { code: 'ENOENT' });
+    });
+    it('fsp.readdir with Dirent metadata', async () => {
+        const dir = P(`preaddir-${rnd()}`);
+        fs.mkdirSync(dir);
+        fs.writeFileSync(`${dir}/file.txt`, 'x');
+        fs.mkdirSync(`${dir}/sub`);
+        const entries = await fsp.readdir(dir, { withFileTypes: true });
+        assert.strictEqual(entries.some((de) => de.isFile() && de.name === 'file.txt'), true);
+        assert.strictEqual(entries.some((de) => de.isDirectory() && de.name === 'sub'), true);
+    });
+    ifHas((fsp).rm)('fsp.rm recursive removes directory trees', async () => {
+        const root = P(`prm-${rnd()}`);
+        fs.mkdirSync(`${root}/a/b`, { recursive: true });
+        fs.writeFileSync(`${root}/a/b/file.txt`, 'x');
+        await (fsp).rm(root, { recursive: true, force: true });
+        assert.strictEqual(fs.existsSync(root), false);
+    });
+    it('FileHandle.writeFile/readFile/stat roundtrip', async () => {
+        const p = P(`fhfile-${rnd()}.txt`);
+        const writer = await fsp.open(p, 'w+');
+        await writer.writeFile('line1', 'utf8');
+        await writer.close();
+        const reader = await fsp.open(p, 'r');
+        const contents = await reader.readFile({ encoding: 'utf8' });
+        assert.strictEqual(contents, 'line1');
+        const stats = await reader.stat();
+        assert.strictEqual(stats.isFile(), true);
+        await reader.close();
+    });
+    it('fsp.stat supports bigint and throwIfNoEntry:false', async () => {
+        const p = P(`pstat-${rnd()}.txt`);
+        await fsp.writeFile(p, 'hi');
+        const st = await fsp.stat(p, { bigint: true });
+        assert.strictEqual(typeof st.size, 'bigint');
+        const missing = await fsp.stat(P(`pstat-missing-${rnd()}.txt`), { throwIfNoEntry: false });
+        assert.strictEqual(missing, undefined);
+    });
+});
+
 // --- Regression: ensure the earlier "openSync r/w flags behavior" expectation is correct ---
 describe('sanity check for overwrite/append sequence', () => {
     it('sequence: w -> r+ read -> write at current offset -> a append', () => {
