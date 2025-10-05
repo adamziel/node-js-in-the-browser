@@ -624,25 +624,52 @@ crypto: {
 		rmdir(path, options, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.rmdirSync(path, options), kUsePromises);
 		},
-	stat(path, useBigint, kUsePromises) {
+	stat(path, useBigint, kUsePromises, throwIfNoEntry) {
 		// Native binding returns Float64Array or BigInt64Array, not Stats object
+		// throwIfNoEntry defaults to true for backwards compatibility
 		return maybePromiseFromSync(() => {
-			const stats = globalFs.statSync(path);
-			return globalFs.statsToArray(stats, useBigint);
+			try {
+				const stats = globalFs.statSync(path);
+				return globalFs.statsToArray(stats, useBigint);
+			} catch (err) {
+				// If throwIfNoEntry is false and error is ENOENT, return undefined
+				if (throwIfNoEntry === false && err.code === 'ENOENT') {
+					return undefined;
+				}
+				throw err;
+			}
 		}, kUsePromises);
 	},
-	lstat(path, useBigint, kUsePromises) {
+	lstat(path, useBigint, kUsePromises, throwIfNoEntry) {
 		// Native binding returns Float64Array or BigInt64Array, not Stats object
+		// throwIfNoEntry defaults to true for backwards compatibility
 		return maybePromiseFromSync(() => {
-			const stats = globalFs.lstatSync(path);
-			return globalFs.statsToArray(stats, useBigint);
+			try {
+				const stats = globalFs.lstatSync(path);
+				return globalFs.statsToArray(stats, useBigint);
+			} catch (err) {
+				// If throwIfNoEntry is false and error is ENOENT, return undefined
+				if (throwIfNoEntry === false && err.code === 'ENOENT') {
+					return undefined;
+				}
+				throw err;
+			}
 		}, kUsePromises);
 	},
-	fstat(fd, useBigint, kUsePromises) {
+	fstat(fd, useBigint, kUsePromises, throwIfNoEntry) {
 		// Native binding returns Float64Array or BigInt64Array, not Stats object
+		// throwIfNoEntry defaults to true for backwards compatibility
 		return maybePromiseFromSync(() => {
-			const stats = globalFs.fstatSync(fd);
-			return globalFs.statsToArray(stats, useBigint);
+			try {
+				const stats = globalFs.fstatSync(fd);
+				return globalFs.statsToArray(stats, useBigint);
+			} catch (err) {
+				// If throwIfNoEntry is false and error is EBADF, return undefined
+				if (throwIfNoEntry === false && (err.code === 'ENOENT' || err.code === 'EBADF')) {
+					return undefined;
+				}
+				throw err;
+			}
 		}, kUsePromises);
 	},
 		fsSync(path) {
@@ -698,8 +725,20 @@ crypto: {
 		}, kUsePromises);
 	},
 	realpath(path, encoding, kUsePromises) {
-		// Just return the path as-is since we don't have real symlinks
-		return maybePromiseFromSync(() => path, kUsePromises);
+		// Return the absolute path if file exists, otherwise throw ENOENT
+		// Since we don't have symlinks, realpath just verifies the file exists
+		// and returns its path
+		return maybePromiseFromSync(() => {
+			// Check if file exists
+			if (!globalFs.existsSync(path)) {
+				const error = new Error(`ENOENT: no such file or directory, realpath '${path}'`);
+				error.code = 'ENOENT';
+				throw error;
+			}
+			// Return the path as-is since we don't have symlinks to resolve
+			// In a real filesystem, this would resolve symlinks and return canonical path
+			return path;
+		}, kUsePromises);
 	},
 	utimes(path, atime, mtime, kUsePromises) {
 		return maybePromiseFromSync(() => globalFs.utimesSync(path, atime, mtime), kUsePromises);

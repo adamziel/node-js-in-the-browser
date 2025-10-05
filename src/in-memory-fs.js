@@ -28,7 +28,7 @@ class Stats {
         return this.type === 'dir';
     }
     isSymbolicLink() {
-        return false;
+        return this.type === 'symlink';
     }
     isBlockDevice() {
         return false;
@@ -90,6 +90,18 @@ const createFileNode = (content, mode = DEFAULT_FILE_MODE) => {
         type: 'file',
         mode,
         content,
+        atime: timestamp,
+        mtime: timestamp,
+        ctime: timestamp,
+        birthtime: timestamp,
+    };
+};
+const createSymlinkNode = (target) => {
+    const timestamp = Date.now();
+    return {
+        type: 'symlink',
+        mode: 0o777,
+        target,  // The path this symlink points to
         atime: timestamp,
         mtime: timestamp,
         ctime: timestamp,
@@ -511,10 +523,54 @@ export class InMemoryFileSystem {
         if (!node) {
             throw createFsError('ENOENT', `ENOENT: no such file or directory, stat '${path}'`);
         }
+        
+        // Follow symlinks for stat (but not for lstat)
+        if (node.type === 'symlink') {
+            // Resolve the symlink target
+            const target = node.target;
+            // Recursively stat the target
+            return this.statSync(target);
+        }
+        
         return new Stats(node);
     }
     lstatSync(path) {
-        return this.statSync(path);
+        // lstat does NOT follow symlinks, unlike stat
+        const { node, blockedBy, missingParent } = this.walk(path);
+        
+        if (missingParent || !node) {
+            // If path doesn't exist and it's an absolute path that could be a parent
+            // directory of our in-memory filesystem, create fake directory stats
+            // This allows realpath() to work with absolute paths
+            if (path.startsWith('/')) {
+                // Check if any of our root children would be under this path
+                for (const childName of this.root.children.keys()) {
+                    const fullChildPath = '/' + childName;
+                    if (fullChildPath.startsWith(path + '/') || path === '/') {
+                        // This path is a parent of something in our filesystem
+                        // Return a fake directory stat
+                        const fakeDir = {
+                            type: 'dir',
+                            mode: 0o755,
+                            children: new Map(),
+                            atime: Date.now(),
+                            mtime: Date.now(),
+                            ctime: Date.now(),
+                            birthtime: Date.now()
+                        };
+                        return new Stats(fakeDir);
+                    }
+                }
+            }
+            throw createFsError('ENOENT', `ENOENT: no such file or directory, lstat '${path}'`);
+        }
+        
+        if (blockedBy) {
+            throw createFsError('ENOTDIR', `ENOTDIR: not a directory, lstat '${path}'`);
+        }
+        
+        // Return stats WITHOUT following symlinks
+        return new Stats(node);
     }
     fstatSync(fd, options = { bigint: false }) {
         const openFile = this.openFiles.get(fd);
@@ -532,10 +588,25 @@ export class InMemoryFileSystem {
         // Convert to appropriate type
         const toType = useBigint ? BigInt : Number;
         
+        // File type constants (from Node.js constants)
+        const S_IFREG = 32768;  // Regular file
+        const S_IFDIR = 16384;  // Directory
+        const S_IFLNK = 40960;  // Symbolic link
+        
+        // Combine file type bits with permission bits
+        let mode = stats.mode;
+        if (stats.type === 'file') {
+            mode = S_IFREG | stats.mode;
+        } else if (stats.type === 'dir') {
+            mode = S_IFDIR | stats.mode;
+        } else if (stats.type === 'symlink') {
+            mode = S_IFLNK | stats.mode;
+        }
+        
         // Fill array in the order expected by Node.js
         // See FsStatsOffset in src/node_file.h
         arr[0] = toType(0);  // dev
-        arr[1] = toType(stats.mode);  // mode
+        arr[1] = toType(mode);  // mode (with file type bits)
         arr[2] = toType(1);  // nlink
         arr[3] = toType(0);  // uid
         arr[4] = toType(0);  // gid
@@ -569,7 +640,8 @@ export class InMemoryFileSystem {
         if (!node) {
             throw createFsError('ENOENT', `ENOENT: no such file or directory, unlink '${path}'`);
         }
-        if (node.type !== 'file') {
+        // Allow unlinking files and symlinks, but not directories
+        if (node.type !== 'file' && node.type !== 'symlink') {
             throw createFsError('EPERM', `EPERM: operation not permitted, unlink '${path}'`);
         }
         parent === null || parent === void 0 ? void 0 : parent.children.delete(name);
@@ -1283,12 +1355,29 @@ export class InMemoryFileSystem {
 	}
 
 	// symlinkSync - create symbolic link
-	// Note: In-memory filesystem doesn't truly support symlinks, 
-	// but we can simulate basic behavior by creating a special node type
 	symlinkSync(target, path, type = 'file') {
-		// For now, throw ENOSYS (not implemented) as symlinks require special handling
-		// that's beyond the scope of a simple in-memory filesystem
-		throw createFsError('ENOSYS', `ENOSYS: function not implemented, symlink '${target}' -> '${path}'`);
+		const { parent, node, name, blockedBy, missingParent } = this.walk(path);
+		
+		if (blockedBy) {
+			throw createFsError('ENOTDIR', `ENOTDIR: not a directory, symlink '${path}'`);
+		}
+		
+		if (missingParent) {
+			throw createFsError('ENOENT', `ENOENT: no such file or directory, symlink '${path}'`);
+		}
+		
+		if (!parent) {
+			throw createFsError('EACCES', `EACCES: permission denied, symlink '${path}'`);
+		}
+		
+		if (node) {
+			throw createFsError('EEXIST', `EEXIST: file already exists, symlink '${path}'`);
+		}
+		
+		// Create symlink node
+		const symlinkNode = createSymlinkNode(target);
+		parent.children.set(name, symlinkNode);
+		updateDirectoryTimestamp(parent);
 	}
 
 	// opendirSync - opens a directory and returns a DirHandle
