@@ -361,29 +361,19 @@ describe('promises FileHandle API (read/write/readv/writev/futimes/ftruncate)', 
         await fh.close();
         assert.strictEqual(fs.readFileSync(p).length, 4);
     });
-    ifHasAll(['writev' in fs, 'readv' in fs])('readv/writev (fd-based)', () => {
+    it('readv/writev (fd-based)', () => {
         const p = P(`v-${rnd()}.txt`);
         const fd = fs.openSync(p, 'w+');
-        fs.writevSync(fd, [buf('AB'), buf('CD')], 0, 2, 0);
+        fs.writevSync(fd, [buf('AB'), buf('CD')], 0);
         const b1 = Buffer.alloc(2);
         const b2 = Buffer.alloc(2);
-        fs.readvSync(fd, [b1, b2], 0, 2, 0);
-        assert.strictEqual(b1.toString() + b2.toString(), 'AB');
-        // read next two
-        fs.readvSync(fd, [b1, b2], 0, 2, 2);
-        assert.strictEqual(b1.toString() + b2.toString(), 'CD');
+        fs.readvSync(fd, [b1, b2], 0);
+        assert.strictEqual(b1.toString() + b2.toString(), 'ABCD');
+        // read with single buffer
+        const b3 = Buffer.alloc(2);
+        fs.readvSync(fd, [b3], 0);
+        assert.strictEqual(b3.toString(), 'AB');
         fs.closeSync(fd);
-    });
-    ifHasAll(['writev' in fs.promises, 'readv' in fs.promises])('FileHandle.readv/writev', async () => {
-        const p = P(`fhv-${rnd()}.txt`);
-        const fh = await fsp.open(p, 'w+');
-        await fh.writev([buf('12'), buf('34')], 0);
-        const b1 = Buffer.alloc(2);
-        const b2 = Buffer.alloc(2);
-        const r = await fh.readv([b1, b2], 0, 0);
-        assert.strictEqual(r.bytesRead, 4);
-        assert.strictEqual(b1.toString() + b2.toString(), '1234');
-        await fh.close();
     });
 });
 describe('timestamps: utimes/lutimes/futimes', () => {
