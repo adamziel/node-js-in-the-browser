@@ -614,6 +614,25 @@ crypto: {
 		cpSync(src, dest, options) {
 			return globalFs.cpSync(src, dest, options);
 		},
+		cpSyncCopyDir(src, dest, force, dereference, errorOnExist, verbatimSymlinks, preserveTimestamps) {
+			// This is an optimization for cpSync when no filter is provided
+			// We can just call our cpSync implementation with the appropriate options
+			const options = {
+				force,
+				dereference,
+				errorOnExist,
+				verbatimSymlinks,
+				preserveTimestamps,
+				recursive: true,
+				filter: null
+			};
+			return globalFs.cpSync(src, dest, options);
+		},
+		cpSyncOverrideFile(src, dest) {
+			// This is used to override a file during copy
+			// Just copy the file, overwriting if it exists
+			return globalFs.copyFileSync(src, dest, 0);
+		},
 		symlink(target, path, type, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.symlinkSync(target, path, type), kUsePromises);
 		},
