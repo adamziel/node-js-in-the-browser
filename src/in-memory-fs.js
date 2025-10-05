@@ -1062,9 +1062,7 @@ export class InMemoryFileSystem {
 		try {
 			const openFile = fs.openFiles.get(fd);
 			if (!openFile) {
-				ctx.errno = -9; // EBADF
-				ctx.error = 'EBADF: bad file descriptor, write';
-				return;
+				throw createFsError('EBADF', 'EBADF: bad file descriptor, write');
 			}
 
 			// Handle position

@@ -5,17 +5,34 @@ import * as builtins from "./src/builtins.js";
 const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 const globalFs = new InMemoryFileSystem();
 
-function maybePromiseFromSync(syncFn, kUsePromises) {
-	if (kUsePromises === undefined) {
+function maybePromiseFromSync(syncFn, kUsePromisesOrReq) {
+	// Sync call
+	if (kUsePromisesOrReq === undefined) {
 		return syncFn();
 	}
-	return new Promise((resolve, reject) => {
+	const promise = new Promise((resolve, reject) => {
 		try {
 			resolve(syncFn());
 		} catch (err) {
 			reject(err);
 		}
 	});
+
+	// Callback mode
+	if (kUsePromisesOrReq && typeof kUsePromisesOrReq === 'object' && 'oncomplete' in kUsePromisesOrReq) {
+		promise.then(
+			(result) => {
+				kUsePromisesOrReq.oncomplete(null, result);
+			},
+			(err) => {
+				kUsePromisesOrReq.oncomplete(err);
+			}
+		);
+		return;
+	}
+
+	// Promise mode
+	return promise;
 }
 
 // Implement V8 internal functions in JavaScript
@@ -498,51 +515,51 @@ crypto: {
 			// Promise or sync pattern
 			return maybePromiseFromSync(() => globalFs.readSync(fd, buffer, offset, length, position), reqOrPromise);
 		},
-	readdir(path, encoding, withFileTypes, kUsePromises) {
-		// Native binding returns [names, types] tuple where types are UV_DIRENT_* constants
-		// This is different from readdirSync which returns strings or Dirent objects
-		return maybePromiseFromSync(() => {
-			// Get the raw directory node to access children
-			const { node, blockedBy, missingParent } = globalFs.walk(path);
-			
-			if (missingParent || !node) {
-				const error = new Error(`ENOENT: no such file or directory, scandir '${path}'`);
-				error.code = 'ENOENT';
-				throw error;
-			}
-			
-			if (blockedBy || node.type !== 'dir') {
-				const error = new Error(`ENOTDIR: not a directory, scandir '${path}'`);
-				error.code = 'ENOTDIR';
-				throw error;
-			}
-			
-			// Extract names and types from children
-			const names = [];
-			const types = [];
-			
-			// Map node types to UV_DIRENT constants
-			const UV_DIRENT_FILE = 1;
-			const UV_DIRENT_DIR = 2;
-			const UV_DIRENT_UNKNOWN = 0;
-			
-			for (const [name, childNode] of node.children.entries()) {
-				names.push(name);
+		readdir(path, encoding, withFileTypes, kUsePromises) {
+			// Native binding returns [names, types] tuple where types are UV_DIRENT_* constants
+			// This is different from readdirSync which returns strings or Dirent objects
+			return maybePromiseFromSync(() => {
+				// Get the raw directory node to access children
+				const { node, blockedBy, missingParent } = globalFs.walk(path);
 				
-				// Map the type string to UV_DIRENT constant
-				let typeConstant = UV_DIRENT_UNKNOWN;
-				if (childNode.type === 'file') {
-					typeConstant = UV_DIRENT_FILE;
-				} else if (childNode.type === 'dir') {
-					typeConstant = UV_DIRENT_DIR;
+				if (missingParent || !node) {
+					const error = new Error(`ENOENT: no such file or directory, scandir '${path}'`);
+					error.code = 'ENOENT';
+					throw error;
 				}
 				
-				types.push(typeConstant);
-			}
-			
-			// Return tuple [names, types] like the native binding
-			return [names, types];
-		}, kUsePromises);
+				if (blockedBy || node.type !== 'dir') {
+					const error = new Error(`ENOTDIR: not a directory, scandir '${path}'`);
+					error.code = 'ENOTDIR';
+					throw error;
+				}
+				
+				// Extract names and types from children
+				const names = [];
+				const types = [];
+				
+				// Map node types to UV_DIRENT constants
+				const UV_DIRENT_FILE = 1;
+				const UV_DIRENT_DIR = 2;
+				const UV_DIRENT_UNKNOWN = 0;
+				
+				for (const [name, childNode] of node.children.entries()) {
+					names.push(name);
+					
+					// Map the type string to UV_DIRENT constant
+					let typeConstant = UV_DIRENT_UNKNOWN;
+					if (childNode.type === 'file') {
+						typeConstant = UV_DIRENT_FILE;
+					} else if (childNode.type === 'dir') {
+						typeConstant = UV_DIRENT_DIR;
+					}
+					
+					types.push(typeConstant);
+				}
+				
+				// Return tuple [names, types] like the native binding
+				return [names, types];
+			}, kUsePromises);
 		},
 		readFileUtf8(path, flags) {
 			// readFileUtf8 is a synchronous optimized path for reading UTF-8 files
@@ -685,54 +702,55 @@ crypto: {
 		rmdir(path, options, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.rmdirSync(path, options), kUsePromises);
 		},
-	stat(path, useBigint, kUsePromises, throwIfNoEntry) {
-		// Native binding returns Float64Array or BigInt64Array, not Stats object
-		// throwIfNoEntry defaults to true for backwards compatibility
-		return maybePromiseFromSync(() => {
-			try {
-				const stats = globalFs.statSync(path);
-				return globalFs.statsToArray(stats, useBigint);
-			} catch (err) {
-				// If throwIfNoEntry is false and error is ENOENT, return undefined
-				if (throwIfNoEntry === false && err.code === 'ENOENT') {
-					return undefined;
+		stat(path, useBigint, kUsePromises, throwIfNoEntry) {
+			// Native binding returns Float64Array or BigInt64Array, not Stats object
+			// throwIfNoEntry defaults to true for backwards compatibility
+			return maybePromiseFromSync(() => {
+				try {
+					const stats = globalFs.statSync(path);
+					return globalFs.statsToArray(stats, useBigint);
+				} catch (err) {
+					// If throwIfNoEntry is false and error is ENOENT, return undefined
+					if (throwIfNoEntry === false && err.code === 'ENOENT') {
+						return undefined;
+					}
+					throw err;
 				}
-				throw err;
-			}
-		}, kUsePromises);
-	},
-	lstat(path, useBigint, kUsePromises, throwIfNoEntry) {
-		// Native binding returns Float64Array or BigInt64Array, not Stats object
-		// throwIfNoEntry defaults to true for backwards compatibility
-		return maybePromiseFromSync(() => {
-			try {
-				const stats = globalFs.lstatSync(path);
-				return globalFs.statsToArray(stats, useBigint);
-			} catch (err) {
-				// If throwIfNoEntry is false and error is ENOENT, return undefined
-				if (throwIfNoEntry === false && err.code === 'ENOENT') {
-					return undefined;
+			}, kUsePromises);
+		},
+		lstat(path, useBigint, kUsePromises, throwIfNoEntry) {
+			// Native binding returns Float64Array or BigInt64Array, not Stats object
+			// throwIfNoEntry defaults to true for backwards compatibility
+			return maybePromiseFromSync(() => {
+				try {
+					const stats = globalFs.lstatSync(path);
+					return globalFs.statsToArray(stats, useBigint);
+				} catch (err) {
+					// If throwIfNoEntry is false and error is ENOENT, return undefined
+					if (throwIfNoEntry === false && err.code === 'ENOENT') {
+						return undefined;
+					}
+					throw err;
 				}
-				throw err;
-			}
-		}, kUsePromises);
-	},
-	fstat(fd, useBigint, kUsePromises, throwIfNoEntry) {
-		// Native binding returns Float64Array or BigInt64Array, not Stats object
-		// throwIfNoEntry defaults to true for backwards compatibility
-		return maybePromiseFromSync(() => {
-			try {
-				const stats = globalFs.fstatSync(fd);
-				return globalFs.statsToArray(stats, useBigint);
-			} catch (err) {
-				// If throwIfNoEntry is false and error is EBADF, return undefined
-				if (throwIfNoEntry === false && (err.code === 'ENOENT' || err.code === 'EBADF')) {
-					return undefined;
+			}, kUsePromises);
+		},
+		fstat(fd, useBigint, kUsePromises, throwIfNoEntry) {
+			// Native binding returns Float64Array or BigInt64Array, not Stats object
+			// throwIfNoEntry defaults to true for backwards compatibility
+			return maybePromiseFromSync(() => {
+				try {
+					const stats = globalFs.fstatSync(fd);
+					const ar = globalFs.statsToArray(stats, useBigint);
+					return ar;
+				} catch (err) {
+					// If throwIfNoEntry is false and error is EBADF, return undefined
+					if (throwIfNoEntry === false && (err.code === 'ENOENT' || err.code === 'EBADF')) {
+						return undefined;
+					}
+					throw err;
 				}
-				throw err;
-			}
-		}, kUsePromises);
-	},
+			}, kUsePromises);
+		},
 		fsSync(path) {
 			return globalFs.fsSync(path);
 		},
@@ -742,14 +760,28 @@ crypto: {
 		symlink(existingPath, newPath, type, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.symlinkSync(existingPath, newPath), kUsePromises);
 		},
-	writeBuffer(fd, buffer, offset, length, position, kUsePromises) {
-		return globalFs.writeBuffer(fd, buffer, offset, length, position, kUsePromises);
+	writeBuffer(fd, buffer, offset, length, position, reqOrPromise) {
+		return globalFs.writeBuffer(fd, buffer, offset, length, position, reqOrPromise);
 	},
-	writeString(fd, string, position, encoding, kUsePromises) {
+	writeString(fd, string, position, encoding, reqOrPromise) {
 		// Native binding for writing strings to file descriptors
+		// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
+		if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
+			// Async callback pattern
+			setImmediate(() => {
+				try {
+					const bytesWritten = globalFs.writeSync(fd, string, position, encoding);
+					reqOrPromise.oncomplete(null, bytesWritten);
+				} catch (err) {
+					reqOrPromise.oncomplete(err);
+				}
+			});
+			return;
+		}
+		// Promise or sync pattern
 		return maybePromiseFromSync(() => {
 			return globalFs.writeSync(fd, string, position, encoding);
-		}, kUsePromises);
+		}, reqOrPromise);
 	},
 	writeBuffers(fd, buffers, position, kUsePromises) {
 		// Native binding for writing multiple buffers (writev)

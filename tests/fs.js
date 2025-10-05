@@ -78,16 +78,21 @@ describe('basic read/write (sync + callbacks + promises)', () => {
         assert.strictEqual(fs.readFileSync(p, 'utf8'), 'ab');
         assert.throws(() => fs.writeFileSync(p, 'x', { flag: 'wx' }), { code: 'EEXIST' });
     });
-    it('fs.writeFile/readFile callbacks', (done) => {
+    it('fs.writeFile callback', (done) => {
         const p = P(`cb-${rnd()}.txt`);
         fs.writeFile(p, 'cb', (err) => {
             assert.strictEqual(err, null);
-            fs.readFile(p, 'utf8', (err2, data) => {
-                assert.strictEqual(err2, null);
-                assert.strictEqual(data, 'cb');
-                done();
-            });
+			done();
         });
+    });
+    it('fs.readFile callbacks', (done) => {
+		const p = P(`cb-${rnd()}.txt`);
+        fs.writeFileSync(p, 'cb');
+		fs.readFile(p, 'utf8', (err2, data) => {
+			assert.strictEqual(err2, null);
+			assert.strictEqual(data, 'cb');
+			done();
+		});
     });
     it('fs.promises.writeFile/readFile', async () => {
         const p = P(`pr-${rnd()}.txt`);
