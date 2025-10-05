@@ -464,11 +464,39 @@ crypto: {
 			
 			return maybePromiseFromSync(() => globalFs.mkdirSync(path, finalOptions), kUsePromises);
 		},
-		close(fd, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.closeSync(fd), kUsePromises);
+		close(fd, reqOrPromise) {
+			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
+			if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
+				// Async callback pattern
+				setImmediate(() => {
+					try {
+						globalFs.closeSync(fd);
+						reqOrPromise.oncomplete(null);
+					} catch (err) {
+						reqOrPromise.oncomplete(err);
+					}
+				});
+				return;
+			}
+			// Promise or sync pattern
+			return maybePromiseFromSync(() => globalFs.closeSync(fd), reqOrPromise);
 		},
-		read(fd, buffer, offset, length, position, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.readSync(fd, buffer, offset, length, position), kUsePromises);
+		read(fd, buffer, offset, length, position, reqOrPromise) {
+			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
+			if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
+				// Async callback pattern
+				setImmediate(() => {
+					try {
+						const bytesRead = globalFs.readSync(fd, buffer, offset, length, position);
+						reqOrPromise.oncomplete(null, bytesRead, buffer);
+					} catch (err) {
+						reqOrPromise.oncomplete(err);
+					}
+				});
+				return;
+			}
+			// Promise or sync pattern
+			return maybePromiseFromSync(() => globalFs.readSync(fd, buffer, offset, length, position), reqOrPromise);
 		},
 	readdir(path, encoding, withFileTypes, kUsePromises) {
 		// Native binding returns [names, types] tuple where types are UV_DIRENT_* constants

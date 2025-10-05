@@ -1035,10 +1035,25 @@ export class InMemoryFileSystem {
         return candidate;
 	}
 	
-	writeBuffer(fd, buffer, offset, length, position, kUsePromises) {
-		if (kUsePromises !== undefined) {
+	writeBuffer(fd, buffer, offset, length, position, reqOrPromise) {
+		// Check if this is an FSReqCallback (has oncomplete)
+		if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
+			// Async callback pattern
+			setImmediate(() => {
+				try {
+					const bytesWritten = this.writeBufferSync(fd, buffer, offset, length, position);
+					reqOrPromise.oncomplete(null, bytesWritten, buffer);
+				} catch (err) {
+					reqOrPromise.oncomplete(err);
+				}
+			});
+			return;
+		}
+		// Promise pattern
+		if (reqOrPromise !== undefined) {
 			return promiseFromSync(() => this.writeBufferSync(fd, buffer, offset, length, position));
 		}
+		// Sync pattern
 		return this.writeBufferSync(fd, buffer, offset, length, position);
 	}
 
