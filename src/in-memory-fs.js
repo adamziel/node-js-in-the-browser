@@ -628,6 +628,52 @@ export class InMemoryFileSystem {
         
         return arr;
     }
+    
+    // Fill a provided stats array at a specific offset
+    // This is used by the native binding to populate the shared statValues arrays
+    // offset is in fields (18 fields per Stats instance)
+    fillStatsArray(arr, stats, useBigint, offset = 0) {
+        // Convert to appropriate type
+        const toType = useBigint ? BigInt : Number;
+        
+        // File type constants (from Node.js constants)
+        const S_IFREG = 32768;  // Regular file
+        const S_IFDIR = 16384;  // Directory
+        const S_IFLNK = 40960;  // Symbolic link
+        
+        // Combine file type bits with permission bits
+        let mode = stats.mode;
+        if (stats.type === 'file') {
+            mode = S_IFREG | stats.mode;
+        } else if (stats.type === 'dir') {
+            mode = S_IFDIR | stats.mode;
+        } else if (stats.type === 'symlink') {
+            mode = S_IFLNK | stats.mode;
+        }
+        
+        // Fill array in the order expected by Node.js
+        // See FsStatsOffset in src/node_file.h
+        arr[offset + 0] = toType(0);  // dev
+        arr[offset + 1] = toType(mode);  // mode (with file type bits)
+        arr[offset + 2] = toType(1);  // nlink
+        arr[offset + 3] = toType(0);  // uid
+        arr[offset + 4] = toType(0);  // gid
+        arr[offset + 5] = toType(0);  // rdev
+        arr[offset + 6] = toType(4096);  // blksize
+        arr[offset + 7] = toType(0);  // ino
+        arr[offset + 8] = toType(stats.size);  // size
+        arr[offset + 9] = toType(Math.ceil(stats.size / 512));  // blocks
+        
+        // Time values - split into seconds and nanoseconds
+        arr[offset + 10] = toType(Math.floor(stats.atimeMs / 1000));  // atimeSec
+        arr[offset + 11] = toType((stats.atimeMs % 1000) * 1000000);  // atimeNsec
+        arr[offset + 12] = toType(Math.floor(stats.mtimeMs / 1000));  // mtimeSec
+        arr[offset + 13] = toType((stats.mtimeMs % 1000) * 1000000);  // mtimeNsec
+        arr[offset + 14] = toType(Math.floor(stats.ctimeMs / 1000));  // ctimeSec
+        arr[offset + 15] = toType((stats.ctimeMs % 1000) * 1000000);  // ctimeNsec
+        arr[offset + 16] = toType(Math.floor(stats.birthtimeMs / 1000));  // birthtimeSec
+        arr[offset + 17] = toType((stats.birthtimeMs % 1000) * 1000000);  // birthtimeNsec
+    }
     unlinkSync(path) {
         const result = this.walk(path);
         const { parent, node, name, blockedBy, missingParent } = result;

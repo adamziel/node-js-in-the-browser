@@ -436,6 +436,14 @@ crypto: {
 			// Node.js C++ code calls this with (err, result, ...)
 			// We simulate this pattern
 		},
+		// Stat arrays - shared buffers for performance
+		// These hold stat data and are reused across stat calls
+		// Buffer is 2x the field count to hold 2 Stats instances (for StatWatcher)
+		statValues: new Float64Array(18 * 2),
+		bigintStatValues: new BigUint64Array(18 * 2),
+		statFsValues: new Float64Array(7),
+		bigintStatFsValues: new BigUint64Array(7),
+		kFsStatsFieldsNumber: 18,
 		constants: {},
 		open(path, flags, mode, reqOrPromise) {
 			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
@@ -703,12 +711,15 @@ crypto: {
 			return maybePromiseFromSync(() => globalFs.rmdirSync(path, options), kUsePromises);
 		},
 		stat(path, useBigint, kUsePromises, throwIfNoEntry) {
-			// Native binding returns Float64Array or BigInt64Array, not Stats object
+			// Native binding populates global statValues/bigintStatValues arrays
 			// throwIfNoEntry defaults to true for backwards compatibility
 			return maybePromiseFromSync(() => {
 				try {
 					const stats = globalFs.statSync(path);
-					return globalFs.statsToArray(stats, useBigint);
+					// Populate the global stat arrays
+					const targetArray = useBigint ? globalThis.internalModules.fs.bigintStatValues : globalThis.internalModules.fs.statValues;
+					globalFs.fillStatsArray(targetArray, stats, useBigint, 0);
+					return targetArray;
 				} catch (err) {
 					// If throwIfNoEntry is false and error is ENOENT, return undefined
 					if (throwIfNoEntry === false && err.code === 'ENOENT') {
@@ -719,12 +730,14 @@ crypto: {
 			}, kUsePromises);
 		},
 		lstat(path, useBigint, kUsePromises, throwIfNoEntry) {
-			// Native binding returns Float64Array or BigInt64Array, not Stats object
-			// throwIfNoEntry defaults to true for backwards compatibility
+			// Native binding populates global statValues/bigintStatValues arrays
 			return maybePromiseFromSync(() => {
 				try {
 					const stats = globalFs.lstatSync(path);
-					return globalFs.statsToArray(stats, useBigint);
+					// Populate the global stat arrays
+					const targetArray = useBigint ? globalThis.internalModules.fs.bigintStatValues : globalThis.internalModules.fs.statValues;
+					globalFs.fillStatsArray(targetArray, stats, useBigint, 0);
+					return targetArray;
 				} catch (err) {
 					// If throwIfNoEntry is false and error is ENOENT, return undefined
 					if (throwIfNoEntry === false && err.code === 'ENOENT') {
@@ -735,13 +748,15 @@ crypto: {
 			}, kUsePromises);
 		},
 		fstat(fd, useBigint, kUsePromises, throwIfNoEntry) {
-			// Native binding returns Float64Array or BigInt64Array, not Stats object
+			// Native binding populates global statValues/bigintStatValues arrays
 			// throwIfNoEntry defaults to true for backwards compatibility
 			return maybePromiseFromSync(() => {
 				try {
 					const stats = globalFs.fstatSync(fd);
-					const ar = globalFs.statsToArray(stats, useBigint);
-					return ar;
+					// Populate the global stat arrays
+					const targetArray = useBigint ? globalThis.internalModules.fs.bigintStatValues : globalThis.internalModules.fs.statValues;
+					globalFs.fillStatsArray(targetArray, stats, useBigint, 0);
+					return targetArray;
 				} catch (err) {
 					// If throwIfNoEntry is false and error is EBADF, return undefined
 					if (throwIfNoEntry === false && (err.code === 'ENOENT' || err.code === 'EBADF')) {
@@ -757,6 +772,7 @@ crypto: {
 		unlink(path, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.unlinkSync(path), kUsePromises);
 		},
+		
 		symlink(existingPath, newPath, type, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.symlinkSync(existingPath, newPath), kUsePromises);
 		},

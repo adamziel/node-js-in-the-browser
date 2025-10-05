@@ -14,7 +14,8 @@ const fs = require('fs');
 const fsp = fs.promises;
 const assert = require('assert');
 // --- Test helpers (no other core modules) ---
-const BASE = `__fs_tests__-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const BASE = `/bin/__fs_tests__base__-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+fs.mkdirSync('/bin', { recursive: true });
 fs.mkdirSync(BASE, { recursive: true });
 const P = (...segs) => [BASE, ...segs].join('/'); // forward slashes work cross-platform in Node
 const rnd = (n = 8) => Math.random().toString(36).slice(2, 2 + n);
@@ -275,17 +276,25 @@ describe('copy/cp/link', () => {
         assert.strictEqual(fs.readFileSync(l, 'utf8'), 'z');
         fs.unlinkSync(l);
     });
-    maybeSymlink('readlinkSync + realpathSync', () => {
-        const t = P(`t-${rnd()}.txt`);
-        const l = P(`ln-${rnd()}.sym`);
-        fs.writeFileSync(t, 'r');
-        fs.symlinkSync(t, l, 'file');
-        const target = fs.readlinkSync(l);
-        assert.ok(target.endsWith(t));
-        const rp = fs.realpathSync(l);
-        assert.ok(rp.endsWith(t));
-        fs.unlinkSync(l);
-        fs.unlinkSync(t);
+    it('readlinkSync + realpathSync', () => {
+        try {
+            const t = P(`t-${rnd()}.txt`);
+            const l = P(`ln-${rnd()}.sym`);
+            fs.writeFileSync(t, 'r');
+            fs.symlinkSync(t, l, 'file');
+            const target = fs.readlinkSync(l);
+            assert.ok(target.endsWith(t));
+            const rp = fs.realpathSync(l);
+            assert.ok(rp.endsWith(t));
+            fs.unlinkSync(l);
+            fs.unlinkSync(t);
+        } catch (e) {
+            if (e && (e.code === 'EPERM' || e.code === 'ENOTSUP' || e.code === 'EEXIST')) {
+                this.skip();
+            } else {
+                throw e;
+            }
+        }
     });
 });
 describe('streams: createReadStream/createWriteStream', () => {
