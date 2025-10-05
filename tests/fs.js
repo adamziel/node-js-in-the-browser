@@ -384,10 +384,12 @@ describe('timestamps: utimes/lutimes/futimes', () => {
         const mt = new Date(2002, 0, 1);
         fs.utimesSync(p, at, mt);
         const st = fs.statSync(p);
+        console.log("AFTER CLOSE");
         assert.ok(Math.abs(st.atime.getTime() - at.getTime()) < 2000);
+        console.log("AFTER CLOSE2");
         assert.ok(Math.abs(st.mtime.getTime() - mt.getTime()) < 2000);
     });
-    ifHas((fs).lutimesSync)('lutimesSync on symlink (if supported)', () => {
+    it('lutimesSync on symlink (if supported)', () => {
         const t = P(`t-${rnd()}`);
         const l = P(`l-${rnd()}`);
         fs.writeFileSync(t, 'x');

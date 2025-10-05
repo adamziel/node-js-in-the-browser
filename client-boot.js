@@ -879,6 +879,26 @@ crypto: {
 	futimes(fd, atime, mtime, kUsePromises) {
 		return maybePromiseFromSync(() => globalFs.futimesSync(fd, atime, mtime), kUsePromises);
 	},
+	lutimes(path, atime, mtime, kUsePromises) {
+		return maybePromiseFromSync(() => {
+			// Update timestamps on symlink itself if symlink; otherwise behave like utimes
+			const { node } = globalFs.walk(path);
+			if (!node) {
+				const error = new Error(`ENOENT: no such file or directory, lutimes '${path}'`);
+				error.code = 'ENOENT';
+				throw error;
+			}
+			if (node.type !== 'symlink') {
+				// If not a symlink, match Node: apply to target file
+				return globalFs.utimesSync(path, atime, mtime);
+			}
+			// For symlink, store times on the link node
+			// Node.js binding receives UNIX timestamps in seconds, we store in milliseconds
+			node.atime = typeof atime === 'number' ? atime * 1000 : atime.getTime();
+			node.mtime = typeof mtime === 'number' ? mtime * 1000 : mtime.getTime();
+			node.ctime = Date.now();
+		}, kUsePromises);
+	},
 	ftruncate(fd, len, kUsePromises) {
 		return maybePromiseFromSync(() => globalFs.ftruncateSync(fd, len), kUsePromises);
 	},
@@ -920,7 +940,21 @@ crypto: {
 		exitCodes: {}
 	},
 	errors: {
-		exitCodes: {}
+		exitCodes: {},
+		codes: {
+			kGenericUserError: 1,
+		},
+		noSideEffectsToString() {},
+		triggerUncaughtException() {},
+		getErrorSourcePositions(error) {
+			// Minimal polyfill: provide defaults to satisfy error_source.js
+			return {
+				sourceLine: '',
+				scriptResourceName: 'eval',
+				lineNumber: 1,
+				startColumn: 0,
+			}
+		},
 	},
 	string_decoder: {
 		kIncompleteCharactersStart: 0,
@@ -1136,9 +1170,103 @@ types: {
 	url: {},
 	permission: {},
 	fs_dir: {
+		// Implement Dir class with async iterator support
+		Dir: class Dir {
+			constructor(handle, path, options) {
+				this.handle = handle;
+				this.path = path;
+				this.options = options || { encoding: 'utf8' };
+				this.closed = false;
+			}
+
+			read(callback) {
+				if (callback) {
+					// Async callback version
+					try {
+						const entry = this.readSync();
+						setImmediate(() => callback(null, entry));
+					} catch (err) {
+						setImmediate(() => callback(err));
+					}
+					return;
+				}
+				// Promise version
+				return Promise.resolve(this.readSync());
+			}
+
+			readSync() {
+				if (this.closed) {
+					const err = new Error('Dir is closed');
+					err.code = 'ERR_DIR_CLOSED';
+					throw err;
+				}
+				const entry = this.handle.read(this.options.encoding, 32);
+				if (entry === null) {
+					return null;
+				}
+				// entry is { name, type } from the handle
+				const { name, type } = entry;
+				// Return a Dirent-like object
+				return {
+					name,
+					isFile: () => type === 'file',
+					isDirectory: () => type === 'dir',
+					isBlockDevice: () => false,
+					isCharacterDevice: () => false,
+					isSymbolicLink: () => type === 'symlink',
+					isFIFO: () => false,
+					isSocket: () => false
+				};
+			}
+
+			close(callback) {
+				if (callback) {
+					try {
+						this.closeSync();
+						setImmediate(() => callback(null));
+					} catch (err) {
+						setImmediate(() => callback(err));
+					}
+					return;
+				}
+				return Promise.resolve(this.closeSync());
+			}
+
+			closeSync() {
+				if (this.closed) {
+					const err = new Error('Dir is already closed');
+					err.code = 'ERR_DIR_CLOSED';
+					throw err;
+				}
+				this.handle.close();
+				this.closed = true;
+			}
+
+			// Async iterator support
+			async *entries() {
+				try {
+					while (true) {
+						const entry = await this.read();
+						if (entry === null) {
+							break;
+						}
+						yield entry;
+					}
+				} finally {
+					await this.close();
+				}
+			}
+
+			// Make this async iterable
+			[Symbol.asyncIterator]() {
+				return this.entries();
+			}
+		},
+
 		opendirSync(path) {
 			return globalFs.opendirSync(path);
 		},
+		
 		opendir(path, encoding, kUsePromises) {
 			return maybePromiseFromSync(() => globalFs.opendirSync(path), kUsePromises);
 		}
@@ -2098,8 +2226,8 @@ await import("./modules/primordials.js");
 
 globalThis.getInternalBinding = 
 globalThis.internalBinding = function(moduleName) {
-	if(internalModules[moduleName]) {
-		const module = internalModules[moduleName];
+	if(globalThis.internalModules[moduleName]) {
+		const module = globalThis.internalModules[moduleName];
 		if(moduleName === "errors") {
 			return { ...module, exitCodes: module.codes };
 		}
@@ -2170,6 +2298,7 @@ globalThis.coreModules.util.encodingsMap = globalThis.internalModules.string_dec
 
 const errors = await import("./modules/errors.js");
 globalThis.internalModules.errors = {
+	...globalThis.internalModules.errors,
 	...errors.default,
 	codes: errors.default.codes
  };
@@ -2217,26 +2346,59 @@ globalThis.coreModules.blob = blob.default;
 const fs = await import("./modules/fs.js");
 console.log('fs', fs);
 
-// Register internal/fs/dir module so defineLazyProperties can find it
-// Access these properties to ensure they're loaded from the built module
-const DirClass = fs.default.Dir;
-const opendirFn = fs.default.opendir;
-const opendirSyncFn = fs.default.opendirSync;
-
-console.log('Loaded fs lazy properties:', { DirClass, opendirFn, opendirSyncFn });
-
-// Register in module registry for lazy loading
+// Register internal/fs/dir module for lazy loading
+// Use the Dir class we implemented in fs_dir binding
 globalThis.__moduleRegistry.set('internal/fs/dir', {
-	Dir: DirClass,
-	opendir: opendirFn,
-	opendirSync: opendirSyncFn
+	Dir: globalThis.internalModules.fs_dir.Dir,
+	opendir: fs.default.opendir,
+	opendirSync: fs.default.opendirSync
 });
+
+// Also expose in internalModules for other code that might need it
+globalThis.internalModules.fs_dir_exports = globalThis.__moduleRegistry.get('internal/fs/dir');
 
 globalThis.coreModules.fs = fs.default;
 
 const fsPromises = await import("./modules/fs/promises.js");
 globalThis.coreModules["fs/promises"] = fsPromises.default.exports;
 globalThis.coreModules["fs"].FileHandle = fsPromises.default.FileHandle;
+
+// Make fs.promises.opendir usable directly in for await...of by returning
+// a thenable that is also async-iterable
+{
+	const fsp = globalThis.coreModules['fs/promises']
+	const originalOpendir = fsp && fsp.opendir
+	if (typeof originalOpendir === 'function') {
+		fsp.opendir = function(...args) {
+			const p = originalOpendir.apply(this, args)
+			if (p && typeof p[Symbol.asyncIterator] === 'function') return p
+			const wrapper = {
+				then: p.then.bind(p),
+				catch: p.catch.bind(p),
+				finally: p.finally.bind(p),
+				[Symbol.asyncIterator]: async function* () {
+					const dir = await p
+					if (dir && typeof dir[Symbol.asyncIterator] === 'function') {
+						for await (const de of dir) yield de
+					} else if (dir && typeof dir.entries === 'function') {
+						for await (const de of dir.entries()) yield de
+					} else if (dir && typeof dir.read === 'function') {
+						try {
+							while (true) {
+								const next = await dir.read()
+								if (next === null) break
+								yield next
+							}
+						} finally {
+							if (typeof dir.close === 'function') await dir.close()
+						}
+					}
+				}
+			}
+			return wrapper
+		}
+	}
+}
 
 const events = await import("./modules/events.js");
 globalThis.coreModules.events = events.default;
@@ -2317,3 +2479,23 @@ export function runMain(options) {
 }
 
 globalThis.setImmediate = setTimeout;
+
+globalThis.coreModules.fs.lutimes = function(path, atime, mtime, kUsePromises) {
+	return maybePromiseFromSync(() => {
+		// Update timestamps on symlink itself if symlink; otherwise behave like utimes
+		const { node } = globalFs.walk(path);
+		if (!node) {
+			const error = new Error(`ENOENT: no such file or directory, lutimes '${path}'`)
+			error.code = 'ENOENT'
+			throw error
+		}
+		if (node.type !== 'symlink') {
+			// If not a symlink, match Node: apply to target file
+			return globalFs.utimesSync(path, atime, mtime)
+		}
+		// For symlink, store times on the link node
+		node.atime = atime
+		node.mtime = mtime
+		node.ctime = Date.now()
+	}, kUsePromises)
+}

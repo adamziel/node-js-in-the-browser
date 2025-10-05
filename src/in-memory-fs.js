@@ -1046,8 +1046,9 @@ export class InMemoryFileSystem {
         if (blockedBy) {
             throw createFsError('ENOTDIR', `ENOTDIR: not a directory, utimes '${path}'`);
         }
-        node.atime = atime;
-        node.mtime = mtime;
+        // Node.js binding receives UNIX timestamps in seconds, we store in milliseconds
+        node.atime = typeof atime === 'number' ? atime * 1000 : atime.getTime();
+        node.mtime = typeof mtime === 'number' ? mtime * 1000 : mtime.getTime();
         node.ctime = Date.now();
     }
     futimesSync(fd, atime, mtime) {
@@ -1056,8 +1057,9 @@ export class InMemoryFileSystem {
             throw createFsError('EBADF', `EBADF: bad file descriptor, futimes`);
         }
         const node = openFile.node;
-        node.atime = atime;
-        node.mtime = mtime;
+        // Node.js binding receives UNIX timestamps in seconds, we store in milliseconds
+        node.atime = typeof atime === 'number' ? atime * 1000 : atime.getTime();
+        node.mtime = typeof mtime === 'number' ? mtime * 1000 : mtime.getTime();
         node.ctime = Date.now();
     }
     linkSync(existingPath, newPath) {
@@ -1519,7 +1521,11 @@ export class InMemoryFileSystem {
 				const [name, childNode] = this.entries[this.position];
 				this.position++;
 				
-				return name;
+				// Return name and type information
+				return {
+					name,
+					type: childNode.type // 'file', 'dir', or 'symlink'
+				};
 			},
 			
 			// Close the directory handle
