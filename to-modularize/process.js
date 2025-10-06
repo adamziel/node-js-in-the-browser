@@ -1,23 +1,23 @@
 let term = null;
 
-export function setTerminal(terminal) {
+function setTerminal(terminal) {
 	term = terminal;
 }
 
 const sharedDecoder =
 	typeof TextDecoder !== 'undefined' ? new TextDecoder() : undefined;
 
-export let argc = 0;
-export let argv = [];
-export let env = {};
+let argc = 0;
+let argv = [];
+let env = {};
 // export const argc = 2;
 // export const argv = ['node', 'npm'];
 
 // @TODO: Support setting this
-export const execPath = '/bin/node';
+const execPath = '/bin/node';
 
 // ESM exports for process methods
-export const exit = (code) => {
+const exit = (code) => {
 	let message = '';
 	if (code instanceof Error) {
 		message = code.message;
@@ -28,43 +28,43 @@ export const exit = (code) => {
 	self.close();
 };
 
-export const abort = () => {
+const abort = () => {
 	console.error('process.abort() called - aborting execution');
 	throw new Error('Process aborted');
 };
 
-export function chdir(directory) {
+function chdir(directory) {
 	console.warn(
 		`process.chdir('${directory}') called - not supported in browser environment`
 	);
 }
 
-export const cwd = () => {
+const cwd = () => {
 	return '/bin';
 };
 
-export const getuid = () => {
+const getuid = () => {
 	return 1000; // Default user ID
 };
 
-export const getgid = () => {
+const getgid = () => {
 	return 1000; // Default group ID
 };
 
-export const getgroups = () => {
+const getgroups = () => {
 	return [1000]; // Default groups
 };
 
-export const umask = (mask) => {
+const umask = (mask) => {
 	const currentMask = 0o022; // Default umask
 	return mask !== undefined ? currentMask : currentMask;
 };
 
-export const uptime = () => {
+const uptime = () => {
 	return performance.now() / 1000; // Convert to seconds
 };
 
-export const hrtime = (time) => {
+const hrtime = (time) => {
 	const now = performance.now();
 	const seconds = Math.floor(now / 1000);
 	const nanoseconds = Math.floor((now % 1000) * 1e6);
@@ -78,7 +78,7 @@ export const hrtime = (time) => {
 	return [seconds, nanoseconds];
 };
 
-export const memoryUsage = () => {
+const memoryUsage = () => {
 	// Return mock memory usage data
 	return {
 		rss: 50 * 1024 * 1024, // 50MB
@@ -89,7 +89,7 @@ export const memoryUsage = () => {
 	};
 };
 
-export const cpuUsage = (previousValue) => {
+const cpuUsage = (previousValue) => {
 	const mockUsage = { user: 100000, system: 50000 }; // Mock CPU usage in microseconds
 
 	if (previousValue) {
@@ -102,7 +102,7 @@ export const cpuUsage = (previousValue) => {
 	return mockUsage;
 };
 
-export const kill = (pid, signal) => {
+const kill = (pid, signal) => {
 	console.warn(
 		`process.kill(${pid}, ${signal}) called - not supported in browser environment`
 	);
@@ -112,7 +112,7 @@ export const kill = (pid, signal) => {
 // Event handling for process
 const eventListeners = new Map();
 
-export const on = (event, listener) => {
+const on = (event, listener) => {
 	if (!eventListeners.has(event)) {
 		eventListeners.set(event, []);
 	}
@@ -160,7 +160,7 @@ export const on = (event, listener) => {
 	return globalThis.process; // Return process object for chaining
 };
 
-export const off = (event, listener) => {
+const off = (event, listener) => {
 	const listeners = eventListeners.get(event);
 	if (listeners) {
 		const index = listeners.indexOf(listener);
@@ -171,9 +171,9 @@ export const off = (event, listener) => {
 	return globalThis.process;
 };
 
-export const removeListener = off; // Alias for off
+const removeListener = off; // Alias for off
 
-export const emit = (event, ...args) => {
+const emit = (event, ...args) => {
 	const listeners = eventListeners.get(event) || [];
 	listeners.forEach((listener) => {
 		try {
@@ -185,11 +185,11 @@ export const emit = (event, ...args) => {
 	return listeners.length > 0;
 };
 
-export const nextTick = (fn, ...args) => {
+const nextTick = (fn, ...args) => {
 	setTimeout(fn.bind(null, ...args), 0);
 };
-export const version = '20.17.0';
-export const versions = {
+const version = '20.17.0';
+const versions = {
 		arch: 'x64',
 		version: '20.17.0',
 		platform: 'darwin',
@@ -242,7 +242,7 @@ function makeWritable(writeFn) {
 					: chunk.toString();
 			if (term) {
 				// xterm.js handles newlines well, but requires \r for carriage return.
-				term.write(value.replace(/\\n/g, '\r\n'));
+				term.write(value.replace(/\n/g, '\r\n'));
 			} else {
 				writeFn(value);
 			}
@@ -253,15 +253,49 @@ function makeWritable(writeFn) {
 	return stream;
 }
 
-export const getMaxListeners = () => {
+const getMaxListeners = () => {
 	return 50;
 };
 
-export const features = {
+const features = {
 	openssl_is_boringssl: false,
 }
 
-globalThis.process = {
+const initArgv = (args) => {
+	module.exports.argv = [...args];
+	module.exports.argc = args.length;
+};
+
+function initStreams(streamModule) {
+	module.exports.stdout = new streamModule.Writable({
+		write(chunk, encoding, callback) {
+			let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+			console.log(message.substr(0, 500));
+			callback();
+		},
+	});
+	module.exports.stderr = new streamModule.Writable({
+		write(chunk, encoding, callback) {
+			let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+			console.trace(message.substr(0, 500));
+			callback();
+		},
+	});
+	module.exports.stdin = new streamModule.Readable({
+		read(size) {
+			console.log(size);
+			return null;
+		},
+	});
+	module.exports.stdin.setEncoding("utf-8");
+	module.exports.stdin.resume();
+	delete module.exports.initStreams;
+}
+
+module.exports = {
+	initStreams,
+	setTerminal,
+	initArgv,
 	argc,
 	argv,
 	env,
@@ -289,30 +323,3 @@ globalThis.process = {
 	emit,
 	getMaxListeners,
 };
-
-// const requireStream = import.meta.require('../modules/stream.js');
-
-// export const stdout = makeWritable((value) => {
-// 	if (value.endsWith('\n')) {
-// 		console.log(value.slice(0, -1));
-// 	} else {
-// 		console.log(value);
-// 	}
-// });
-// export const stderr = makeWritable((value) => {
-// 	if (value.endsWith('\n')) {
-// 		console.error(value.slice(0, -1));
-// 	} else {
-// 		console.error(value);
-// 	}
-// });
-// export const stdin = new Readable({
-// 	read() {
-// 		// In the browser, stdin is not directly readable in the same way as Node.js.
-// 		// The readline module will use a custom backend for input.
-// 	}
-// });
-
-// globalThis.process.stdout = stdout;
-// globalThis.process.stderr = stderr;
-// globalThis.process.stdin = stdin;

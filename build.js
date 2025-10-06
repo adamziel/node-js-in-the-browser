@@ -17,6 +17,8 @@ const entryPoints = {
 	console: '../lib/console.js',
 	constants: '../lib/constants.js',
 	"internal/constants": '../lib/internal/constants.js',
+	"internal/modules/cjs/loader": './to-modularize/internal/modules/cjs/loader.js',
+	process: './to-modularize/process.js',
 	"internal/resolve": './to-modularize/resolve.js',
 	'fetch-polyfill': './to-modularize/fetch-polyfill.js',
 	// crypto: '../lib/crypto.js',
@@ -39,6 +41,7 @@ const entryPoints = {
 	tty: '../lib/tty.js',
 	// url: '../lib/url.js',
 	url: './to-modularize/url.js',
+	"internal/url": './to-modularize/internal/url.js',
 	perf_hooks: '../lib/perf_hooks.js',
 	string_decoder: '../lib/string_decoder.js',
 	util: '../lib/util.js',
@@ -82,7 +85,18 @@ const nodePolyfillPlugin = {
 				return { path: path.resolve(entryPoints[modulePath]) };
 			}
 		});
-	},
+
+		// Plugin to append module.exports to realm.js
+		build.onLoad({ filter: /realm\.js$/ }, (args) => {
+			const content = fs.readFileSync(args.path, 'utf8');
+			// Append module.exports = loaderExports to the end of the realm.js file
+			const modifiedContent = content + '\nmodule.exports = loaderExports;';
+			return {
+				contents: modifiedContent,
+				loader: 'default'
+			};
+		});
+	}
 };
 
 esbuild

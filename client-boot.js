@@ -188,13 +188,27 @@ globalThis.internalModules = {
 	},
 	util: createDebugProxy('util', {
 		privateSymbols: {
-			arrow_message_private_symbol: 1,
-			contextify_context_private_symbol: 2,
-			decorated_private_symbol: 3,
-			napi_type_tag: 4,
-			napi_wrapper: 5,
-			untransferable_object_private_symbol: 6,
-			exiting_aliased_Uint32Array: 7,
+			module_source_private_symbol: Symbol('module_source_private_symbol'),
+			module_export_names_private_symbol: Symbol('module_export_names_private_symbol'),
+			module_circular_visited_private_symbol: Symbol('module_circular_visited_private_symbol'),
+			module_export_private_symbol: Symbol('module_export_private_symbol'),
+			module_first_parent_private_symbol: Symbol('module_first_parent_private_symbol'),
+			module_last_parent_private_symbol: Symbol('module_last_parent_private_symbol'),
+			arrow_message_private_symbol: Symbol('node:arrowMessage'),
+			contextify_context_private_symbol: Symbol('node:contextify:context'),
+			decorated_private_symbol: Symbol('node:decorated'),
+			transfer_mode_private_symbol: Symbol('node:transfer_mode'),
+			host_defined_option_symbol: Symbol('node:host_defined_option_symbol'),
+			js_transferable_wrapper_private_symbol: Symbol('node:js_transferable_wrapper'),
+			entry_point_module_private_symbol: Symbol('node:entry_point_module'),
+			entry_point_promise_private_symbol: Symbol('node:entry_point_promise'),
+			napi_type_tag: Symbol('node:napi:type_tag'),
+			napi_wrapper: Symbol('node:napi:wrapper'),
+			untransferable_object_private_symbol: Symbol('node:untransferableObject'),
+			exit_info_private_symbol: Symbol('node:exit_info_private_symbol'),
+			promise_trace_id: Symbol('node:promise_trace_id'),
+			source_map_data_private_symbol: Symbol('node:source_map_data_private_symbol'),
+			exiting_aliased_Uint32Array: Symbol('exiting_aliased_Uint32Array'),
 		},
 		defineLazyProperties: (target, id, keys, writable = true) => {
 			for (let i = 0; i < keys.length; i++) {
@@ -266,17 +280,52 @@ globalThis.internalModules = {
 		getExternalValue
 	}),
 	options: {
-		getCLIOptionsValues: () => ({}),
-		getCLIOptionsInfo: () => ({}),
-		getOptionsAsFlags: () => ({}),
-		getEmbedderOptions: () => ({}),
-		getEnvOptionsInputType: () => ({}),
-		getNamespaceOptionsInputType: () => ({}),
+		// CLI Flags here.
+		// By default, no flags are passed.
+		getCLIOptionsValues: () => {
+			return new Proxy({}, {
+				get: (target, prop) => {
+					if (!(prop in target)) {
+						target[prop] = ''
+					}
+					return target[prop]
+				}
+			})
+		},
+		getCLIOptionsInfo: () => {
+			return {
+				options: [],
+				aliases: [],
+			}
+		},
+		getOptionsAsFlags: () => {
+			return [];
+		},
+		getEmbedderOptions: () => {
+			return {};
+		},
+		getEnvOptionsInputType: () => {
+			return {}
+		},
+		getNamespaceOptionsInputType: () => {
+			return {};
+		},
 	},
 	config: {
 		get: () => ({}),
 	},
 	contextify: createDebugProxy('contextify', {
+		compileFunctionForCJSLoader: (content, filename, is_sea_main, shouldDetectModule) => {
+			content = globalThis.coreModules.module.Module.wrap(`
+				${content}
+			`);
+			return {
+				sourceMapURL: () => { },
+				sourceURL: '',
+				cachedDataRejected: false,
+				function: eval(content),
+			}
+		},
 		ContextifyContext: class ContextifyContext {
 			constructor() {
 				this.context = undefined;
@@ -290,11 +339,10 @@ globalThis.internalModules = {
 	}),
 	modules: createDebugProxy('modules', {
 		compileCacheStatus: [],
-		cachedCodeTypes: { kStrippedTypeScript: 2, kTransformedTypeScript: 3, kTransformedTypeScriptWithSourceMaps: 4 }
-		// enableCompileCache: _enableCompileCache,
-		// getCompileCacheDir: _getCompileCacheDir,
-		// compileCacheStatus: _compileCacheStatus,
-		// flushCompileCache
+		cachedCodeTypes: { kStrippedTypeScript: 2, kTransformedTypeScript: 3, kTransformedTypeScriptWithSourceMaps: 4 },
+		readPackageJSON(jsonPath, isESM, base, specifier) {
+			return JSON.parse(globalFs.readFileSync(jsonPath, 'utf8'));
+		}
 	}),
 	fs: createDebugProxy('fs', {
 		kUsePromises: Symbol("kUsePromises"),
@@ -335,7 +383,21 @@ globalThis.internalModules = {
 		openFileHandle(path, flags, mode, usePromises) {
 			return globalFs.openFileHandle(path, flags, mode, usePromises);
 		},
-		
+		// Used to speed up module loading.  Returns 0 if the path refers to
+		// a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
+		// The speedup comes from not creating thousands of Stat and Error objects.
+		// Do not expose this function through public API as it doesn't hold
+		// Permission Model checks.
+		// @see node_file.cc
+		internalModuleStat(receiver /* unknown */, path /* string */) {
+			let stats;
+			try {
+				stats = globalFs.statSync(path ?? receiver);
+			} catch (e) {
+				return -1;
+			}
+			return stats?.isDirectory() ? 1 : stats?.isFile() ? 0 : -1;
+		},
 		exists(path) {
 			console.log("Regular exists – how is it different from existsSync?")
 			return globalFs.existsSync(path);
@@ -960,9 +1022,19 @@ types: createDebugProxy('types', {
 		immediateInfo: [],
 	}),
 	trace_events: {
-		getCategoryEnabledBuffer(){}
+		getCategoryEnabledBuffer() {
+			return [9];
+		},
+		trace() {
+			// Do nothing
+		}
 	},
-	credentials: {},
+	credentials: {
+		// ENV Variables
+		safeGetenv(key) {
+			return '';
+		}
+	},
 	performance: {
 		constants: {},
 		setupObservers() {} 
@@ -1003,7 +1075,45 @@ types: createDebugProxy('types', {
 			}
 		}
 	}),
-	url: createDebugProxy('url', {}),
+	url: createDebugProxy('url', {
+		pathToFileURL(filepath) {
+			if (typeof filepath !== 'string') {
+				throw new TypeError('Path must be a string');
+			}
+
+			// Handle trailing slashes - add back trailing slash if original had one
+			let resolved = filepath;
+			const hadTrailingSlash = filepath.endsWith('/');
+
+			// Encode the path for file URL
+			const encodedPath = this._encodePathForFileURL(resolved);
+
+			// Create and return the URL
+			return new URL(`file://${encodedPath}`);
+		},
+
+		_encodePathForFileURL(path) {
+			// Encode the path for use in a file:// URL
+			let encoded = '';
+
+			for (let i = 0; i < path.length; i++) {
+				const char = path[i];
+				const code = path.charCodeAt(i);
+
+				// Percent-encode characters that are not safe in file URLs
+				if (char === '%' || char === '#' || char === '?' || char === '\n' || char === '\r' || char === '\t') {
+					encoded += encodeURIComponent(char);
+				} else if (code < 32 || code > 126) {
+					// Control characters and non-ASCII characters
+					encoded += encodeURIComponent(char);
+				} else {
+					encoded += char;
+				}
+			}
+
+			return encoded;
+		}
+	}),
 	permission: createDebugProxy('permission', {}),
 	fs_dir: createDebugProxy('fs_dir', (function() {
 		// Implement Dir class with async iterator support
@@ -1446,9 +1556,27 @@ types: createDebugProxy('types', {
 		}
 	}),
 	symbols: {
-		handle_onclose: Symbol('handleOnCloseSymbol'),
-		oninit: Symbol('oninitSymbol'),
-		on_message: Symbol('noMessageSymbol'),
+		fs_use_promises: Symbol('fs_use_promises_symbol'),
+		async_id: Symbol('async_id_symbol'),
+		constructor_key: Symbol('constructor_key_symbol'),
+		handle_onclose: Symbol('handle_onclose'),
+		no_message: Symbol('no_message_symbol'),
+		messaging_deserialize: Symbol('messaging_deserialize_symbol'),
+		imported_cjs: Symbol('imported_cjs_symbol'),
+		messaging_transfer: Symbol('messaging_transfer_symbol'),
+		messaging_clone: Symbol('messaging_clone_symbol'),
+		messaging_transfer_list: Symbol('messaging_transfer_list_symbol'),
+		oninit: Symbol('oninit'),
+		owner: Symbol('owner_symbol'),
+		onpskexchange: Symbol('onpskexchange'),
+		resource: Symbol('resource_symbol'),
+		trigger_async_id: Symbol('trigger_async_id_symbol'),
+		source_text_module_default_hdo: Symbol('source_text_module_default_hdo'),
+		vm_context_no_contextify: Symbol('vm_context_no_contextify'),
+		vm_dynamic_import_default_internal: Symbol('vm_dynamic_import_default_internal'),
+		vm_dynamic_import_main_context_default: Symbol('vm_dynamic_import_main_context_default'),
+		vm_dynamic_import_missing_flag: Symbol('vm_dynamic_import_missing_flag'),
+		vm_dynamic_import_no_callback: Symbol('vm_dynamic_import_no_callback'),
 	},
 	// http2: createDebugProxy('http2', {
 	http2: ({
@@ -2156,7 +2284,16 @@ types: createDebugProxy('types', {
 		constructor() {
 			this.exports = {};
 		}
-	} }
+	}
+	},
+	block_list: {
+		schemelessBlockList: new Set([]),
+		BlockList: class BlockList {
+			constructor() {
+				this.schemelessBlockList = new Set([]);
+			}
+		}
+	},
 };
 
 globalThis.internalModules.os.constants = globalThis.internalModules.constants.os;
@@ -2180,7 +2317,7 @@ globalThis.internalBinding = function(moduleName) {
 }
 globalThis.coreModules = {};
 
-const process = await import("./src/process.js");
+const process = (await import("./modules/process.js")).default;
 globalThis.process = { ...process };
 globalThis.coreModules.process = globalThis.process;
 
@@ -2219,204 +2356,10 @@ globalThis.internalModules.util = {
 
 const CryptoInternal = await import("./modules/crypto.js");
 globalThis.internalModules.crypto = {
-	...CryptoInternal.default,
-
-	// getCachedAliases() { return []; }, // throw new Error('Not implemented')},
-	// getBundledRootCertificates() { throw new Error('Not implemented')},
-	// getExtraCACertificates() { throw new Error('Not implemented')},
-	// getSystemCACertificates() { throw new Error('Not implemented')},
-	// resetRootCertStore() { throw new Error('Not implemented')},
-	// getUserRootCertificates() { throw new Error('Not implemented')},
-	// getSSLCiphers() { throw new Error('Not implemented')},
-	// getHashes() {
-	// 	return ['md5', 'sha1', 'sha256', 'sha384', 'sha512'];
-	// },
-	// getCurves() {
-	// 	return ['secp256k1', 'prime256v1', 'secp384r1', 'secp521r1'];
-	// },
-	// getCiphers() {
-	// 	return ['aes-128-cbc', 'aes-192-cbc', 'aes-256-cbc', 'aes-128-gcm', 'aes-256-gcm'];
-	// },
 	startLoadingCertificatesOffThread() { return; }, // throw new Error('Not implemented')},
-	// KeyObjectHandle: null,
 	createNativeKeyObjectClass() {
 		return [null, null, null, null];
 	},
-	// kKeyTypeSecret: null,
-	// kKeyTypePublic: null,
-	// kKeyTypePrivate: null,
-	// kKeyFormatPEM: null,
-	// kKeyFormatDER: null,
-	// kKeyFormatJWK: null,
-	// kKeyEncodingPKCS1: null,
-	// kKeyEncodingPKCS8: null,
-	// kKeyEncodingSPKI: null,
-	// kKeyEncodingSEC1: null,
-	// EVP_PKEY_ML_DSA_44: null,
-	// EVP_PKEY_ML_DSA_65: null,
-	// EVP_PKEY_ML_DSA_87: null,
-	
-	// // Crypto job constants
-	// kCryptoJobAsync: 0,
-	// kCryptoJobSync: 1,
-
-	// // RandomBytesJob class for async random bytes generation
-	// RandomBytesJob: class RandomBytesJob {
-	// 	constructor(size) {
-	// 		this.size = size;
-	// 		this.result = null;
-	// 		this.error = null;
-	// 	}
-		
-	// 	run(callback) {
-	// 		try {
-	// 			const buffer = new Uint8Array(this.size);
-	// 			// @TODO: Use another method of generating sync random bytes
-	// 			for (let i = 0; i < this.size; i++) {
-	// 				buffer[i] = Math.round(Math.random() * 256);
-	// 			}
-	// 			this.result = buffer;
-				
-	// 			// Return as array [error, result]
-	// 			return [null, buffer];
-	// 		} catch (err) {
-	// 			return [err, null];
-	// 		}
-	// 	}
-	// },
-	
-	// // RandomPrimeJob class for generating random prime numbers
-	// RandomPrimeJob: class RandomPrimeJob {
-	// 	constructor(size, options = {}) {
-	// 		this.size = size;
-	// 		this.options = options;
-	// 		this.result = null;
-	// 		this.error = null;
-	// 	}
-		
-	// 	run(callback) {
-	// 		try {
-	// 			// Simple prime generation (not cryptographically optimal, but functional)
-	// 			const min = this.options.min || 2n;
-	// 			const max = this.options.max || (2n ** BigInt(this.size));
-				
-	// 			// Generate random bigint in range
-	// 			let candidate = this._randomBigInt(min, max);
-				
-	// 			// Ensure it's odd
-	// 			if (candidate % 2n === 0n) candidate += 1n;
-				
-	// 			// Simple primality test (Miller-Rabin would be better)
-	// 			while (!this._isProbablyPrime(candidate)) {
-	// 				candidate += 2n;
-	// 				if (candidate > max) {
-	// 					candidate = min + (candidate - max);
-	// 				}
-	// 			}
-				
-	// 			this.result = candidate;
-	// 			if (callback) callback(null, candidate);
-	// 		} catch (err) {
-	// 			this.error = err;
-	// 			if (callback) callback(err);
-	// 		}
-	// 	}
-		
-	// 	_randomBigInt(min, max) {
-	// 		const range = max - min;
-	// 		const bits = range.toString(2).length;
-	// 		const bytes = Math.ceil(bits / 8);
-	// 		const buffer = new Uint8Array(bytes);
-	// 		crypto.getRandomValues(buffer);
-			
-	// 		let result = 0n;
-	// 		for (let i = 0; i < bytes; i++) {
-	// 			result = (result << 8n) | BigInt(buffer[i]);
-	// 		}
-			
-	// 		return min + (result % range);
-	// 	}
-		
-	// 	_isProbablyPrime(n, k = 5) {
-	// 		if (n < 2n) return false;
-	// 		if (n === 2n || n === 3n) return true;
-	// 		if (n % 2n === 0n) return false;
-			
-	// 		// Simple trial division for small primes
-	// 		const smallPrimes = [3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n, 41n, 43n, 47n];
-	// 		for (const p of smallPrimes) {
-	// 			if (n === p) return true;
-	// 			if (n % p === 0n) return false;
-	// 		}
-			
-	// 		// Miller-Rabin primality test
-	// 		let d = n - 1n;
-	// 		let r = 0n;
-	// 		while (d % 2n === 0n) {
-	// 			d /= 2n;
-	// 			r += 1n;
-	// 		}
-			
-	// 		witnessLoop: for (let i = 0; i < k; i++) {
-	// 			const a = 2n + this._randomBigInt(0n, n - 4n);
-	// 			let x = this._modPow(a, d, n);
-				
-	// 			if (x === 1n || x === n - 1n) continue;
-				
-	// 			for (let j = 0n; j < r - 1n; j++) {
-	// 				x = this._modPow(x, 2n, n);
-	// 				if (x === n - 1n) continue witnessLoop;
-	// 			}
-				
-	// 			return false;
-	// 		}
-			
-	// 		return true;
-	// 	}
-		
-	// 	_modPow(base, exponent, modulus) {
-	// 		if (modulus === 1n) return 0n;
-	// 		let result = 1n;
-	// 		base = base % modulus;
-	// 		while (exponent > 0n) {
-	// 			if (exponent % 2n === 1n) {
-	// 				result = (result * base) % modulus;
-	// 			}
-	// 			exponent = exponent / 2n;
-	// 			base = (base * base) % modulus;
-	// 		}
-	// 		return result;
-	// 	}
-	// },
-	
-	// // CheckPrimeJob class for checking primality
-	// CheckPrimeJob: class CheckPrimeJob {
-	// 	constructor(candidate, checks = 0) {
-	// 		this.candidate = BigInt(candidate);
-	// 		this.checks = checks || 5;
-	// 		this.result = false;
-	// 		this.error = null;
-	// 	}
-		
-	// 	run(callback) {
-	// 		try {
-	// 			// Use the same primality test from RandomPrimeJob
-	// 			const job = new this.constructor.RandomPrimeJob(0);
-	// 			this.result = job._isProbablyPrime(this.candidate, this.checks);
-	// 			if (callback) callback(null, this.result);
-	// 		} catch (err) {
-	// 			this.error = err;
-	// 			if (callback) callback(err);
-	// 		}
-	// 	}
-	// },
-	
-	// // Secure buffer creation
-	// secureBuffer(size) {
-	// 	const buffer = new Uint8Array(size);
-	// 	crypto.getRandomValues(buffer);
-	// 	return buffer;
-	// }
 	...globalThis.internalModules.crypto,
 	...CryptoInternal.default
 };
@@ -2464,29 +2407,10 @@ const asyncHooks = await import("./modules/async_hooks.js");
 globalThis.coreModules.async_hooks = asyncHooks.default;
 console.log('asyncHooks', asyncHooks);
 
-globalThis.process.stdout = new stream.default.Writable({
-	write(chunk, encoding, callback) {
-		let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-		console.log(message.substr(0, 500));
-		callback();
-	},
-});
-globalThis.process.stderr = new stream.default.Writable({
-	write(chunk, encoding, callback) {
-		let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-		console.trace(message.substr(0, 500));
-		callback();
-	},
-});
-globalThis.process.stdin = new stream.default.Readable({
-	read(size) {
-		console.log(size);
-		return null;
-	},
-});
 await import("./modules/boot.js");
-globalThis.process.stdin.setEncoding("utf-8");
-globalThis.process.stdin.resume();
+
+console.log("Setting stdout etc.")
+globalThis.process.initStreams(stream.default);
 
 globalThis.coreModules.os = globalThis.internalModules.os;
 
@@ -2560,7 +2484,10 @@ const net = await import("./modules/net.js");
 globalThis.coreModules.net = net.default;
 
 const url = await import("./modules/url.js");
-globalThis.coreModules.url = url.default;
+globalThis.coreModules.url = {
+	...url.default,
+	pathToFileURL: globalThis.internalModules.url.pathToFileURL,
+};
 console.log('URL', globalThis.coreModules.url);
 
 const zlib = await import("./modules/zlib.js");
@@ -2605,11 +2532,38 @@ globalThis.coreModules.v8 = { ...v8 };
 const Module = await import("./src/module.js");
 globalThis.coreModules.module = Module;
 
+// realm.BuiltinModule
+for(const key in globalThis.coreModules) {
+	realm.default.BuiltinModule.allowRequireByUsers(key);
+	realm.default.BuiltinModule.map.set(key, {
+		exports: globalThis.coreModules[key],
+		filename: key,
+		id: key,
+		loaded: true,
+		loading: false,
+		compileForPublicLoader() { }
+	});
+}
+
+// const ModuleCJSLoader = await import("./modules/internal/modules/cjs/loader.js");
+// console.log({ ModuleCJSLoader })
+// globalThis.coreModules.module.Module = ModuleCJSLoader.Module;
+// console.log({ModuleCJSLoader})
+
 // @TODO:
 // const resolveModule = await import("./modules/internal/resolve.js");
 // console.log({ resolveModule })
 
 export function runMain(options) {
+	let path = '';
+	if (options.code) {
+		globalFs.mkdirSync('/tmp', {recursive: true});
+		path = `/tmp/file-${Date.now()}.cjs`;
+		globalFs.writeFileSync(path, options.code);
+		options = path;
+	}
+	
+	globalThis.coreModules.module.initializeCJS(options);
 	return globalThis.coreModules.module.Module.runMain(options);
 }
 
@@ -2656,4 +2610,47 @@ globalThis.nodeFetch = async (url, ...args) => {
 		});
 	}
 	return result;
+};
+
+const timeouts = new Map();
+const originalSetTimeout = globalThis.setTimeout;
+const originalClearTimeout = globalThis.clearTimeout;
+
+globalThis.setTimeout = (callback, after, ...args) => {
+	// Start the timeout immediately
+	const timeoutId = originalSetTimeout(callback, after, ...args);
+	
+	// Create a timeout object that mimics Node.js behavior
+	const timeoutObj = {
+		_id: timeoutId,
+		_unrefd: false,
+		unref() {
+			this._unrefd = true;
+			return this;
+		},
+		ref() {
+			this._unrefd = false;
+			return this;
+		},
+		hasRef() {
+			return !this._unrefd;
+		}
+	};
+	
+	// Store the mapping for clearTimeout
+	timeouts.set(timeoutObj, timeoutId);
+	
+	return timeoutObj;
+};
+
+globalThis.clearTimeout = (timeout) => {
+	if (timeout && typeof timeout === 'object' && timeouts.has(timeout)) {
+		// Handle our custom timeout objects
+		const timeoutId = timeouts.get(timeout);
+		timeouts.delete(timeout);
+		return originalClearTimeout(timeoutId);
+	} else {
+		// Handle regular timeout IDs (for compatibility)
+		return originalClearTimeout(timeout);
+	}
 };

@@ -25,8 +25,8 @@
 			// works!
 			// process.argv = ["node", "npm", "init"];
 
-			process.argv = ["node", "npm", "install"];
-			process.argc = process.argv.length;
+			process.initArgv(["node", "npm", "install"])
+
 			const args = process.argv;
 
 			async function doRun() {
@@ -59,8 +59,8 @@
 						name: 'my-test-app',
 						version: '1.0.0',
 						dependencies: {
-							// leftpad: '*',
-							webpack: '*',
+							leftpad: '*',
+							// webpack: '*',
 						},
 					})
 				);
@@ -75,7 +75,10 @@
 				try {
 					const command = args[0];
 					if (args[1] === 'npm') {
-						Module.Module.runMain({ code: npmCode, path: args[0] });
+						fs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
+						fs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
+						fs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
+						require('/bin/npm')
 					} else if (command === 'ls') {
 						const files = fs.readdirSync(args[1] || process.cwd()).sort();
 						process.stdout.write('\n' + files.join('\n') + '\n');

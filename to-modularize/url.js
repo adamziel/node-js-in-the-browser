@@ -242,10 +242,11 @@ function urlResolveObject(from, to) {
 	return urlParse(resolvedUrl, false, true);
 }
 
+
 module.exports = {
 	Url: window.URL,
 	URL: window.URL,
-	
+
 	parse: urlParse,
 	resolve: urlResolve,
 	resolveObject: urlResolveObject,

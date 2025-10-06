@@ -1,11 +1,11 @@
 import {
-  init_vm,
-  vm_exports
-} from "./chunk-R3FVOHFT.js";
-import {
   init_v8,
   v8_exports
 } from "./chunk-I42IIQEW.js";
+import {
+  init_vm,
+  vm_exports
+} from "./chunk-R3FVOHFT.js";
 import {
   require_actualApply,
   require_call_bind_apply_helpers,
@@ -26,7 +26,7 @@ import {
 } from "./chunk-UWEHO5PT.js";
 import {
   require_realm
-} from "./chunk-NHS3F7JZ.js";
+} from "./chunk-EV3FV3XH.js";
 import {
   buffer_polyfill_exports,
   init_buffer_polyfill
@@ -17637,7 +17637,7 @@ var require_prepare_stack_trace = __commonJS({
     var {
       kIsNodeError
     } = require_errors();
-    var { fileURLToPath } = require_url2();
+    var { fileURLToPath } = require_url3();
     var { setGetSourceMapErrorSource } = internalBinding("errors");
     var kStackLineAt = "\n    at ";
     function prepareStackTraceWithSourceMaps(error, trace) {
@@ -17802,7 +17802,7 @@ var require_utils3 = __commonJS({
       deprecate,
       isWindows
     } = require_util6();
-    var { toPathIfFileURL } = require_url2();
+    var { toPathIfFileURL } = require_url3();
     var {
       validateAbortSignal,
       validateBoolean,
@@ -18710,7 +18710,7 @@ var require_customization_hooks = __commonJS({
     } = require_errors().codes;
     var { validateFunction } = require_validators();
     var { isAbsolute } = require_path();
-    var { pathToFileURL, fileURLToPath } = require_url2();
+    var { pathToFileURL, fileURLToPath } = require_url3();
     var debug = require_debuglog().debuglog("module_hooks", (fn) => {
       debug = fn;
     });
@@ -19816,7 +19816,7 @@ var require_get_format = __commonJS({
     var detectModule = getOptionValue("--experimental-detect-module");
     var { containsModuleSyntax } = internalBinding("contextify");
     var { getPackageScopeConfig, getPackageType } = require_package_json_reader();
-    var { fileURLToPath } = require_url2();
+    var { fileURLToPath } = require_url3();
     var { ERR_UNKNOWN_FILE_EXTENSION } = require_errors().codes;
     var protocolHandlers = {
       "__proto__": null,
@@ -19993,7 +19993,7 @@ var require_resolve = __commonJS({
     var preserveSymlinks = getOptionValue("--preserve-symlinks");
     var preserveSymlinksMain = getOptionValue("--preserve-symlinks-main");
     var inputTypeFlag = getOptionValue("--input-type");
-    var { URL: URL2, pathToFileURL, fileURLToPath, isURL, URLParse } = require_url2();
+    var { URL: URL2, pathToFileURL, fileURLToPath, isURL, URLParse } = require_url3();
     var { getCWDURL, setOwnProperty } = require_util6();
     var { canParse: URLCanParse } = internalBinding("url");
     var { legacyMainResolve: FSLegacyMainResolve } = internalBinding("fs");
@@ -20009,7 +20009,7 @@ var require_resolve = __commonJS({
       ERR_UNSUPPORTED_DIR_IMPORT,
       ERR_UNSUPPORTED_RESOLVE_REQUEST
     } = require_errors().codes;
-    var { Module: CJSModule } = require_loader2();
+    var { Module: CJSModule } = require_loader3();
     var { getConditionsSet } = require_utils5();
     var packageJsonReader = require_package_json_reader();
     var internalFsBinding = internalBinding("fs");
@@ -20789,7 +20789,7 @@ var require_package_json_reader = __commonJS({
       isURL,
       pathToFileURL,
       URL: URL2
-    } = require_url2();
+    } = require_url3();
     var { canParse: URLCanParse } = internalBinding("url");
     var {
       codes: {
@@ -22081,7 +22081,7 @@ var require_load = __commonJS({
     var { validateAttributes, emitImportAssertionWarning } = require_assert2();
     var { readFileSync } = require_fs();
     var { Buffer: { from: BufferFrom } } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
-    var { URL: URL2 } = require_url2();
+    var { URL: URL2 } = require_url3();
     var {
       ERR_INVALID_URL,
       ERR_UNKNOWN_MODULE_FORMAT,
@@ -23584,8 +23584,8 @@ var require_translators = __commonJS({
       resolveForCJSWithHooks,
       loadSourceForCJSWithHooks,
       populateCJSExportsFromESM
-    } = require_loader2();
-    var { fileURLToPath, pathToFileURL, URL: URL2 } = require_url2();
+    } = require_loader3();
+    var { fileURLToPath, pathToFileURL, URL: URL2 } = require_url3();
     var debug = require_debuglog().debuglog("esm", (fn) => {
       debug = fn;
     });
@@ -30956,7 +30956,7 @@ var require_comparisons = __commonJS({
     } = primordials;
     var { compare } = internalBinding("buffer");
     var assert = require_assert();
-    var { isURL } = require_url2();
+    var { isURL } = require_url3();
     var { isError } = require_util6();
     var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
     var wellKnownConstructors = new SafeSet().add(Array2).add(ArrayBuffer2).add(BigInt2).add(BigInt64Array).add(BigUint64Array).add(Boolean2).add(Buffer2).add(DataView2).add(Date2).add(Error2).add(Float32Array).add(Float64Array).add(Function2).add(Int16Array).add(Int32Array2).add(Int8Array).add(Map2).add(Number2).add(Object2).add(Promise2).add(RegExp2).add(Set2).add(String2).add(Symbol2).add(Uint16Array2).add(Uint32Array).add(Uint8Array2).add(Uint8ClampedArray).add(WeakMap2).add(WeakSet);
@@ -32643,7 +32643,7 @@ var require_hooks = __commonJS({
       ERR_WORKER_UNSERIALIZABLE_ERROR
     } = require_errors().codes;
     var { exitCodes: { kUnsettledTopLevelAwait } } = internalBinding("errors");
-    var { URLParse } = require_url2();
+    var { URLParse } = require_url3();
     var { canParse: URLCanParse } = internalBinding("url");
     var { receiveMessageOnPort } = require_worker_threads();
     var {
@@ -33225,7 +33225,7 @@ var require_loader = __commonJS({
     var {
       kIsExecuting,
       kRequiredModuleSymbol
-    } = require_loader2();
+    } = require_loader3();
     var { imported_cjs_symbol } = internalBinding("symbols");
     var assert = require_assert();
     var {
@@ -33236,7 +33236,7 @@ var require_loader = __commonJS({
       ERR_UNKNOWN_MODULE_FORMAT
     } = require_errors().codes;
     var { getOptionValue } = require_options();
-    var { isURL, pathToFileURL, URLParse } = require_url2();
+    var { isURL, pathToFileURL, URLParse } = require_url3();
     var { kEmptyObject } = require_util6();
     var {
       compileSourceTextModule,
@@ -36163,7 +36163,7 @@ var require_execution = __commonJS({
         ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET
       }
     } = require_errors();
-    var { pathToFileURL } = require_url2();
+    var { pathToFileURL } = require_url3();
     var { exitCodes: { kGenericUserError } } = internalBinding("errors");
     var {
       kSourcePhase,
@@ -36419,7 +36419,7 @@ ${originalError.stack}`;
       return getOptionValue("--experimental-detect-module") && getOptionValue("--input-type") === "" && containsModuleSyntax(body, name, null, "no CJS variables");
     }
     function createModule(name) {
-      const CJSModule = require_loader2().Module;
+      const CJSModule = require_loader3().Module;
       const cwd = tryGetCwd();
       const module2 = new CJSModule(name);
       module2.filename = path2.join(cwd, name);
@@ -36478,7 +36478,7 @@ var require_run_main = __commonJS({
     var { getNearestParentPackageJSONType } = internalBinding("modules");
     var { getOptionValue } = require_options();
     var path2 = require_path();
-    var { pathToFileURL, URL: URL2 } = require_url2();
+    var { pathToFileURL, URL: URL2 } = require_url3();
     var { kEmptyObject, getCWDURL } = require_util6();
     var {
       hasUncaughtExceptionCaptureCallback
@@ -36493,7 +36493,7 @@ var require_run_main = __commonJS({
     } = internalBinding("util");
     function resolveMainPath(main) {
       let mainPath;
-      const { Module } = require_loader2();
+      const { Module } = require_loader3();
       mainPath = Module._findPath(path2.resolve(main), null, true);
       if (!mainPath) {
         return;
@@ -36574,7 +36574,7 @@ var require_run_main = __commonJS({
         useESMLoader = shouldUseESMLoader(resolvedMain);
       }
       if (!useESMLoader) {
-        const cjsLoader = require_loader2();
+        const cjsLoader = require_loader3();
         const { wrapModuleLoad } = cjsLoader;
         wrapModuleLoad(main, null, true);
       } else {
@@ -36684,7 +36684,7 @@ var require_loader2 = __commonJS({
     var {
       maybeCacheSourceMap
     } = require_source_map_cache();
-    var { pathToFileURL, fileURLToPath, isURL } = require_url2();
+    var { pathToFileURL, fileURLToPath, isURL } = require_url3();
     var {
       pendingDeprecate,
       emitExperimentalWarning,
@@ -38007,6 +38007,22 @@ ${StringPrototypeRepeat(" ", col - 1)}^
   }
 });
 
+// to-modularize/internal/modules/cjs/loader.js
+var require_loader3 = __commonJS({
+  "to-modularize/internal/modules/cjs/loader.js"(exports2, module) {
+    var cjsLoader = require_loader2();
+    module.exports = cjsLoader;
+    var originalModuleLoad = cjsLoader.Module._load;
+    cjsLoader.Module._load = function(request, parent, isMain) {
+      const requestWithoutNode = request.startsWith("node:") ? request.slice(5) : request;
+      if (!request.startsWith("node:") && requestWithoutNode in globalThis.coreModules) {
+        request = `node:${request}`;
+      }
+      return originalModuleLoad(request, parent, isMain);
+    };
+  }
+});
+
 // ../lib/internal/modules/helpers.js
 var require_helpers = __commonJS({
   "../lib/internal/modules/helpers.js"(exports2, module) {
@@ -38032,7 +38048,7 @@ var require_helpers = __commonJS({
     var fs = require_fs();
     var internalFS = require_utils3();
     var path2 = require_path();
-    var { pathToFileURL, fileURLToPath, URL: URL2 } = require_url2();
+    var { pathToFileURL, fileURLToPath, URL: URL2 } = require_url3();
     var assert = require_assert();
     var { getOptionValue } = require_options();
     var { setOwnProperty, getLazy } = require_util6();
@@ -38096,7 +38112,7 @@ var require_helpers = __commonJS({
     }
     var $Module = null;
     function lazyModule() {
-      return $Module ??= require_loader2().Module;
+      return $Module ??= require_loader3().Module;
     }
     function makeRequireFunction(mod) {
       const Module = lazyModule();
@@ -38128,7 +38144,7 @@ var require_helpers = __commonJS({
       return content;
     }
     function addBuiltinLibsToObject(object, dummyModuleName) {
-      const Module = require_loader2().Module;
+      const Module = require_loader3().Module;
       const { builtinModules } = Module;
       const dummyModule = new Module(dummyModuleName);
       ArrayPrototypeForEach(builtinModules, (name) => {
@@ -38598,7 +38614,7 @@ var require_source_map_cache = __commonJS({
     var kSourceMappingURLMagicComment = /\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/g;
     var kSourceURLMagicComment = /\/[*/]#\s+sourceURL=(?<sourceURL>[^\s]+)/g;
     var { isAbsolute } = require_path();
-    var { fileURLToPath, pathToFileURL, URL: URL2, URLParse } = require_url2();
+    var { fileURLToPath, pathToFileURL, URL: URL2, URLParse } = require_url3();
     var SourceMap;
     var sourceMapsSupport = ObjectFreeze({
       __proto__: null,
@@ -40713,7 +40729,7 @@ var require_blob = __commonJS({
       TextDecoder: TextDecoder2,
       TextEncoder: TextEncoder2
     } = require_encoding();
-    var { URL: URL2 } = require_url2();
+    var { URL: URL2 } = require_url3();
     var {
       markTransferMode,
       kClone,
@@ -44639,7 +44655,7 @@ var require_streams = __commonJS({
       validatePath
     } = require_utils3();
     var { Readable, Writable, finished } = require_stream();
-    var { toPathIfFileURL } = require_url2();
+    var { toPathIfFileURL } = require_url3();
     var kIoDone = Symbol2("kIoDone");
     var kIsPerformingIO = Symbol2("kIsPerformingIO");
     var kFs = Symbol2("kFs");
@@ -45270,7 +45286,7 @@ var require_promises4 = __commonJS({
     } = require_validators();
     var pathModule = require_path();
     var { isAbsolute } = pathModule;
-    var { toPathIfFileURL } = require_url2();
+    var { toPathIfFileURL } = require_url3();
     var {
       getLazy,
       kEmptyObject,
@@ -46950,7 +46966,7 @@ var require_fs = __commonJS({
       FSReqCallback,
       statValues
     } = binding;
-    var { toPathIfFileURL } = require_url2();
+    var { toPathIfFileURL } = require_url3();
     var {
       customPromisifyArgs: kCustomPromisifyArgsSymbol,
       getLazy,
@@ -50672,7 +50688,7 @@ var require_glob = __commonJS({
       hideStackFrames
     } = require_errors();
     var assert = require_assert();
-    var { toPathIfFileURL } = require_url2();
+    var { toPathIfFileURL } = require_url3();
     var minimatch2;
     function lazyMinimatch() {
       minimatch2 ??= (init_minimatch(), __toCommonJS(minimatch_exports));
@@ -52969,7 +52985,7 @@ var require_worker = __commonJS({
     } = workerIo;
     var { createMainThreadPort, destroyMainThreadPort } = require_messaging();
     var { deserializeError } = require_error_serdes();
-    var { fileURLToPath, isURL, pathToFileURL } = require_url2();
+    var { fileURLToPath, isURL, pathToFileURL } = require_url3();
     var { kEmptyObject } = require_util6();
     var { validateArray, validateString, validateObject, validateNumber } = require_validators();
     var {
@@ -56639,6 +56655,21 @@ var require_url2 = __commonJS({
   }
 });
 
+// to-modularize/internal/url.js
+var require_url3 = __commonJS({
+  "to-modularize/internal/url.js"(exports2, module) {
+    var internalUrl = require_url2();
+    module.exports = {
+      ...internalUrl,
+      URL: require_url().URL,
+      pathToFileURL: (filepath) => {
+        console.log("pathToFileURL", filepath);
+        return new URL(`file://${filepath}`);
+      }
+    };
+  }
+});
+
 // ../lib/internal/util/inspect.js
 var require_inspect = __commonJS({
   "../lib/internal/util/inspect.js"(exports2, module) {
@@ -56833,11 +56864,11 @@ var require_inspect = __commonJS({
     var hexSlice;
     var internalUrl;
     function pathToFileUrlHref(filepath) {
-      internalUrl ??= require_url2();
+      internalUrl ??= require_url3();
       return internalUrl.pathToFileURL(filepath).href;
     }
     function isURL(value) {
-      internalUrl ??= require_url2();
+      internalUrl ??= require_url3();
       return typeof value.href === "string" && value instanceof internalUrl.URL;
     }
     var builtInObjects = new SafeSet(
@@ -64880,7 +64911,7 @@ var require_socketaddress = __commonJS({
       kClone,
       kDeserialize
     } = require_js_transferable();
-    var { URL: URL2 } = require_url2();
+    var { URL: URL2 } = require_url3();
     var kHandle = Symbol2("kHandle");
     var kDetail = Symbol2("kDetail");
     var SocketAddress = class _SocketAddress2 {
@@ -80571,7 +80602,7 @@ var require_brorand = __commonJS({
       }
     } else {
       try {
-        crypto = (init_crypto(), __toCommonJS(crypto_exports));
+        crypto = require_crypto();
         if (typeof crypto.randomBytes !== "function")
           throw new Error("Not supported");
         Rand.prototype._rand = function _rand(n) {
@@ -104771,15 +104802,24 @@ var require_crypto_browserify = __commonJS({
 });
 
 // to-modularize/crypto.js
-var crypto_exports = {};
-__export(crypto_exports, {
-  default: () => crypto_default
-});
-var cryptoBrowserifyModule, crypto_default;
-var init_crypto = __esm({
-  "to-modularize/crypto.js"() {
-    cryptoBrowserifyModule = __toESM(require_crypto_browserify());
-    crypto_default = { ...cryptoBrowserifyModule };
+var require_crypto = __commonJS({
+  "to-modularize/crypto.js"(exports2, module) {
+    var cryptoBrowserifyModule = require_crypto_browserify();
+    module.exports = {
+      ...cryptoBrowserifyModule,
+      getBundledRootCertificates() {
+        return [];
+      },
+      getExtraCACertificates() {
+        return [];
+      },
+      getSystemCACertificates() {
+        return [];
+      },
+      getUserRootCertificates() {
+        return [];
+      }
+    };
   }
 });
 
@@ -105360,7 +105400,7 @@ var require_wrap = __commonJS({
     assertCrypto();
     var { setImmediate: setImmediate2 } = require_timers2();
     var assert = require_assert();
-    var crypto = (init_crypto(), __toCommonJS(crypto_exports));
+    var crypto = require_crypto();
     var EE = require_events();
     var net = require_net2();
     var tls = require_tls();
@@ -113733,7 +113773,7 @@ var require_http2 = __commonJS({
       CHAR_LOWERCASE_B,
       CHAR_LOWERCASE_E
     } = require_constants();
-    var { URL: URL2 } = require_url2();
+    var { URL: URL2 } = require_url3();
     var { Buffer: Buffer2 } = (init_buffer_polyfill(), __toCommonJS(buffer_polyfill_exports));
     var { isIPv4 } = require_net();
     var { ERR_PROXY_INVALID_CONFIG } = require_errors().codes;
@@ -117483,7 +117523,7 @@ var require_core = __commonJS({
     var fs = require_fs();
     var http = require_http();
     var { readUInt16BE, readUInt32BE } = require_buffer();
-    var { URL: URL2, getURLOrigin } = require_url2();
+    var { URL: URL2, getURLOrigin } = require_url3();
     var net = require_net2();
     var { Duplex } = require_stream();
     var tls = require_tls();
@@ -126495,7 +126535,7 @@ var require_undici = __commonJS({
         var { createDeferredPromise } = require_promise();
         var random;
         try {
-          const crypto = (init_crypto(), __toCommonJS(crypto_exports));
+          const crypto = require_crypto();
           random = /* @__PURE__ */ __name((max) => crypto.randomInt(0, max), "random");
         } catch {
           random = /* @__PURE__ */ __name((max) => Math.floor(Math.random() * max), "random");
@@ -131386,7 +131426,7 @@ ${len.toString(16)}\r
         var validSRIHashAlgorithmTokenSet = /* @__PURE__ */ new Map([["sha256", 0], ["sha384", 1], ["sha512", 2]]);
         var crypto;
         try {
-          crypto = (init_crypto(), __toCommonJS(crypto_exports));
+          crypto = require_crypto();
           const cryptoHashes = crypto.getHashes();
           if (cryptoHashes.length === 0) {
             validSRIHashAlgorithmTokenSet.clear();
@@ -133121,7 +133161,7 @@ ${len.toString(16)}\r
         var buffer = null;
         var bufIdx = BUFFER_SIZE;
         try {
-          crypto = (init_crypto(), __toCommonJS(crypto_exports));
+          crypto = require_crypto();
         } catch {
           crypto = {
             // not full compatibility, but minimum.
@@ -133239,7 +133279,7 @@ ${len.toString(16)}\r
         var assert = require_assert3();
         var crypto;
         try {
-          crypto = (init_crypto(), __toCommonJS(crypto_exports));
+          crypto = require_crypto();
         } catch {
         }
         function establishWebSocketConnection(url, protocols, client, handler, options) {
@@ -138442,7 +138482,7 @@ var require_pre_execution = __commonJS({
       }
     }
     function initializeCJSLoader() {
-      const { initializeCJS } = require_loader2();
+      const { initializeCJS } = require_loader3();
       initializeCJS();
     }
     function initializeESMLoader(forceDefaultLoader) {
@@ -138490,7 +138530,7 @@ var require_pre_execution = __commonJS({
           Module: {
             _preloadModules
           }
-        } = require_loader2();
+        } = require_loader3();
         _preloadModules(preloadModules);
       }
     }
@@ -147541,7 +147581,7 @@ var require_util6 = __commonJS({
     var cachedCWD;
     function getCWDURL() {
       const { sep } = require_path();
-      const { pathToFileURL } = require_url2();
+      const { pathToFileURL } = require_url3();
       let cwd;
       try {
         cwd = globalThis.process.cwd();
@@ -150405,8 +150445,10 @@ export {
   require_resolve,
   require_worker_threads,
   require_global,
+  require_loader3 as require_loader,
   require_assert3 as require_assert2,
   require_querystring2 as require_querystring,
+  require_url3 as require_url,
   require_blob,
   require_stream,
   require_util2,
@@ -150415,8 +150457,7 @@ export {
   require_http,
   require_dns,
   require_net2 as require_net,
-  crypto_default,
-  init_crypto,
+  require_crypto,
   require_tls,
   require_zlib,
   require_perf_hooks,

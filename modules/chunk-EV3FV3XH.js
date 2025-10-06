@@ -4,7 +4,7 @@ import {
 
 // ../lib/internal/bootstrap/realm.js
 var require_realm = __commonJS({
-  "../lib/internal/bootstrap/realm.js"() {
+  "../lib/internal/bootstrap/realm.js"(exports, module) {
     var {
       ArrayFrom,
       ArrayPrototypeFilter,
@@ -316,6 +316,7 @@ var require_realm = __commonJS({
     }
     setInternalLoaders(internalBinding, requireBuiltin);
     setupPrepareStackTrace();
+    module.exports = loaderExports;
   }
 });
 
