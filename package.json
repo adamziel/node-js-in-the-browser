@@ -9,9 +9,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "browserify-zlib": "^0.2.0",
+    "crypto-browserify": "^3.12.1",
     "esbuild": "^0.25.10",
+    "leftpad": "^0.0.1",
     "punycode": "^2.3.1",
     "qs": "^6.14.0",
+    "rightpad": "^1.0.1",
     "stream-http": "^3.2.0",
     "url": "^0.11.4"
   }

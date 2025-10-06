@@ -18654,12 +18654,15 @@ var require_read = __commonJS({
     module2.exports.stream = readStream;
     module2.exports.readStream = readStream;
     function readStream(cache, integrity, opts = {}) {
+      console.trace("readStream")
       const { size } = opts;
       const stream = new Pipeline();
       Promise.resolve().then(async () => {
         const { stat, cpath, sri } = await withContentSri(cache, integrity, async (cpath2, sri2) => {
           // console.log({cache, integrity, cpath2, sri2})
           const stat2 = size ? { size } : await fs.stat(cpath2);
+          console.log({stat2, cpath2})
+          process.exit(0);
           return { stat: stat2, cpath: cpath2, sri: sri2 };
         });
         return readPipeline(cpath, stat.size, sri, stream);
@@ -18688,7 +18691,7 @@ var require_read = __commonJS({
           return { size: stat.size, sri, stat };
         });
       } catch (err) {
-        console.error(err);
+        // console.error(err);
         if (err.code === "ENOENT") {
           return false;
         }
@@ -19105,6 +19108,7 @@ var require_put = __commonJS({
     });
     module2.exports = putData;
     async function putData(cache, key, data, opts = {}) {
+      console.log("cacache put data")
       const { memoize } = opts;
       opts = putOpts(opts);
       const res = await write(cache, data, opts);
@@ -19116,6 +19120,7 @@ var require_put = __commonJS({
     }
     module2.exports.stream = putStream;
     function putStream(cache, key, opts = {}) {
+      console.trace("cacache put stream")
       const { memoize } = opts;
       opts = putOpts(opts);
       let integrity;
@@ -39829,7 +39834,7 @@ var require_definitions = __commonJS({
         flatten
       }),
       "node-gyp": new Definition("node-gyp", {
-        default: require.resolve("node-gyp/bin/node-gyp.js"),
+        default: "", //require.resolve("node-gyp/bin/node-gyp.js"),
         defaultDescription: `
       The path to the node-gyp bin that ships with npm
     `,
@@ -59576,8 +59581,10 @@ var require_registry = __commonJS({
           return this.packumentCache.get(this.#cacheKey);
         }
         try {
-          const r = await window.fetch(this.packumentUrl);
-          return await r.json();
+          if (typeof window !== 'undefined') {
+             const r = await window.fetch(this.packumentUrl);
+            return await r.json();
+          }
 
           console.log('BEFORE FETCH!', this.packumentUrl);
           const res = await fetch(this.packumentUrl, {
@@ -94691,7 +94698,7 @@ var require_exit_handler = __commonJS({
         this.#exitErrorMessage = err?.suppressError === true ? false : !!err;
         const exitCode = err?.exitCode ?? this.#process.exitCode ?? (err ? 1 : void 0);
         console.error(err);
-        this.#process.stderr.write(err.message, () => this.#process.stdout.write("", () => {
+        this.#process.stderr.write(err?.message || new Uint8Array(), () => this.#process.stdout.write("", () => {
           this.#process.exit(exitCode);
         }));
       };

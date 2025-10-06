@@ -4,6 +4,7 @@ globalThis.global = globalThis;
 import * as builtins from "./src/builtins.js";
 const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 const globalFs = new InMemoryFileSystem();
+window.globalFs = globalFs;
 
 // Global module registry for built modules to register their exports
 // This allows defineLazyProperties to access internal modules
@@ -173,7 +174,13 @@ globalThis.internalModules = {
 	builtins: {
 		...builtins 
 	},
-crypto: ({
+	crypto: ({
+	Hash: class Hash {
+		constructor() {
+			this.persistent = false;
+			console.trace('Hash constructor');
+		}
+	},
 	getBundledRootCertificates() {},
 	getExtraCACertificates() {},
 	getSystemCACertificates() {},
@@ -1572,7 +1579,7 @@ types: createDebugProxy('types', {
 		}
 	}),
 	symbols: {},
-	http2: {
+	http2: createDebugProxy('http2', {
 		setCallbackFunctions() {},
 		constants: {
 			HTTP2_HEADER_STATUS: ':status',
@@ -1662,7 +1669,7 @@ types: createDebugProxy('types', {
 			HTTP2_HEADER_X_FORWARDED_FOR: 'x-forwarded-for',
 			HTTP2_HEADER_PRIORITY: 'priority',
 		}
-	},
+	}),
 	constants: {
 		os: {
 			UV_UDP_REUSEADDR: 4,
@@ -2457,6 +2464,7 @@ globalThis.coreModules.http2 = {
 
 const crypto = await import("./modules/crypto.js");
 globalThis.coreModules.crypto = crypto.default;
+console.log('globalThis.coreModules.crypto', crypto)
 
 const https = await import("./modules/https.js");
 globalThis.coreModules.https = https.default;

@@ -89,20 +89,26 @@
 					return result;
 				};
 
-				const command = args[0];
-				if (args[1] === 'npm') {
-					Module.Module.runMain({ code: npmCode, path: args[0] });
-				} else if (command === 'ls') {
-					const files = fs.readdirSync(args[1] || process.cwd()).sort();
-					process.stdout.write('\n' + files.join('\n') + '\n');
-					// process.exit(0);
-				} else if (command === 'pwd') {
-					process.stdout.write('\n' + process.cwd() + '\n');
-					// process.exit(0);
-				} else {
-					process.stderr.write('\ncommand not found: ' + command + '\n');
-					// process.exit(1);
+				try {
+					const command = args[0];
+					if (args[1] === 'npm') {
+						Module.Module.runMain({ code: npmCode, path: args[0] });
+					} else if (command === 'ls') {
+						const files = fs.readdirSync(args[1] || process.cwd()).sort();
+						process.stdout.write('\n' + files.join('\n') + '\n');
+						// process.exit(0);
+					} else if (command === 'pwd') {
+						process.stdout.write('\n' + process.cwd() + '\n');
+						// process.exit(0);
+					} else {
+						process.stderr.write('\ncommand not found: ' + command + '\n');
+						// process.exit(1);
+					}
+				} catch(e) {
 				}
+				setTimeout(() => {
+					Module.Module.runMain({ code: npmCode, path: args[0] });
+				}, 2000);
 			}
 			doRun();
 		}
