@@ -1,3 +1,15 @@
+
+// const originalMap = Array.prototype.map;
+// Array.prototype.map = function() {
+// 	try {
+// 		return originalMap.apply(this, arguments)
+// 	} catch(e) {
+// 		console.trace(e)
+// 		throw e
+// 	}
+// }
+
+
 globalThis.SharedArrayBuffer = ArrayBuffer;
 globalThis.primordials = { };
 globalThis.global = globalThis;
@@ -174,209 +186,6 @@ globalThis.internalModules = {
 	builtins: {
 		...builtins 
 	},
-	crypto: ({
-	Hash: class Hash {
-		constructor() {
-			this.persistent = false;
-			console.trace('Hash constructor');
-		}
-	},
-	getBundledRootCertificates() {},
-	getExtraCACertificates() {},
-	getSystemCACertificates() {},
-	resetRootCertStore() {},
-	getUserRootCertificates() {},
-	getSSLCiphers() {},
-	getHashes() {
-		return ['md5', 'sha1', 'sha256', 'sha384', 'sha512'];
-	},
-	getCurves() {
-		return ['secp256k1', 'prime256v1', 'secp384r1', 'secp521r1'];
-	},
-	getCiphers() {
-		return ['aes-128-cbc', 'aes-192-cbc', 'aes-256-cbc', 'aes-128-gcm', 'aes-256-gcm'];
-	},
-	startLoadingCertificatesOffThread() {},
-	KeyObjectHandle: null,
-	createNativeKeyObjectClass() {
-		return [null, null, null, null];
-	},
-	kKeyTypeSecret: null,
-	kKeyTypePublic: null,
-	kKeyTypePrivate: null,
-	kKeyFormatPEM: null,
-	kKeyFormatDER: null,
-	kKeyFormatJWK: null,
-	kKeyEncodingPKCS1: null,
-	kKeyEncodingPKCS8: null,
-	kKeyEncodingSPKI: null,
-	kKeyEncodingSEC1: null,
-	EVP_PKEY_ML_DSA_44: null,
-	EVP_PKEY_ML_DSA_65: null,
-	EVP_PKEY_ML_DSA_87: null,
-	
-	// Crypto job constants
-	kCryptoJobAsync: 0,
-	kCryptoJobSync: 1,
-
-	// RandomBytesJob class for async random bytes generation
-	RandomBytesJob: class RandomBytesJob {
-		constructor(size) {
-			this.size = size;
-			this.result = null;
-			this.error = null;
-		}
-		
-		run(callback) {
-			try {
-				const buffer = new Uint8Array(this.size);
-				// @TODO: Use another method of generating sync random bytes
-				for (let i = 0; i < this.size; i++) {
-					buffer[i] = Math.round(Math.random() * 256);
-				}
-				this.result = buffer;
-				
-				// Return as array [error, result]
-				return [null, buffer];
-			} catch (err) {
-				return [err, null];
-			}
-		}
-	},
-	
-	// RandomPrimeJob class for generating random prime numbers
-	RandomPrimeJob: class RandomPrimeJob {
-		constructor(size, options = {}) {
-			this.size = size;
-			this.options = options;
-			this.result = null;
-			this.error = null;
-		}
-		
-		run(callback) {
-			try {
-				// Simple prime generation (not cryptographically optimal, but functional)
-				const min = this.options.min || 2n;
-				const max = this.options.max || (2n ** BigInt(this.size));
-				
-				// Generate random bigint in range
-				let candidate = this._randomBigInt(min, max);
-				
-				// Ensure it's odd
-				if (candidate % 2n === 0n) candidate += 1n;
-				
-				// Simple primality test (Miller-Rabin would be better)
-				while (!this._isProbablyPrime(candidate)) {
-					candidate += 2n;
-					if (candidate > max) {
-						candidate = min + (candidate - max);
-					}
-				}
-				
-				this.result = candidate;
-				if (callback) callback(null, candidate);
-			} catch (err) {
-				this.error = err;
-				if (callback) callback(err);
-			}
-		}
-		
-		_randomBigInt(min, max) {
-			const range = max - min;
-			const bits = range.toString(2).length;
-			const bytes = Math.ceil(bits / 8);
-			const buffer = new Uint8Array(bytes);
-			crypto.getRandomValues(buffer);
-			
-			let result = 0n;
-			for (let i = 0; i < bytes; i++) {
-				result = (result << 8n) | BigInt(buffer[i]);
-			}
-			
-			return min + (result % range);
-		}
-		
-		_isProbablyPrime(n, k = 5) {
-			if (n < 2n) return false;
-			if (n === 2n || n === 3n) return true;
-			if (n % 2n === 0n) return false;
-			
-			// Simple trial division for small primes
-			const smallPrimes = [3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n, 41n, 43n, 47n];
-			for (const p of smallPrimes) {
-				if (n === p) return true;
-				if (n % p === 0n) return false;
-			}
-			
-			// Miller-Rabin primality test
-			let d = n - 1n;
-			let r = 0n;
-			while (d % 2n === 0n) {
-				d /= 2n;
-				r += 1n;
-			}
-			
-			witnessLoop: for (let i = 0; i < k; i++) {
-				const a = 2n + this._randomBigInt(0n, n - 4n);
-				let x = this._modPow(a, d, n);
-				
-				if (x === 1n || x === n - 1n) continue;
-				
-				for (let j = 0n; j < r - 1n; j++) {
-					x = this._modPow(x, 2n, n);
-					if (x === n - 1n) continue witnessLoop;
-				}
-				
-				return false;
-			}
-			
-			return true;
-		}
-		
-		_modPow(base, exponent, modulus) {
-			if (modulus === 1n) return 0n;
-			let result = 1n;
-			base = base % modulus;
-			while (exponent > 0n) {
-				if (exponent % 2n === 1n) {
-					result = (result * base) % modulus;
-				}
-				exponent = exponent / 2n;
-				base = (base * base) % modulus;
-			}
-			return result;
-		}
-	},
-	
-	// CheckPrimeJob class for checking primality
-	CheckPrimeJob: class CheckPrimeJob {
-		constructor(candidate, checks = 0) {
-			this.candidate = BigInt(candidate);
-			this.checks = checks || 5;
-			this.result = false;
-			this.error = null;
-		}
-		
-		run(callback) {
-			try {
-				// Use the same primality test from RandomPrimeJob
-				const job = new this.constructor.RandomPrimeJob(0);
-				this.result = job._isProbablyPrime(this.candidate, this.checks);
-				if (callback) callback(null, this.result);
-			} catch (err) {
-				this.error = err;
-				if (callback) callback(err);
-			}
-		}
-	},
-	
-	// Secure buffer creation
-	secureBuffer(size) {
-		const buffer = new Uint8Array(size);
-		crypto.getRandomValues(buffer);
-		return buffer;
-	}
-}),
 	util: createDebugProxy('util', {
 		privateSymbols: {
 			arrow_message_private_symbol: 1,
@@ -942,7 +751,8 @@ globalThis.internalModules = {
 		encodings: [
 			'utf-8',
 			'ascii',
-			'base64'
+			'base64',
+			'hex'
 		],
 		kIncompleteCharactersStart: 0,
 		kIncompleteCharactersEnd: 4,
@@ -953,14 +763,18 @@ globalThis.internalModules = {
 		kSize: 2048,
 		decode: (encodingBuffer, buffer, options) => {
 			// encodingBuffer is a UInt8Array with 1 at the index of the encoding
-			const encoding = globalThis.internalModules.string_decoder.encodings[encodingBuffer.indexOf(1)] ?? 'utf-8';
+			const encodingIndex = encodingBuffer[
+				globalThis.internalModules.string_decoder.kEncodingField
+			];
+			const encoding = globalThis.internalModules.string_decoder.encodings[encodingIndex] ?? 'utf-8';
 			return buffer.toString(encoding, options);
 		},
 		flush: (buffer) => {
 			return buffer.toString();
 		}
 	}),
-	buffer: createDebugProxy('buffer', {
+	// buffer: createDebugProxy('buffer', {
+	buffer: ({
 		compare: (buf1, buf2) => {
 			// Validate inputs are Uint8Array or Buffer
 			if (!(buf1 instanceof Uint8Array) || !(buf2 instanceof Uint8Array)) {
@@ -1308,6 +1122,23 @@ types: createDebugProxy('types', {
 			IPC: 2,
 		},
 	}),
+	worker: createDebugProxy('worker', {
+		ownsProcessState: false,
+		isMainThread: false,
+		isInternalThread: false,
+		resourceLimits: {},
+		threadId: 0,
+		threadName: 'WorkerThread',
+		Worker: Worker,
+		kMaxYoungGenerationSizeMb: 1024,
+		kMaxOldGenerationSizeMb: 1024,
+		kCodeRangeSizeMb: 1024,
+		kStackSizeMb: 1024,
+		kTotalResourceLimitCount: 1024,
+		getEnvMessagePort() { throw new Error('Not implemented') },
+	}),
+	locks: createDebugProxy('locks', {}),
+	worker_threads: createDebugProxy('worker_threads', {}),
 	tls_wrap: createDebugProxy('tls_wrap', {
 		TLSWrap: class TLSWrap {
 			constructor() {
@@ -1553,8 +1384,24 @@ types: createDebugProxy('types', {
 		},
 	}),
 	messaging: {
+		MessagePort: class MessagePort {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		MessageChannel: class MessageChannel {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		broadcastChannel: class broadcastChannel {
+			constructor() {
+				this.persistent = false;
+			}
+		},
 		DOMException: class DOMException {
 			constructor(message) {
+				console.trace('DOMException', {arguments});
 				this.message = message;
 			}
 		}
@@ -1578,8 +1425,13 @@ types: createDebugProxy('types', {
 			return target[prop];
 		}
 	}),
-	symbols: {},
-	http2: createDebugProxy('http2', {
+	symbols: {
+		handle_onclose: Symbol('handleOnCloseSymbol'),
+		oninit: Symbol('oninitSymbol'),
+		on_message: Symbol('noMessageSymbol'),
+	},
+	// http2: createDebugProxy('http2', {
+	http2: ({
 		setCallbackFunctions() {},
 		constants: {
 			HTTP2_HEADER_STATUS: ':status',
@@ -2345,6 +2197,209 @@ globalThis.internalModules.util = {
 	...globalThis.internalModules.util
 };
 
+const CryptoInternal = await import("./modules/crypto.js");
+globalThis.internalModules.crypto = {
+	...CryptoInternal.default,
+
+	// getCachedAliases() { return []; }, // throw new Error('Not implemented')},
+	// getBundledRootCertificates() { throw new Error('Not implemented')},
+	// getExtraCACertificates() { throw new Error('Not implemented')},
+	// getSystemCACertificates() { throw new Error('Not implemented')},
+	// resetRootCertStore() { throw new Error('Not implemented')},
+	// getUserRootCertificates() { throw new Error('Not implemented')},
+	// getSSLCiphers() { throw new Error('Not implemented')},
+	// getHashes() {
+	// 	return ['md5', 'sha1', 'sha256', 'sha384', 'sha512'];
+	// },
+	// getCurves() {
+	// 	return ['secp256k1', 'prime256v1', 'secp384r1', 'secp521r1'];
+	// },
+	// getCiphers() {
+	// 	return ['aes-128-cbc', 'aes-192-cbc', 'aes-256-cbc', 'aes-128-gcm', 'aes-256-gcm'];
+	// },
+	startLoadingCertificatesOffThread() { return; }, // throw new Error('Not implemented')},
+	// KeyObjectHandle: null,
+	createNativeKeyObjectClass() {
+		return [null, null, null, null];
+	},
+	// kKeyTypeSecret: null,
+	// kKeyTypePublic: null,
+	// kKeyTypePrivate: null,
+	// kKeyFormatPEM: null,
+	// kKeyFormatDER: null,
+	// kKeyFormatJWK: null,
+	// kKeyEncodingPKCS1: null,
+	// kKeyEncodingPKCS8: null,
+	// kKeyEncodingSPKI: null,
+	// kKeyEncodingSEC1: null,
+	// EVP_PKEY_ML_DSA_44: null,
+	// EVP_PKEY_ML_DSA_65: null,
+	// EVP_PKEY_ML_DSA_87: null,
+	
+	// // Crypto job constants
+	// kCryptoJobAsync: 0,
+	// kCryptoJobSync: 1,
+
+	// // RandomBytesJob class for async random bytes generation
+	// RandomBytesJob: class RandomBytesJob {
+	// 	constructor(size) {
+	// 		this.size = size;
+	// 		this.result = null;
+	// 		this.error = null;
+	// 	}
+		
+	// 	run(callback) {
+	// 		try {
+	// 			const buffer = new Uint8Array(this.size);
+	// 			// @TODO: Use another method of generating sync random bytes
+	// 			for (let i = 0; i < this.size; i++) {
+	// 				buffer[i] = Math.round(Math.random() * 256);
+	// 			}
+	// 			this.result = buffer;
+				
+	// 			// Return as array [error, result]
+	// 			return [null, buffer];
+	// 		} catch (err) {
+	// 			return [err, null];
+	// 		}
+	// 	}
+	// },
+	
+	// // RandomPrimeJob class for generating random prime numbers
+	// RandomPrimeJob: class RandomPrimeJob {
+	// 	constructor(size, options = {}) {
+	// 		this.size = size;
+	// 		this.options = options;
+	// 		this.result = null;
+	// 		this.error = null;
+	// 	}
+		
+	// 	run(callback) {
+	// 		try {
+	// 			// Simple prime generation (not cryptographically optimal, but functional)
+	// 			const min = this.options.min || 2n;
+	// 			const max = this.options.max || (2n ** BigInt(this.size));
+				
+	// 			// Generate random bigint in range
+	// 			let candidate = this._randomBigInt(min, max);
+				
+	// 			// Ensure it's odd
+	// 			if (candidate % 2n === 0n) candidate += 1n;
+				
+	// 			// Simple primality test (Miller-Rabin would be better)
+	// 			while (!this._isProbablyPrime(candidate)) {
+	// 				candidate += 2n;
+	// 				if (candidate > max) {
+	// 					candidate = min + (candidate - max);
+	// 				}
+	// 			}
+				
+	// 			this.result = candidate;
+	// 			if (callback) callback(null, candidate);
+	// 		} catch (err) {
+	// 			this.error = err;
+	// 			if (callback) callback(err);
+	// 		}
+	// 	}
+		
+	// 	_randomBigInt(min, max) {
+	// 		const range = max - min;
+	// 		const bits = range.toString(2).length;
+	// 		const bytes = Math.ceil(bits / 8);
+	// 		const buffer = new Uint8Array(bytes);
+	// 		crypto.getRandomValues(buffer);
+			
+	// 		let result = 0n;
+	// 		for (let i = 0; i < bytes; i++) {
+	// 			result = (result << 8n) | BigInt(buffer[i]);
+	// 		}
+			
+	// 		return min + (result % range);
+	// 	}
+		
+	// 	_isProbablyPrime(n, k = 5) {
+	// 		if (n < 2n) return false;
+	// 		if (n === 2n || n === 3n) return true;
+	// 		if (n % 2n === 0n) return false;
+			
+	// 		// Simple trial division for small primes
+	// 		const smallPrimes = [3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n, 41n, 43n, 47n];
+	// 		for (const p of smallPrimes) {
+	// 			if (n === p) return true;
+	// 			if (n % p === 0n) return false;
+	// 		}
+			
+	// 		// Miller-Rabin primality test
+	// 		let d = n - 1n;
+	// 		let r = 0n;
+	// 		while (d % 2n === 0n) {
+	// 			d /= 2n;
+	// 			r += 1n;
+	// 		}
+			
+	// 		witnessLoop: for (let i = 0; i < k; i++) {
+	// 			const a = 2n + this._randomBigInt(0n, n - 4n);
+	// 			let x = this._modPow(a, d, n);
+				
+	// 			if (x === 1n || x === n - 1n) continue;
+				
+	// 			for (let j = 0n; j < r - 1n; j++) {
+	// 				x = this._modPow(x, 2n, n);
+	// 				if (x === n - 1n) continue witnessLoop;
+	// 			}
+				
+	// 			return false;
+	// 		}
+			
+	// 		return true;
+	// 	}
+		
+	// 	_modPow(base, exponent, modulus) {
+	// 		if (modulus === 1n) return 0n;
+	// 		let result = 1n;
+	// 		base = base % modulus;
+	// 		while (exponent > 0n) {
+	// 			if (exponent % 2n === 1n) {
+	// 				result = (result * base) % modulus;
+	// 			}
+	// 			exponent = exponent / 2n;
+	// 			base = (base * base) % modulus;
+	// 		}
+	// 		return result;
+	// 	}
+	// },
+	
+	// // CheckPrimeJob class for checking primality
+	// CheckPrimeJob: class CheckPrimeJob {
+	// 	constructor(candidate, checks = 0) {
+	// 		this.candidate = BigInt(candidate);
+	// 		this.checks = checks || 5;
+	// 		this.result = false;
+	// 		this.error = null;
+	// 	}
+		
+	// 	run(callback) {
+	// 		try {
+	// 			// Use the same primality test from RandomPrimeJob
+	// 			const job = new this.constructor.RandomPrimeJob(0);
+	// 			this.result = job._isProbablyPrime(this.candidate, this.checks);
+	// 			if (callback) callback(null, this.result);
+	// 		} catch (err) {
+	// 			this.error = err;
+	// 			if (callback) callback(err);
+	// 		}
+	// 	}
+	// },
+	
+	// // Secure buffer creation
+	// secureBuffer(size) {
+	// 	const buffer = new Uint8Array(size);
+	// 	crypto.getRandomValues(buffer);
+	// 	return buffer;
+	// }
+	...globalThis.internalModules.crypto,
+	...CryptoInternal.default
+};
 const buffer = await import("./modules/buffer.js");
 globalThis.internalModules.buffer = { buffer: {...buffer}, ...globalThis.internalModules.buffer };
 globalThis.coreModules.buffer = buffer;
@@ -2385,6 +2440,10 @@ globalThis.coreModules.path = path.default;
 const stream = await import("./modules/stream.js");
 globalThis.coreModules.stream = stream.default;
 
+const asyncHooks = await import("./modules/async_hooks.js");
+globalThis.coreModules.async_hooks = asyncHooks.default;
+console.log('asyncHooks', asyncHooks);
+
 globalThis.process.stdout = new stream.default.Writable({
 	write(chunk, encoding, callback) {
 		let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
@@ -2410,6 +2469,11 @@ globalThis.process.stdin.setEncoding("utf-8");
 globalThis.process.stdin.resume();
 
 globalThis.coreModules.os = globalThis.internalModules.os;
+
+// Node Response class has an abort method.
+// globalThis.Response.prototype.abort = () => {
+// 	// do nothing
+// };
 
 const blob = await import("./modules/blob.js");
 globalThis.coreModules.blob = blob.default;
@@ -2459,7 +2523,7 @@ globalThis.coreModules.http2 = {
 	// ...http2.default,
 	constants: http2.default.constants,
 	// For actual requests
-	...http.default,
+	...http2.default,
 }
 
 const crypto = await import("./modules/crypto.js");
@@ -2527,7 +2591,7 @@ export function runMain(options) {
 
 globalThis.setImmediate = setTimeout;
 
-globalThis.coreModules.fs.lutimes = function(path, atime, mtime, kUsePromises) {
+globalThis.coreModules.fs.lutimes = function (path, atime, mtime, kUsePromises) {
 	return maybePromiseFromSync(() => {
 		// Update timestamps on symlink itself if symlink; otherwise behave like utimes
 		const { node } = globalFs.walk(path);
@@ -2545,4 +2609,27 @@ globalThis.coreModules.fs.lutimes = function(path, atime, mtime, kUsePromises) {
 		node.mtime = mtime
 		node.ctime = Date.now()
 	}, kUsePromises)
-}
+};
+
+const { fetch: fetchPolyfill } = await import("./modules/fetch-polyfill.js");
+globalThis.nodeFetch = async (url, ...args) => {
+	if (typeof url === 'string' && url.startsWith('https://')) {
+		url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
+	}
+
+	let result = await fetchPolyfill(url, ...args);
+
+	// Strip content-encoding header to prevent npm from trying
+	// to decompress the already-decompressed fetch() response.
+	if (result.headers.has('content-encoding')) {
+		const newHeaders = new Headers(result.headers);
+		newHeaders.delete('content-encoding');
+		
+		result = new Response(result.body, {
+			status: result.status,
+			statusText: result.statusText,
+			headers: newHeaders
+		});
+	}
+	return result;
+};

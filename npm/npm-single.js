@@ -7220,9 +7220,6 @@ var require_commonjs2 = __commonJS({
           this.on(DESTROYED, () => reject(new Error("stream destroyed")));
           this.on("error", (er) => reject(er));
           this.on("end", () => resolve());
-          setTimeout(() => {
-            resolve();
-          }, 3000);
         });
       }
       /**
@@ -7277,9 +7274,6 @@ var require_commonjs2 = __commonJS({
             this.once("error", onerr);
             this.once("end", onend);
             this.once("data", ondata);
-            setTimeout(() => {
-              resolve();
-            }, 6000);
           });
         };
         return {
@@ -7794,6 +7788,7 @@ var require_commonjs3 = __commonJS({
     exports2.Gzip = Gzip;
     var Gunzip = class extends Zlib {
       constructor(opts) {
+        console.trace("Gunzip")
         super(opts, "Gunzip");
       }
     };
@@ -12329,14 +12324,12 @@ var require_body = __commonJS({
             upstream.pipe(stream);
           }
           resolve();
-        }).then(() => {
-          debugger;
-          return stream.concat()
-        }).then((buf) => {
-          // HERE IS THE FETCH PROBLEM!
+        }).then(() => stream.concat()).then((buf) => {
+          console.log("then", buf.toString())
           clearTimeout(resTimeout);
           return buf;
         }).catch((er) => {
+          console.log("catch", er)
           clearTimeout(resTimeout);
           if (er.name === "AbortError" || er.name === "FetchError") {
             throw er;
@@ -13241,9 +13234,7 @@ var require_lib8 = __commonJS({
             /* istanbul ignore next */
             (er) => body.emit("error", er)
           );
-          res.on("data", (chunk) => {
-            body.write(chunk)
-          });
+          res.on("data", (chunk) => body.write(chunk));
           res.on("end", () => body.end());
           const responseOptions = {
             url: request.url,
@@ -15185,6 +15176,7 @@ var require_lib9 = __commonJS({
         }
         return acc;
       }, new Integrity());
+      console.log("hashes", hashes, {integrity})
       return hashes.isEmpty() ? null : hashes;
     }
     module2.exports.stringify = stringify;
@@ -15211,6 +15203,7 @@ var require_lib9 = __commonJS({
       const optString = getOptString(opts?.options);
       return algorithms.reduce((acc, algo) => {
         const digest = crypto.createHash(algo).update(data).digest("base64");
+        console.log("digest", digest, {algo})
         const hash = new Hash(
           `${algo}-${digest}${optString}`,
           opts
@@ -15951,10 +15944,6 @@ var require_minipass2 = __commonJS({
           this.on(DESTROYED, () => reject(new Error("stream destroyed")));
           this.on("error", (er) => reject(er));
           this.on("end", () => resolve());
-          // @TODO: THIS DOES NOT WORK ON THE SECOND STREAM!
-          setTimeout(() => {
-            resolve();
-          }, 3000);
         });
       }
       // for await (let chunk of stream)
@@ -16583,9 +16572,6 @@ var require_minipass3 = __commonJS({
           this.on(DESTROYED, () => reject(new Error("stream destroyed")));
           this.on("error", (er) => reject(er));
           this.on("end", () => resolve());
-          setTimeout(() => {
-            resolve();
-          }, 3000);
         });
       }
       // for await (let chunk of stream)
@@ -18622,7 +18608,6 @@ var require_read = __commonJS({
     async function read(cache, integrity, opts = {}) {
       const { size } = opts;
       const { stat, cpath, sri } = await withContentSri(cache, integrity, async (cpath2, sri2) => {
-        // console.log({cache, integrity, cpath2, sri2})
         const stat2 = size ? { size } : await fs.stat(cpath2);
         return { stat: stat2, cpath: cpath2, sri: sri2 };
       });
@@ -18654,15 +18639,11 @@ var require_read = __commonJS({
     module2.exports.stream = readStream;
     module2.exports.readStream = readStream;
     function readStream(cache, integrity, opts = {}) {
-      console.trace("readStream")
       const { size } = opts;
       const stream = new Pipeline();
       Promise.resolve().then(async () => {
         const { stat, cpath, sri } = await withContentSri(cache, integrity, async (cpath2, sri2) => {
-          // console.log({cache, integrity, cpath2, sri2})
           const stat2 = size ? { size } : await fs.stat(cpath2);
-          console.log({stat2, cpath2})
-          process.exit(0);
           return { stat: stat2, cpath: cpath2, sri: sri2 };
         });
         return readPipeline(cpath, stat.size, sri, stream);
@@ -18675,7 +18656,6 @@ var require_read = __commonJS({
     module2.exports.copy = copy;
     function copy(cache, integrity, dest) {
       return withContentSri(cache, integrity, (cpath) => {
-        console.log('copy', { cpath, dest });
         return fs.copyFile(cpath, dest);
       });
     }
@@ -18686,12 +18666,11 @@ var require_read = __commonJS({
       }
       try {
         return await withContentSri(cache, integrity, async (cpath, sri) => {
-          // console.log({cache, integrity, cpath, sri})
           const stat = await fs.stat(cpath);
           return { size: stat.size, sri, stat };
         });
       } catch (err) {
-        // console.error(err);
+        console.error(err);
         if (err.code === "ENOENT") {
           return false;
         }
@@ -18926,7 +18905,6 @@ var require_write = __commonJS({
     module2.exports = write;
     var moveOperations = /* @__PURE__ */ new Map();
     async function write(cache, data, opts = {}) {
-      concols.log('write')
       const { algorithms, size, integrity } = opts;
       if (typeof size === "number" && data.length !== size) {
         throw sizeError(size, data.length);
@@ -19062,11 +19040,26 @@ var require_write = __commonJS({
           await moveFile(tmp.target, destination, { overwrite: false });
           tmp.moved = true;
           return tmp.moved;
-        }).catch((err) => {
+        }).catch(async (err) => {
           console.error(err);
-          if (!err.message.startsWith("The destination file exists")) {
-            throw Object.assign(err, { code: "EEXIST" });
-          }
+          // Treat existing destination as success; otherwise retry with overwrite
+          try {
+            if (err && err.message && err.message.startsWith("The destination file exists")) {
+              const st = await fs.stat(destination).catch(() => null);
+              if (st) {
+                tmp.moved = true;
+                return tmp.moved;
+              }
+              try {
+                await moveFile(tmp.target, destination, { overwrite: true });
+                tmp.moved = true;
+                return tmp.moved;
+              } catch (_) {
+                // fall through
+              }
+            }
+          } catch (_) {}
+          throw Object.assign(err || new Error('move failed'), { code: "EEXIST" });
         }).finally(() => {
           moveOperations.delete(destination);
         })
@@ -19108,7 +19101,6 @@ var require_put = __commonJS({
     });
     module2.exports = putData;
     async function putData(cache, key, data, opts = {}) {
-      console.log("cacache put data")
       const { memoize } = opts;
       opts = putOpts(opts);
       const res = await write(cache, data, opts);
@@ -19120,7 +19112,6 @@ var require_put = __commonJS({
     }
     module2.exports.stream = putStream;
     function putStream(cache, key, opts = {}) {
-      console.trace("cacache put stream")
       const { memoize } = opts;
       opts = putOpts(opts);
       let integrity;
@@ -30925,7 +30916,6 @@ var require_lib16 = __commonJS({
     var { FetchError, Headers, Request, Response } = require_lib8();
     var configureOptions = require_options();
     var fetch = require_fetch();
-
     var makeFetchHappen = (url, opts) => {
       const options = configureOptions(opts);
       const request = new Request(url, options);
@@ -39834,7 +39824,7 @@ var require_definitions = __commonJS({
         flatten
       }),
       "node-gyp": new Definition("node-gyp", {
-        default: "", //require.resolve("node-gyp/bin/node-gyp.js"),
+        default: require.resolve("node-gyp/bin/node-gyp.js"),
         defaultDescription: `
       The path to the node-gyp bin that ships with npm
     `,
@@ -42750,10 +42740,7 @@ var require_lib35 = __commonJS({
       const [dirEntries, bundleDeps] = await Promise.all([
         readdir(path, { withFileTypes: true }),
         currentDepth === 0 && pkg && pkg.bundleDependencies ? bundled({ path, packageJsonCache }) : null
-      ]).catch((e) => {
-        console.error(e);
-        return []
-      });
+      ]).catch(() => []);
       if (!dirEntries) {
         return result;
       }
@@ -48903,7 +48890,6 @@ var require_file = __commonJS({
         return ["file"];
       }
       manifest() {
-        console.log("manifest", this.package);
         if (this.package) {
           return Promise.resolve(this.package);
         }
@@ -59581,12 +59567,6 @@ var require_registry = __commonJS({
           return this.packumentCache.get(this.#cacheKey);
         }
         try {
-          if (typeof window !== 'undefined') {
-             const r = await window.fetch(this.packumentUrl);
-            return await r.json();
-          }
-
-          console.log('BEFORE FETCH!', this.packumentUrl);
           const res = await fetch(this.packumentUrl, {
             ...this.opts,
             headers: this.#headers(),
@@ -59594,10 +59574,7 @@ var require_registry = __commonJS({
             // never check integrity for packuments themselves
             integrity: null
           });
-          console.log('AFTER FETCH!', this.packumentUrl);
-          if(this.packumentUrl === 'https://registry.npmjs.org/webpack') debugger;
           const packument = await res.json();
-          console.log('AFTER FETCH!', this.packumentUrl, packument);
           const contentLength = res.headers.get("content-length");
           if (contentLength) {
             packument._contentLength = Number(contentLength);
@@ -59605,8 +59582,6 @@ var require_registry = __commonJS({
           this.packumentCache?.set(this.#cacheKey, packument);
           return packument;
         } catch (err) {
-          console.log('ERR!');
-          console.error(err);
           this.packumentCache?.delete(this.#cacheKey);
           if (err.code !== "E404" || this.fullMetadata) {
             throw err;
@@ -59771,7 +59746,6 @@ var require_registry = __commonJS({
                   };
                   await sigstore.verify(bundle, options);
                 } catch (e) {
-                  console.err(e);
                   throw Object.assign(new Error(
                     `${mani._id} failed to verify attestation: ${e.message}`
                   ), {
@@ -60193,10 +60167,7 @@ var require_lib40 = __commonJS({
       RemoteFetcher,
       resolve: (spec, opts) => get(spec, opts).resolve(),
       extract: (spec, dest, opts) => get(spec, opts).extract(dest),
-      manifest: (spec, opts) => {
-        const fetcher = get(spec, opts);
-        return fetcher.manifest()
-      },
+      manifest: (spec, opts) => get(spec, opts).manifest(),
       packument: (spec, opts) => get(spec, opts).packument(),
       tarball
     };
@@ -71049,7 +71020,6 @@ var require_shrinkwrap = __commonJS({
             await assertNoNewer(this.path, data, lockTime, this.path, /* @__PURE__ */ new Set());
           }
         } catch (er) {
-          console.error(er);
           if (typeof this.filename === "string") {
             const rel = relpath(this.path, this.filename);
             log.verbose("shrinkwrap", `failed to load ${rel}`, er.message);
@@ -71734,8 +71704,6 @@ var require_build_ideal_tree = __commonJS({
           await this.#fixDepFlags();
           await this.#pruneFailedOptional();
           await this.#checkEngineAndPlatform();
-        } catch(e) {
-          console.error(e);
         } finally {
           timeEnd();
           this.finishTracker("idealTree");
@@ -72179,7 +72147,6 @@ This is a one-time fix-up, please be patient...
         if (this.#depsSeen.has(node) || node.root !== this.idealTree || hasShrinkwrap && !this.#complete) {
           return this.#buildDepStep();
         }
-
         this.#depsSeen.add(node);
         this.#currentDep = node;
         time.start(`idealTree:${node.location || "#root"}`);
@@ -72204,7 +72171,6 @@ This is a one-time fix-up, please be patient...
         }
         const tasks = [];
         const peerSource = this.#peerSetSource.get(node) || node;
-
         for (const edge of this.#problemEdges(node)) {
           if (edge.peerConflicted) {
             continue;
@@ -72309,8 +72275,7 @@ This is a one-time fix-up, please be patient...
       async #nodeFromEdge(edge, parent_, secondEdge, required) {
         const parent = parent_ || this.#virtualRoot(edge.from);
         const spec = npa.resolve(edge.name, edge.spec, edge.from.path);
-        let first;
-          first = await this.#nodeFromSpec(edge.name, spec, parent, edge);
+        const first = await this.#nodeFromSpec(edge.name, spec, parent, edge);
         const spec2 = secondEdge && npa.resolve(
           edge.name,
           secondEdge.spec,
@@ -72404,7 +72369,7 @@ This is a one-time fix-up, please be patient...
         if (this.#manifests.has(spec.raw)) {
           return this.#manifests.get(spec.raw);
         } else {
-          log.silly("===> fetch manifest", spec.raw.replace(spec.rawSpec, redact(spec.rawSpec)));
+          log.silly("fetch manifest", spec.raw.replace(spec.rawSpec, redact(spec.rawSpec)));
           const mani = await pacote.manifest(spec, options);
           this.#manifests.set(spec.raw, mani);
           return mani;
@@ -74443,16 +74408,11 @@ var require_reify = __commonJS({
               });
             }
           });
-          try {
-            await pacote.extract(res, node.path, {
-              ...this.options,
-              resolved: node.resolved,
-              integrity: node.integrity
-            });
-          } catch (e) {
-            console.error(e);
-            throw e;
-          }
+          await pacote.extract(res, node.path, {
+            ...this.options,
+            resolved: node.resolved,
+            integrity: node.integrity
+          });
           if (node.isInStore) {
             const { content: pkg } = await PackageJson.normalize(node.path);
             node.package.scripts = pkg.scripts;
@@ -82204,6 +82164,7 @@ var require_lib52 = __commonJS({
               o[k] = await this.#prompt(prompt, def, tx);
             } catch (er) {
               if (er.notValid) {
+                console.log(er.message);
                 i--;
               } else {
                 throw er;
@@ -82327,6 +82288,7 @@ var require_init_package_json = __commonJS({
         }
         return pkg.content;
       }
+      console.log(`About to write to ${msg}`);
       const ok = await read({ prompt: "Is this OK? ", default: "yes" });
       if (!ok || !ok.toLowerCase().startsWith("y")) {
         console.log("Aborted.");
@@ -93881,6 +93843,7 @@ You can rerun the command with \`--loglevel=verbose\` to see the logs in your te
       }
       async #handleError(err) {
         if (err) {
+          console.error(err);
           const localPkg = await require_lib25().normalize(this.localPrefix).then((p) => p.content).catch(() => null);
           Object.assign(err, this.#getError(err, { pkg: localPkg }));
         }
@@ -94697,8 +94660,7 @@ var require_exit_handler = __commonJS({
         }
         this.#exitErrorMessage = err?.suppressError === true ? false : !!err;
         const exitCode = err?.exitCode ?? this.#process.exitCode ?? (err ? 1 : void 0);
-        console.error(err);
-        this.#process.stderr.write(err?.message || new Uint8Array(), () => this.#process.stdout.write("", () => {
+        this.#process.stderr.write("", () => this.#process.stdout.write("", () => {
           this.#process.exit(exitCode);
         }));
       };

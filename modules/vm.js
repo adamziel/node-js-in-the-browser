@@ -1,11 +1,9 @@
 import {
   init_vm,
-  runInThisContext,
-  vmPolyfill
-} from "./chunk-FLITVJMQ.js";
+  vm_default
+} from "./chunk-CFHKPML6.js";
 import "./chunk-2ESYSVXG.js";
 init_vm();
 export {
-  runInThisContext,
-  vmPolyfill
+  vm_default as default
 };

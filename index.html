@@ -62,30 +62,16 @@
 						},
 					})
 				);
-
 				const previousFetch = globalThis.fetch;
 				globalThis.fetch = async (url, ...args) => {
 					if (typeof url === 'string' && url.startsWith('https://')) {
-						url = `http://127.0.0.1:8974/?${url}`;
+						url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
 					}
 
 					let result = await previousFetch(url, ...args);
-
-					// Strip content-encoding header to prevent npm from trying
-					// to decompress the already-decompressed fetch() response.
-					// if (result.headers.has('content-encoding')) {
-					// 	const newHeaders = new Headers(result.headers);
-					// 	newHeaders.delete('content-encoding');
-					// 	newHeaders.set('content-length', 1000);
-						
-					// 	const [s1, s2] = await result.body.tee();
-					// 	result = new Response(s1, {
-					// 		status: result.status,
-					// 		statusText: result.statusText,
-					// 		headers: newHeaders
-					// 	});
-					// 	console.log(result.body)
-					// }
+					result.abort = function() {
+						console.log("Abort")
+					};
 					return result;
 				};
 
@@ -107,8 +93,12 @@
 				} catch(e) {
 				}
 				setTimeout(() => {
-					Module.Module.runMain({ code: npmCode, path: args[0] });
-				}, 2000);
+					console.log('openFiles');
+					const openFiles = globalFs.openFiles;
+					for (const [key, value] of openFiles.entries()) {
+						new TextDecoder().decode(value.node.content)
+					}
+				}, 8000);
 			}
 			doRun();
 		}

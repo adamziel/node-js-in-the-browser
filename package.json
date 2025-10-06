@@ -10,6 +10,7 @@
   "description": "",
   "dependencies": {
     "browserify-zlib": "^0.2.0",
+    "cors-anywhere": "^0.4.4",
     "crypto-browserify": "^3.12.1",
     "esbuild": "^0.25.10",
     "leftpad": "^0.0.1",

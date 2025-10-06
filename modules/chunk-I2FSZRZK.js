@@ -3370,6 +3370,18 @@ var require_url2 = __commonJS({
 });
 
 export {
+  require_type,
+  require_syntax,
+  require_gopd,
+  require_es_define_property,
+  require_shams,
+  require_function_bind,
+  require_functionApply,
+  require_actualApply,
+  require_call_bind_apply_helpers,
+  require_get_proto,
+  require_get_intrinsic,
+  require_call_bound,
   require_url2 as require_url
 };
 /*! Bundled license information:

@@ -200,6 +200,7 @@ export const versions = {
 			libUrl: 'https://nodejs.org/download/release/v20.17.0/lib.tar.gz',
 		},
 		modules: 'node:buffer',
+		node: '20.17.0',
 		openssl: '3.3.2',
 		uv: '1.46.0',
 		v8: '11.7.50.18',
