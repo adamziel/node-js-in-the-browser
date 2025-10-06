@@ -24,7 +24,8 @@ function maybePromiseFromSync(syncFn, kUsePromisesOrReq) {
 
 	// Callback mode
 	if (kUsePromisesOrReq && typeof kUsePromisesOrReq === 'object' && 'oncomplete' in kUsePromisesOrReq) {
-		promise.then(
+		// @TODO Don't return promise in this case
+		return promise.then(
 			(result) => {
 				kUsePromisesOrReq.oncomplete(null, result);
 			},
@@ -469,20 +470,6 @@ crypto: {
 		kFsStatsFieldsNumber: 18,
 		constants: {},
 		open(path, flags, mode, reqOrPromise) {
-			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
-			if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
-				// Async callback pattern
-				setImmediate(() => {
-					try {
-						const fd = globalFs.openSync(path, flags, mode);
-						reqOrPromise.oncomplete(null, fd);
-					} catch (err) {
-						reqOrPromise.oncomplete(err);
-					}
-				});
-				return;
-			}
-			// Promise or sync pattern
 			return maybePromiseFromSync(() => globalFs.openSync(path, flags, mode), reqOrPromise);
 		},
 		openFileHandle(path, flags, mode, usePromises) {
@@ -513,37 +500,9 @@ crypto: {
 			return maybePromiseFromSync(() => globalFs.mkdirSync(path, finalOptions), kUsePromises);
 		},
 		close(fd, reqOrPromise) {
-			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
-			if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
-				// Async callback pattern
-				setImmediate(() => {
-					try {
-						globalFs.closeSync(fd);
-						reqOrPromise.oncomplete(null);
-					} catch (err) {
-						reqOrPromise.oncomplete(err);
-					}
-				});
-				return;
-			}
-			// Promise or sync pattern
 			return maybePromiseFromSync(() => globalFs.closeSync(fd), reqOrPromise);
 		},
 		read(fd, buffer, offset, length, position, reqOrPromise) {
-			// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
-			if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
-				// Async callback pattern
-				setImmediate(() => {
-					try {
-						const bytesRead = globalFs.readSync(fd, buffer, offset, length, position);
-						reqOrPromise.oncomplete(null, bytesRead, buffer);
-					} catch (err) {
-						reqOrPromise.oncomplete(err);
-					}
-				});
-				return;
-			}
-			// Promise or sync pattern
 			return maybePromiseFromSync(() => globalFs.readSync(fd, buffer, offset, length, position), reqOrPromise);
 		},
 		readdir(path, encoding, withFileTypes, kUsePromises) {
@@ -736,7 +695,7 @@ crypto: {
 			console.log('rm', path, kUsePromises, arguments);
 			return maybePromiseFromSync(() => globalFs.rmSync(path), kUsePromises);
 		},
-		rmdir(path, kUsePromises) {
+		rmdir(path, kUsePromises) { console.log('rmdir', path, kUsePromises, arguments);
 			return maybePromiseFromSync(() => globalFs.rmdirSync(path), kUsePromises);
 		},
 		stat(path, useBigint, kUsePromises, throwIfNoEntry) {
@@ -809,20 +768,6 @@ crypto: {
 		return globalFs.writeBuffer(fd, buffer, offset, length, position, reqOrPromise);
 	},
 	writeString(fd, string, position, encoding, reqOrPromise) {
-		// Native binding for writing strings to file descriptors
-		// Check if this is an FSReqCallback (has oncomplete) or kUsePromises symbol
-		if (reqOrPromise && typeof reqOrPromise === 'object' && 'oncomplete' in reqOrPromise) {
-			// Async callback pattern
-			setImmediate(() => {
-				try {
-					const bytesWritten = globalFs.writeSync(fd, string, position, encoding);
-					reqOrPromise.oncomplete(null, bytesWritten);
-				} catch (err) {
-					reqOrPromise.oncomplete(err);
-				}
-			});
-			return;
-		}
 		// Promise or sync pattern
 		return maybePromiseFromSync(() => {
 			return globalFs.writeSync(fd, string, position, encoding);
@@ -1169,9 +1114,9 @@ types: {
 	url_pattern: {},
 	url: {},
 	permission: {},
-	fs_dir: {
+	fs_dir: (function() {
 		// Implement Dir class with async iterator support
-		Dir: class Dir {
+		class Dir {
 			constructor(handle, path, options) {
 				this.handle = handle;
 				this.path = path;
@@ -1179,28 +1124,19 @@ types: {
 				this.closed = false;
 			}
 
-			read(callback) {
-				if (callback) {
-					// Async callback version
-					try {
-						const entry = this.readSync();
-						setImmediate(() => callback(null, entry));
-					} catch (err) {
-						setImmediate(() => callback(err));
-					}
-					return;
-				}
-				// Promise version
-				return Promise.resolve(this.readSync());
+			read(encodingOrCallback, bufferSize, kUsePromises) {
+				// Full binding signature with kUsePromises or FSReqCallback
+				console.trace('read', { encodingOrCallback, bufferSize, kUsePromises });
+				return maybePromiseFromSync(() => this.readSync(encodingOrCallback, bufferSize), kUsePromises);
 			}
 
-			readSync() {
+			readSync(encodingOrCallback=this.options.encoding, bufferSize=32) {
 				if (this.closed) {
 					const err = new Error('Dir is closed');
 					err.code = 'ERR_DIR_CLOSED';
 					throw err;
 				}
-				const entry = this.handle.read(this.options.encoding, 32);
+				const entry = this.handle.read(encodingOrCallback, bufferSize);
 				if (entry === null) {
 					return null;
 				}
@@ -1219,17 +1155,8 @@ types: {
 				};
 			}
 
-			close(callback) {
-				if (callback) {
-					try {
-						this.closeSync();
-						setImmediate(() => callback(null));
-					} catch (err) {
-						setImmediate(() => callback(err));
-					}
-					return;
-				}
-				return Promise.resolve(this.closeSync());
+			close(kUsePromises) {
+				return maybePromiseFromSync(() => this.closeSync(), kUsePromises);
 			}
 
 			closeSync() {
@@ -1247,7 +1174,7 @@ types: {
 				try {
 					while (true) {
 						const entry = await this.read();
-						if (entry === null) {
+						if (entry == null) {
 							break;
 						}
 						yield entry;
@@ -1261,16 +1188,23 @@ types: {
 			[Symbol.asyncIterator]() {
 				return this.entries();
 			}
-		},
-
-		opendirSync(path) {
-			return globalFs.opendirSync(path);
-		},
-		
-		opendir(path, encoding, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.opendirSync(path), kUsePromises);
 		}
-	},
+
+		
+		return {
+			Dir,
+			opendirSync(path, options) {
+				const handle = globalFs.opendirSync(path);
+				return new Dir(handle, path, options);
+			},
+			opendir(path, encoding, kUsePromises) {
+				return maybePromiseFromSync(() => {
+					const handle = globalFs.opendirSync(path);
+					return new Dir(handle, path, { encoding });
+				}, kUsePromises);
+			}
+		};
+	})(),
 	cares_wrap: {
 		ChannelWrap: class ChannelWrap {
 			constructor() {
@@ -2369,33 +2303,8 @@ globalThis.coreModules["fs"].FileHandle = fsPromises.default.FileHandle;
 	const fsp = globalThis.coreModules['fs/promises']
 	const originalOpendir = fsp && fsp.opendir
 	if (typeof originalOpendir === 'function') {
-		fsp.opendir = function(...args) {
-			const p = originalOpendir.apply(this, args)
-			if (p && typeof p[Symbol.asyncIterator] === 'function') return p
-			const wrapper = {
-				then: p.then.bind(p),
-				catch: p.catch.bind(p),
-				finally: p.finally.bind(p),
-				[Symbol.asyncIterator]: async function* () {
-					const dir = await p
-					if (dir && typeof dir[Symbol.asyncIterator] === 'function') {
-						for await (const de of dir) yield de
-					} else if (dir && typeof dir.entries === 'function') {
-						for await (const de of dir.entries()) yield de
-					} else if (dir && typeof dir.read === 'function') {
-						try {
-							while (true) {
-								const next = await dir.read()
-								if (next === null) break
-								yield next
-							}
-						} finally {
-							if (typeof dir.close === 'function') await dir.close()
-						}
-					}
-				}
-			}
-			return wrapper
+		fsp.opendir = function (...args) {
+			return globalThis.internalModules.fs_dir.opendir(...args);
 		}
 	}
 }

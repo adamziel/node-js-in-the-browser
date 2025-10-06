@@ -343,6 +343,7 @@ describe('opendir/Dirent iteration', () => {
             }
             finally { if (e_1) throw e_1.error; }
         }
+        
         assert.strictEqual(dirents.some((de) => de.isFile() && de.name === 'a.txt'), true);
         assert.strictEqual(dirents.some((de) => de.isDirectory() && de.name === 'sub'), true);
         dir.closeSync();
