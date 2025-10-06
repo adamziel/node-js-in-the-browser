@@ -157,11 +157,23 @@ function getExternalValue(external) {
 	return 0n;
 }
 
+function createDebugProxy(name, target) {
+	return new Proxy(target, {
+		get(obj, prop) {
+			const value = obj[prop];
+			if (value === undefined) {
+				console.log(`${name} binding: undefined property '${String(prop)}' accessed`);
+			}
+			return value;
+		}
+	});
+}
+
 globalThis.internalModules = {
 	builtins: {
 		...builtins 
 	},
-crypto: {
+crypto: ({
 	getBundledRootCertificates() {},
 	getExtraCACertificates() {},
 	getSystemCACertificates() {},
@@ -357,8 +369,8 @@ crypto: {
 		crypto.getRandomValues(buffer);
 		return buffer;
 	}
-},
-	util: {
+}),
+	util: createDebugProxy('util', {
 		privateSymbols: {
 			arrow_message_private_symbol: 1,
 			contextify_context_private_symbol: 2,
@@ -436,7 +448,7 @@ crypto: {
 		previewEntries,
 		getConstructorName: internalGetConstructorName,
 		getExternalValue
-	},
+	}),
 	options: {
 		getCLIOptionsValues: () => ({}),
 		getCLIOptionsInfo: () => ({}),
@@ -448,8 +460,20 @@ crypto: {
 	config: {
 		get: () => ({}),
 	},
-	fs: {
+	fs: createDebugProxy('fs', {
 		kUsePromises: Symbol("kUsePromises"),
+		StatWatcher: class StatWatcher {
+			constructor() {
+				this.persistent = false;
+				console.trace('StatWatcher constructor');
+			}
+		},
+		FileHandle: class FileHandle {
+			constructor() {
+				this.persistent = false;
+				console.trace('FileHandle constructor');
+			}
+		},
 		FSReqCallback: class FSReqCallback {
 			constructor() {
 				this.context = undefined;
@@ -874,7 +898,7 @@ crypto: {
 	link(existingPath, newPath, kUsePromises) {
 		return maybePromiseFromSync(() => globalFs.linkSync(existingPath, newPath), kUsePromises);
 	},
-},
+}, 'fs'),
 	mksnapshot: {
 		setSerializeCallback() {},
 		setDeserializeCallback() {},
@@ -884,7 +908,7 @@ crypto: {
 	"internal/errors": {
 		exitCodes: {}
 	},
-	errors: {
+	errors: createDebugProxy('errors', {
 		exitCodes: {},
 		codes: {
 			kGenericUserError: 1,
@@ -900,8 +924,8 @@ crypto: {
 				startColumn: 0,
 			}
 		},
-	},
-	string_decoder: {
+	}, 'errors'),
+	string_decoder: createDebugProxy('string_decoder', {
 		kIncompleteCharactersStart: 0,
 		kIncompleteCharactersEnd: 4,
 		kMissingBytes: 4,
@@ -928,8 +952,8 @@ crypto: {
 		flush: (buffer) => {
 			return buffer.toString();
 		}
-	},
-	buffer: {
+	}),
+	buffer: createDebugProxy('buffer', {
 		compare: (buf1, buf2) => {
 			// Validate inputs are Uint8Array or Buffer
 			if (!(buf1 instanceof Uint8Array) || !(buf2 instanceof Uint8Array)) {
@@ -952,8 +976,8 @@ crypto: {
 			}
 			return buf1.length < buf2.length ? -1 : 1;
 		}
-	},
-types: {
+	}),
+types: createDebugProxy('types', {
 	isRegExp(value) {
 		return Object.prototype.toString.call(value) === '[object RegExp]';
 	},
@@ -1089,10 +1113,11 @@ types: {
 	isModuleNamespaceObject(value) {
 		return Object.prototype.toString.call(value) === '[object Module]';
 	},
-},
-	timers: {
-		timeoutInfo: []
-	},
+}),
+	timers: createDebugProxy('timers', {
+		timeoutInfo: [],
+		immediateInfo: [],
+	}),
 	trace_events: {
 		getCategoryEnabledBuffer(){}
 	},
@@ -1101,20 +1126,45 @@ types: {
 		constants: {},
 		setupObservers() {} 
 	},
-	js_stream: {
+	js_stream: createDebugProxy('js_stream', {
 		JSStream: class JSStream {
 			constructor() {
 				this.persistent = false;
 			}
 		}
-	},
-	blob: {},
-	encoding_binding: {},
-	process_methods: { hrtimeBuffer: {} },
-	url_pattern: {},
-	url: {},
-	permission: {},
-	fs_dir: (function() {
+	}),
+	blob: createDebugProxy('blob', {
+		createBlob() { throw new Error('Not implemented'); },
+		createBlobFromFilePath() { throw new Error('Not implemented'); },
+		concat() { throw new Error('Not implemented'); },
+		getDataObject() { throw new Error('Not implemented'); },
+	}),
+	encoding_binding: createDebugProxy('encoding_binding', {
+		encodeIntoResults() { throw new Error('Not implemented'); },
+		encodeInto() { throw new Error('Not implemented'); },
+		encodeUtf8String() { throw new Error('Not implemented'); },
+		decodeUTF8() { throw new Error('Not implemented'); },
+		decodeLatin1() { throw new Error('Not implemented'); },
+		toASCII() { throw new Error('Not implemented'); },
+		toUnicode() { throw new Error('Not implemented'); },
+	}),
+	process_methods: createDebugProxy('process_methods', { hrtimeBuffer: {} }),
+	url_pattern: createDebugProxy('url_pattern', {
+		URLPattern: class URLPattern {
+			constructor(pattern) {
+				this.pattern = pattern;
+			}
+			test(input) {
+				throw new Error('URLPattern.test not implemented');
+			}
+			exec(input) {
+				throw new Error('URLPattern.exec not implemented');
+			}
+		}
+	}),
+	url: createDebugProxy('url', {}),
+	permission: createDebugProxy('permission', {}),
+	fs_dir: createDebugProxy('fs_dir', (function() {
 		// Implement Dir class with async iterator support
 		class Dir {
 			constructor(handle, path, options) {
@@ -1204,7 +1254,7 @@ types: {
 				}, kUsePromises);
 			}
 		};
-	})(),
+	})(), 'fs_dir'),
 	cares_wrap: {
 		ChannelWrap: class ChannelWrap {
 			constructor() {
@@ -1212,31 +1262,83 @@ types: {
 			}
 		}
 	},
-	stream_wrap: {},
-	pipe_wrap: {},
-	tls_wrap: {
+	stream_wrap: createDebugProxy('stream_wrap', {
+		StreamWrap: class StreamWrap {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		ShutdownWrap: class ShutdownWrap {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		WriteWrap: class WriteWrap {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		kReadBytesOrError: 0,
+		kArrayBufferOffset: 1,
+		kBytesWritten: 2,
+		kLastWriteWasAsync: 3,
+		streamBaseState: new Int32Array(4),
+	}),
+	pipe_wrap: createDebugProxy('pipe_wrap', {
+		Pipe: class Pipe {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		PipeConnectWrap: class PipeConnectWrap {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		constants: {
+			SOCKET: 0,
+			SERVER: 1,
+			IPC: 2,
+		},
+	}),
+	tls_wrap: createDebugProxy('tls_wrap', {
 		TLSWrap: class TLSWrap {
 			constructor() {
 				this.persistent = false;
 			}
 		}
-	},
-	http_parser: {
+	}),
+	http_parser: createDebugProxy('http_parser', {
 		HTTPParser: class HTTPParser {
 			constructor() {
 				this.persistent = false;
 			}
 		},
+		ConnectionsList: class ConnectionsList {
+			constructor() {
+				this.connections = [];
+			}
+		},
 		methods: [],
 		allMethods: [],
-	},
-	tcp_wrap: {
+	}),
+	tcp_wrap: createDebugProxy('tcp_wrap', {
 		TCP: class TCP {
 			constructor() {
 				this.persistent = false;
 			}
-		}
-	},
+		},
+		TCPConnectWrap: class TCPConnectWrap {
+			constructor() {
+				this.persistent = false;
+			}
+		},
+		constants: {
+			SOCKET: 0,
+			SERVER: 1,
+			UV_TCP_IPV6ONLY: 1,
+		},
+	}),
 	udp_wrap: {
 		constants: {
 			// @TODO: verify these
@@ -1267,7 +1369,26 @@ types: {
 		}
 	},
 	uv: {},
-	os: {
+	os: createDebugProxy('os', {
+		EOL: '\n',
+		__esModule: true,
+		devNull: '/dev/null',
+		endianness: 'LE',
+		freemem: () => 8589934592,
+		getPriority: () => 0,
+		getHomeDirectory: () => '/home/user',
+		getHostname: () => 'localhost',
+		getCPUs() {
+			return [
+				{
+					model: 'Virtual CPU',
+					speed: 2400,
+					times: {
+						user: 252020,
+					},
+				},
+			];
+		},
 		arch() {
 			return 'x64';
 		},
@@ -1412,14 +1533,18 @@ types: {
 		setPriority(pidOrPriority, priority) {
 			// No-op in browser environment
 		},
-	},
-	zlib: {
+	}),
+	zlib: createDebugProxy('zlib', {
 		Zlib: class Zlib {
 			constructor() {
 				this.persistent = false;
 			}
-		}
-	},
+		},
+		crc32() {
+			console.trace('zlib crc32');
+			return 0;
+		},
+	}),
 	messaging: {
 		DOMException: class DOMException {
 			constructor(message) {
@@ -1434,13 +1559,18 @@ types: {
 	task_queue: {
 		promiseRejectEvents: {}
 	},
-	stream_pipe: {
+	stream_pipe: new Proxy({
 		StreamPipe: class StreamPipe {
 			constructor() {
 				this.persistent = false;
 			}
 		}
-	},
+	}, {
+		get(target, prop) {
+			console.log('stream get', prop);
+			return target[prop];
+		}
+	}),
 	symbols: {},
 	http2: {
 		setCallbackFunctions() {},
