@@ -10,6 +10,7 @@
 	
 	<script type="module">
 		import { runMain } from "./client-boot.js";
+		window.runMain = runMain;
 
 		function myNodeModule() {
 			const buffer = require("buffer");
@@ -58,7 +59,8 @@
 						name: 'my-test-app',
 						version: '1.0.0',
 						dependencies: {
-							leftpad: '*',
+							// leftpad: '*',
+							webpack: '*',
 						},
 					})
 				);
@@ -67,12 +69,7 @@
 					if (typeof url === 'string' && url.startsWith('https://')) {
 						url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
 					}
-
-					let result = await previousFetch(url, ...args);
-					result.abort = function() {
-						console.log("Abort")
-					};
-					return result;
+					return await previousFetch(url, ...args);
 				};
 
 				try {
@@ -121,5 +118,6 @@
 			self.postMessage({ type: 'status', data: 'finished' });
 		}
 	</script>
+
 </body>
 </html>

@@ -1,11 +1,11 @@
 import {
   init_vm,
   vm_exports
-} from "./chunk-CFHKPML6.js";
+} from "./chunk-R3FVOHFT.js";
 import {
   init_v8,
   v8_exports
-} from "./chunk-XQ4ZUWQW.js";
+} from "./chunk-I42IIQEW.js";
 import {
   require_actualApply,
   require_call_bind_apply_helpers,
@@ -20,17 +20,17 @@ import {
   require_syntax,
   require_type,
   require_url
-} from "./chunk-I2FSZRZK.js";
+} from "./chunk-BVUF56MI.js";
 import {
   require_constants
-} from "./chunk-UYUMXBC2.js";
+} from "./chunk-UWEHO5PT.js";
 import {
   require_realm
-} from "./chunk-QGV5XKCM.js";
+} from "./chunk-NHS3F7JZ.js";
 import {
   buffer_polyfill_exports,
   init_buffer_polyfill
-} from "./chunk-2WV7NS2O.js";
+} from "./chunk-YC7P67L4.js";
 import {
   __commonJS,
   __esm,
@@ -38,7 +38,7 @@ import {
   __require,
   __toCommonJS,
   __toESM
-} from "./chunk-2ESYSVXG.js";
+} from "./chunk-IWXS4Z3P.js";
 
 // ../lib/internal/assert.js
 var require_assert = __commonJS({
@@ -150402,6 +150402,7 @@ export {
   require_promises4 as require_promises2,
   require_fs,
   require_path,
+  require_resolve,
   require_worker_threads,
   require_global,
   require_assert3 as require_assert2,

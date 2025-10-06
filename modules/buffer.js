@@ -4,8 +4,8 @@ import {
   SlowBuffer,
   init_buffer_polyfill,
   kMaxLength
-} from "./chunk-2WV7NS2O.js";
-import "./chunk-2ESYSVXG.js";
+} from "./chunk-YC7P67L4.js";
+import "./chunk-IWXS4Z3P.js";
 init_buffer_polyfill();
 export {
   Buffer,

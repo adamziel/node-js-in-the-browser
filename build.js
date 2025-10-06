@@ -17,6 +17,7 @@ const entryPoints = {
 	console: '../lib/console.js',
 	constants: '../lib/constants.js',
 	"internal/constants": '../lib/internal/constants.js',
+	"internal/resolve": './to-modularize/resolve.js',
 	'fetch-polyfill': './to-modularize/fetch-polyfill.js',
 	// crypto: '../lib/crypto.js',
 	crypto: './to-modularize/crypto.js',

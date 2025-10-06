@@ -276,6 +276,26 @@ globalThis.internalModules = {
 	config: {
 		get: () => ({}),
 	},
+	contextify: createDebugProxy('contextify', {
+		ContextifyContext: class ContextifyContext {
+			constructor() {
+				this.context = undefined;
+			}
+		},
+		ContextifyScript: class ContextifyScript {
+			constructor() {
+				this.context = undefined;
+			}
+		},
+	}),
+	modules: createDebugProxy('modules', {
+		compileCacheStatus: [],
+		cachedCodeTypes: { kStrippedTypeScript: 2, kTransformedTypeScript: 3, kTransformedTypeScriptWithSourceMaps: 4 }
+		// enableCompileCache: _enableCompileCache,
+		// getCompileCacheDir: _getCompileCacheDir,
+		// compileCacheStatus: _compileCacheStatus,
+		// flushCompileCache
+	}),
 	fs: createDebugProxy('fs', {
 		kUsePromises: Symbol("kUsePromises"),
 		StatWatcher: class StatWatcher {
@@ -2584,6 +2604,10 @@ globalThis.coreModules.v8 = { ...v8 };
 
 const Module = await import("./src/module.js");
 globalThis.coreModules.module = Module;
+
+// @TODO:
+// const resolveModule = await import("./modules/internal/resolve.js");
+// console.log({ resolveModule })
 
 export function runMain(options) {
 	return globalThis.coreModules.module.Module.runMain(options);

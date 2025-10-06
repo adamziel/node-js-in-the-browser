@@ -60,6 +60,18 @@ export class Module {
 	}
 
 	_compile(content, filename) {
+		// Remove shebang or two shebangs (as sometimes is the case)
+		const lines = content.split('\n')
+		const shebangRegex = /^#!.*/;
+		if (lines.length > 0 && shebangRegex.test(lines[0])) {
+			lines.shift()
+		}
+		if (lines.length > 0 && shebangRegex.test(lines[0])) {
+			lines.shift()
+		}
+		content = lines.join('\n')
+		
+		// Keep wrapping and compiling the content
 		const wrapper = Module.wrap(content);
 
 		const factory = new Function(`return ${wrapper}`);
@@ -128,8 +140,77 @@ export class Module {
 	}
 
 	static _nodeModulePaths(from) {
-		// Simplified for browser.
-		return [];
+		// Generate node_modules paths up the directory chain
+		const parts = from.split('/');
+		const paths = [];
+
+		for (let i = parts.length; i >= 0; i--) {
+			const dirPath = parts.slice(0, i).join('/');
+			if (dirPath) {
+				paths.push(dirPath + '/node_modules');
+			}
+		}
+
+		return paths;
+	}
+
+	static _resolveFromNodeModules(request, basedir) {
+		// Try to resolve from node_modules directories
+		const nodeModulesPaths = Module._nodeModulePaths(basedir);
+		const extensions = Object.keys(Module._extensions);
+
+		for (const nodeModulesPath of nodeModulesPaths) {
+			// First try the module as a file with extensions
+			for (const ext of extensions) {
+				const modulePath = path.join(nodeModulesPath, request + ext);
+				if (fs.existsSync(modulePath) && fs.statSync(modulePath).isFile()) {
+					return modulePath;
+				}
+			}
+
+			// Then try as a directory or file
+			const modulePath = path.join(nodeModulesPath, request);
+
+			// Check if it's a file
+			if (fs.existsSync(modulePath) && fs.statSync(modulePath).isFile()) {
+				return modulePath;
+			}
+
+			// Check if it's a directory with package.json
+			if (fs.existsSync(modulePath) && fs.statSync(modulePath).isDirectory()) {
+				const pkgPath = path.join(modulePath, 'package.json');
+				if (fs.existsSync(pkgPath) && fs.statSync(pkgPath).isFile()) {
+					try {
+						const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+						if (pkg.main) {
+							const mainPath = path.resolve(modulePath, pkg.main);
+							if (fs.existsSync(mainPath) && fs.statSync(mainPath).isFile()) {
+								return mainPath;
+							}
+
+							// Try with extensions
+							for (const ext of extensions) {
+								if (fs.existsSync(mainPath + ext) && fs.statSync(mainPath + ext).isFile()) {
+									return mainPath + ext;
+								}
+							}
+						}
+					} catch (e) {
+						// ignore
+					}
+				}
+
+				// Check for index file
+				for (const ext of extensions) {
+					const indexPath = path.join(modulePath, 'index' + ext);
+					if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) {
+						return indexPath;
+					}
+				}
+			}
+		}
+
+		return null;
 	}
 
 	static _resolveFilename(request, parent) {
@@ -149,86 +230,97 @@ export class Module {
 		if (normalised.includes('node-gyp')) {
 			return 'fake';
 		}
-		// @TODO: Implement actual resolve
+
+		// Special case for debugging
 		if (request === './default-input.js') {
 			console.log('resolve ./default-input.js');
 			console.log({request, parent});
 			return '/bin/default-input.js';
 		}
-		// const error = new Error(`Module ${module} not found`);
-		// error.code = 'MODULE_NOT_FOUND';
-		// throw error;
 
 		const basedir = parent.path;
+		const isRelative = request.startsWith('./') || request.startsWith('../');
 
-		// This is a simplified resolver.
-		let resolvedPath;
-		try {
-			// Try as a file or directory.
-			resolvedPath = path.resolve(basedir, request);
-		} catch (e) {
-			throw new Error(
-				`Could not resolve '${request}' from '${basedir}'.`
-			);
-		}
-
-		const extensions = Object.keys(Module._extensions);
-
-		// Check if it's a file
-		if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
-			return resolvedPath;
-		}
-		for (const ext of extensions) {
-			if (
-				fs.existsSync(resolvedPath + ext) &&
-				fs.statSync(resolvedPath + ext).isFile()
-			) {
-				return resolvedPath + ext;
+		// For relative imports, first try the current resolution logic
+		if (isRelative) {
+			let resolvedPath;
+			try {
+				resolvedPath = path.resolve(basedir, request);
+			} catch (e) {
+				throw new Error(
+					`Could not resolve '${request}' from '${basedir}'.`
+				);
 			}
-		}
 
-		// Check if it's a directory
-		if (
-			fs.existsSync(resolvedPath) &&
-			fs.statSync(resolvedPath).isDirectory()
-		) {
-			// Check for package.json "main"
-			const pkgPath = path.join(resolvedPath, 'package.json');
-			if (fs.existsSync(pkgPath) && fs.statSync(pkgPath).isFile()) {
-				try {
-					const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-					if (pkg.main) {
-						const mainPath = path.resolve(resolvedPath, pkg.main);
-						if (
-							fs.existsSync(mainPath) &&
-							fs.statSync(mainPath).isFile()
-						) {
-							return mainPath;
-						}
-						for (const ext of extensions) {
+			const extensions = Object.keys(Module._extensions);
+
+			// Check if it's a file
+			if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
+				return resolvedPath;
+			}
+			for (const ext of extensions) {
+				if (
+					fs.existsSync(resolvedPath + ext) &&
+					fs.statSync(resolvedPath + ext).isFile()
+				) {
+					return resolvedPath + ext;
+				}
+			}
+
+			// Check if it's a directory
+			if (
+				fs.existsSync(resolvedPath) &&
+				fs.statSync(resolvedPath).isDirectory()
+			) {
+				// Check for package.json "main"
+				const pkgPath = path.join(resolvedPath, 'package.json');
+				if (fs.existsSync(pkgPath) && fs.statSync(pkgPath).isFile()) {
+					try {
+						const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+						if (pkg.main) {
+							const mainPath = path.resolve(resolvedPath, pkg.main);
 							if (
-								fs.existsSync(mainPath + ext) &&
-								fs.statSync(mainPath + ext).isFile()
+								fs.existsSync(mainPath) &&
+								fs.statSync(mainPath).isFile()
 							) {
-								return mainPath + ext;
+								return mainPath;
+							}
+							for (const ext of extensions) {
+								if (
+									fs.existsSync(mainPath + ext) &&
+									fs.statSync(mainPath + ext).isFile()
+								) {
+									return mainPath + ext;
+								}
 							}
 						}
+					} catch (e) {
+						// ignore
 					}
-				} catch (e) {
-					// ignore
 				}
-			}
 
-			// Check for index file
-			for (const ext of extensions) {
-				const indexPath = path.join(resolvedPath, 'index' + ext);
-				if (
-					fs.existsSync(indexPath) &&
-					fs.statSync(indexPath).isFile()
-				) {
-					return indexPath;
+				// Check for index file
+				for (const ext of extensions) {
+					const indexPath = path.join(resolvedPath, 'index' + ext);
+					if (
+						fs.existsSync(indexPath) &&
+						fs.statSync(indexPath).isFile()
+					) {
+						return indexPath;
+					}
 				}
 			}
+		}
+
+		// Try resolving from node_modules (for both relative and absolute imports)
+		const nodeModulesResult = Module._resolveFromNodeModules(request, basedir);
+		if (nodeModulesResult) {
+			return nodeModulesResult;
+		}
+
+		// If relative resolution was attempted but failed, throw specific error
+		if (isRelative) {
+			throw new Error(`Cannot find module '${request}'`);
 		}
 
 		throw new Error(`Cannot find module '${request}'`);
@@ -280,7 +372,7 @@ export class Module {
 	}
 
 	static runMain(options) {
-		const mainModule = new Module(options.path);
+		const mainModule = new Module(options.path, options.parent);
 		mainModule.filename = options.path;
 		mainModule.paths = Module._nodeModulePaths(path.dirname(options.path));
 
