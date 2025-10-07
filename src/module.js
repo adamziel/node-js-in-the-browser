@@ -1,6 +1,5 @@
 import path from '../modules/path.js';
 import fs from '../modules/fs.js';
-
 const ModuleCJSLoader = (await import("../modules/internal/modules/cjs/loader.js")).default;
 
 export const kModuleSource = ModuleCJSLoader.kModuleSource;
@@ -20,4 +19,4 @@ export const kIsCachedByESMLoader = ModuleCJSLoader.kIsCachedByESMLoader;
 export const kRequiredModuleSymbol = ModuleCJSLoader.kRequiredModuleSymbol;
 export const kIsExecuting = ModuleCJSLoader.kIsExecuting;
 export const builtinModules = Object.keys(globalThis.coreModules);
-export const globalPaths = ModuleCJSLoader.globalPaths;
+export const globalPaths = Module.globalPaths;

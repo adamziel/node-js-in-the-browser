@@ -32,6 +32,7 @@ const entryPoints = {
 	fs: '../lib/fs.js',
 	"fs/promises": '../lib/internal/fs/promises.js',
 	os: '../lib/os.js',
+	// module: './to-modularize/module.js',
 	querystring: '../lib/querystring.js',
 	stream: '../lib/stream.js',
 	string_decoder: '../lib/string_decoder.js',
