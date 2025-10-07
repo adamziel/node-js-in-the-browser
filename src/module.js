@@ -542,7 +542,7 @@ Module._findPath = function (request, paths, isMain, conditions) {
 	return false;
 };
 
-
+export const runMain = Module.runMain;
 export const findLongestRegisteredExtension = ModuleCJSLoader.findLongestRegisteredExtension;
 export const resolveForCJSWithHooks = ModuleCJSLoader.resolveForCJSWithHooks;
 export const loadSourceForCJSWithHooks = ModuleCJSLoader.loadSourceForCJSWithHooks;

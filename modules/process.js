@@ -134,6 +134,10 @@ var require_process = __commonJS({
       }
       return globalThis.process;
     };
+    var once = (event, listener) => {
+      on(event, listener);
+      return globalThis.process;
+    };
     var off = (event, listener) => {
       const listeners = eventListeners.get(event);
       if (listeners) {
@@ -179,6 +183,11 @@ var require_process = __commonJS({
       }
     };
     var nextTick = (fn, ...args) => {
+      if (!fn) {
+        console.log(fn);
+        console.error("nextTick called with no function");
+        return;
+      }
       setTimeout(fn.bind(null, ...args), 0);
     };
     var version = "v20.17.0";
@@ -253,7 +262,7 @@ var require_process = __commonJS({
       return globalThis.internalBinding(name);
     }
     module.exports = {
-      pid: Math.floor(Math.random() * 1e6),
+      pid: Math.round(Math.random() * 1e6),
       setTerminal,
       initProcess,
       argc,
@@ -279,6 +288,7 @@ var require_process = __commonJS({
       binding,
       kill,
       on,
+      once,
       off,
       addListener,
       removeListener,

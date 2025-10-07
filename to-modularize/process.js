@@ -164,6 +164,11 @@ const on = (event, listener) => {
 	return globalThis.process; // Return process object for chaining
 };
 
+const once = (event, listener) => {
+	on(event, listener);
+	return globalThis.process;
+};
+
 const off = (event, listener) => {
 	const listeners = eventListeners.get(event);
 	if (listeners) {
@@ -218,6 +223,11 @@ const emitWarning = (warning, type, code, ctor) => {
 };
 
 const nextTick = (fn, ...args) => {
+	if (!fn) {
+		console.log(fn)
+		console.error('nextTick called with no function');
+		return;
+	}
 	setTimeout(fn.bind(null, ...args), 0);
 };
 const version = 'v20.17.0';
@@ -321,7 +331,7 @@ function binding(name) {
 }
 
 module.exports = {
-	pid: Math.floor(Math.random() * 1000000),
+	pid: Math.round(Math.random() * 1000000),
 	setTerminal,
 	initProcess,
 	argc,
@@ -347,6 +357,7 @@ module.exports = {
 	binding,
 	kill,
 	on,
+	once,
 	off,
 	addListener,
 	removeListener,

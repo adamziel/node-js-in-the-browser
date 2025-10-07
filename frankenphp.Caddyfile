@@ -5,8 +5,8 @@
 	}
 }
 
-:8080 {
-	root * ./web-polyfills
+:8043 {
+	root * ./
 	php_server
 	file_server
 }

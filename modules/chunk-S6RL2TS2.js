@@ -11331,11 +11331,11 @@ var require_adapters = __commonJS({
     }
     function newStreamReadableFromReadableStream(readableStream, options = kEmptyObject) {
       if (!isReadableStream(readableStream)) {
-        throw new ERR_INVALID_ARG_TYPE(
-          "readableStream",
-          "ReadableStream",
-          readableStream
-        );
+        // throw new ERR_INVALID_ARG_TYPE(
+        //   "readableStream",
+        //   "ReadableStream",
+        //   readableStream
+        // );
       }
       validateObject(options, "options");
       const {

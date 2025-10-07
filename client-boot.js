@@ -1181,6 +1181,131 @@ types: createDebugProxy('types', {
 			return new URL(`file://${encodedPath}`);
 		},
 
+		fileURLToPath(input, options) {
+			const errorCodes = globalThis.internalModules?.errors?.codes ?? {};
+			const {
+				ERR_INVALID_ARG_TYPE,
+				ERR_INVALID_URL_SCHEME,
+				ERR_INVALID_FILE_URL_HOST,
+				ERR_INVALID_FILE_URL_PATH,
+			} = errorCodes;
+
+			const throwInvalidArgType = (value) => {
+				if (typeof ERR_INVALID_ARG_TYPE === 'function') {
+					throw new ERR_INVALID_ARG_TYPE('path', ['string', 'URL'], value);
+				}
+				const err = new TypeError('The "path" argument must be of type string or an instance of URL.');
+				err.code = 'ERR_INVALID_ARG_TYPE';
+				throw err;
+			};
+
+			const throwInvalidScheme = () => {
+				if (typeof ERR_INVALID_URL_SCHEME === 'function') {
+					throw new ERR_INVALID_URL_SCHEME('file');
+				}
+				const err = new TypeError('The URL must be of scheme file:');
+				err.code = 'ERR_INVALID_URL_SCHEME';
+				throw err;
+			};
+
+			const throwInvalidHost = (platform) => {
+				if (typeof ERR_INVALID_FILE_URL_HOST === 'function') {
+					throw new ERR_INVALID_FILE_URL_HOST(platform);
+				}
+				const err = new TypeError('File URL host must be empty on POSIX.');
+				err.code = 'ERR_INVALID_FILE_URL_HOST';
+				throw err;
+			};
+
+			const throwInvalidPath = (reason, urlObj) => {
+				if (typeof ERR_INVALID_FILE_URL_PATH === 'function') {
+					throw new ERR_INVALID_FILE_URL_PATH(reason, urlObj);
+				}
+				const err = new TypeError(`Invalid file URL path: ${reason}`);
+				err.code = 'ERR_INVALID_FILE_URL_PATH';
+				throw err;
+			};
+
+			let urlObj;
+			if (typeof input === 'string') {
+				urlObj = new URL(input);
+			} else if (input instanceof URL) {
+				urlObj = input;
+			} else {
+				throwInvalidArgType(input);
+			}
+
+			if (urlObj.protocol !== 'file:') {
+				throwInvalidScheme();
+			}
+
+			const windowsOption = options?.windows;
+			const isWindows = windowsOption !== undefined ? windowsOption : globalThis.process?.platform === 'win32';
+
+			const decodeHostname = (hostname) => {
+				const domainToUnicode = globalThis.coreModules?.url?.domainToUnicode ?? globalThis.internalModules?.url?.domainToUnicode;
+				if (typeof domainToUnicode === 'function') {
+					try {
+						return domainToUnicode(hostname);
+					} catch {
+						// Fall back to the raw hostname if conversion fails.
+					}
+				}
+				return hostname;
+			};
+
+			const ensureNoEncodedSeparators = (pathname, sequences) => {
+				for (let i = 0; i < pathname.length; i++) {
+					if (pathname[i] !== '%' || i + 2 >= pathname.length) continue;
+					const second = pathname[i + 1];
+					const third = pathname[i + 2].toLowerCase();
+					for (const seq of sequences) {
+						if (second === seq[0] && third === seq[1]) {
+							return false;
+						}
+					}
+				}
+				return true;
+			};
+
+			if (isWindows) {
+				const winPathFromURL = (urlInstance) => {
+					let pathname = urlInstance.pathname;
+					if (!ensureNoEncodedSeparators(pathname, [['2', 'f'], ['5', 'c']])) {
+						throwInvalidPath('must not include encoded \\ or / characters', urlInstance);
+					}
+					pathname = pathname.replace(/\//g, '\\');
+					pathname = decodeURIComponent(pathname);
+					if (urlInstance.hostname) {
+						const host = decodeHostname(urlInstance.hostname);
+						return `\\\\${host}${pathname}`;
+					}
+					const letter = pathname.charCodeAt(1);
+					const sep = pathname[2];
+					if (!letter || (letter | 0x20) < 97 || (letter | 0x20) > 122 || sep !== ':') {
+						throwInvalidPath('must be absolute', urlInstance);
+					}
+					return pathname.slice(1);
+				};
+
+				return winPathFromURL(urlObj);
+			}
+
+			const posixPathFromURL = (urlInstance) => {
+				if (urlInstance.hostname) {
+					const platform = globalThis.process?.platform ?? 'posix';
+					throwInvalidHost(platform);
+				}
+				const { pathname } = urlInstance;
+				if (!ensureNoEncodedSeparators(pathname, [['2', 'f']])) {
+					throwInvalidPath('must not include encoded / characters', urlInstance);
+				}
+				return decodeURIComponent(pathname);
+			};
+
+			return posixPathFromURL(urlObj);
+		},
+
 		_encodePathForFileURL(path) {
 			// Encode the path for use in a file:// URL
 			let encoded = '';
@@ -1361,10 +1486,9 @@ types: createDebugProxy('types', {
 				// @TODO: Support env, argv, name...
 				
 				const fs = globalThis.coreModules.fs
-				const path = globalThis.coreModules.path
 
 				// Extract the file path from the URL
-				const filePath = path.fileURLToPath(url)
+				const filePath = globalThis.coreModules.url.fileURLToPath(url)
 
 				// Read the file content
 				const fileContent = fs.readFileSync(filePath, 'utf8')
@@ -2662,7 +2786,12 @@ console.log('worker_threads', workerThreads.default);
 globalThis.coreModules.worker_threads = workerThreads.default;
 
 const Module = await import("./src/module.js");
-globalThis.coreModules.module = Module;
+console.log('MODULE', Module);
+globalThis.coreModules.module = {
+	...Module,
+	runMain: (args) => Module.Module.runMain(args),
+};
+console.log('MODULE FE', globalThis.coreModules.module);
 
 // realm.BuiltinModule
 for(const key in globalThis.coreModules) {

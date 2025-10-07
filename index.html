@@ -28,12 +28,19 @@
 
 	<script type="module">
 		/*
+		 npm install -g corepack
+		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
+
 		 npm install -g yarn
 		 node /lib/node_modules/yarn/bin/yarn.js add @wordpress/scripts
 
 		 npm install -g pnpm
 		 node /lib/node_modules/pnpm/bin/pnpm.cjs install @wordpress/scripts
 		 # Cannot find module worker_threads
+
+
+		 npm install @wordpress/scripts --omit=dev --omit=optional
+		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
 		 */
 		import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm';
 		import { runMain } from './client-boot.js';
@@ -42,6 +49,7 @@
 		const textDecoder = new TextDecoder();
 		const PROMPT_SUFFIX = '$ ';
 
+		
 		function normalizeNewlines(text) {
 			return text.replace(/\r?\n/g, '\r\n');
 		}
@@ -73,6 +81,54 @@
 			}
 		}
 
+	const CACHE_NAME = 'node-polyfill-fetch-cache-v1';
+	const previousFetch = globalThis.fetch;
+	
+	globalThis.fetch = async (url, ...args) => {
+		const originalUrl = url;
+		if (typeof url === 'string' && url.startsWith('https://')) {
+			url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
+		}
+
+		// Create cache key from URL and relevant options
+		const options = args[0] || {};
+		const method = options.method || 'GET';
+
+		// Only cache GET requests
+		if (method === 'GET' && 'caches' in globalThis) {
+			try {
+				// Open the cache
+				const cache = await caches.open(CACHE_NAME);
+				
+				// Check if we have a cached response
+				const cachedResponse = await cache.match(url);
+				if (cachedResponse) {
+					// console.log('[Cache] Using cached response for:', originalUrl);
+					return cachedResponse.clone();
+				}
+
+				// Make the actual fetch request
+				const response = await previousFetch(url, ...args);
+
+				// Cache successful GET responses
+				if (response.ok) {
+					// Clone the response before caching to allow the original to be consumed
+					await cache.put(url, response.clone());
+					// console.log('[Cache] Cached response for:', originalUrl);
+				}
+
+				return response;
+			} catch (error) {
+				console.warn('[Cache] Error using cache:', error);
+				// Fall back to regular fetch if caching fails
+				return await previousFetch(url, ...args);
+			}
+		}
+
+		// For non-GET requests or if Cache API not available
+		return await previousFetch(url, ...args);
+	};
+		
 		async function setupFilesystemAndFetch() {
 			const fs = globalFs;
 			fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
@@ -222,13 +278,6 @@
 			globalFs.writeFileSync('/node_modules/node-gyp/package.json', '{}');
 			globalFs.writeFileSync('/node_modules/node-gyp/bin/node-gyp.js', '');
 
-			const previousFetch = globalThis.fetch;
-			globalThis.fetch = async (url, ...args) => {
-				if (typeof url === 'string' && url.startsWith('https://')) {
-					url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
-				}
-				return await previousFetch(url, ...args);
-			};
 		}
 		await setupFilesystemAndFetch();
 
@@ -469,8 +518,8 @@
 					console: {
 						log: console.log,
 						info: console.info,
-						warn: console.warn,
-						error: console.error,
+						// warn: console.warn,
+						// error: console.error,
 					},
 					fetch: globalThis.fetch,
 					exit: processObj?.exit,
@@ -487,10 +536,10 @@
 					this.shell.writeStdoutForRun(runToken, `${format(...args)}\n`);
 				};
 				console.info = console.log;
-				console.warn = (...args) => {
-					this.shell.writeStderrForRun(runToken, `${format(...args)}\n`);
-				};
-				console.error = console.warn;
+				// console.warn = (...args) => {
+				// 	this.shell.writeStderrForRun(runToken, `${format(...args)}\n`);
+				// };
+				// console.error = console.warn;
 
 				const proxyFetch = async (url, ...args) => {
 					let target = url;
@@ -512,8 +561,8 @@
 					processObj?.setTerminal?.(null);
 					console.log = previous.console.log;
 					console.info = previous.console.info;
-					console.warn = previous.console.warn;
-					console.error = previous.console.error;
+					// console.warn = previous.console.warn;
+					// console.error = previous.console.error;
 					globalThis.fetch = previous.fetch;
 					processObj.exit = previous.exit;
 					processObj.abort = previous.abort;
@@ -602,6 +651,7 @@
 				try {
 					await runMain(entryPath);
 				} catch (error) {
+					console.error(error);
 					if (error instanceof ProcessExitError) {
 						if (error.code !== 0) {
 							this.shell.writeStderr(`Process exited with code ${error.code}\n`);
