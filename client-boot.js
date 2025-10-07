@@ -2605,7 +2605,7 @@ const childProcess = await import("./modules/child_process.js");
 globalThis.coreModules.child_process = childProcess.default;
 
 const vm = await import("./modules/vm.js");
-globalThis.coreModules.vm = { ...vm };
+globalThis.coreModules.vm = vm.default;
 
 const v8 = await import("./modules/v8.js");
 globalThis.coreModules.v8 = { ...v8 };
