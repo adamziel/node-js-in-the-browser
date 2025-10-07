@@ -21,6 +21,7 @@ var require_process = __commonJS({
       } else {
         message = `process.exit(${code ?? 0}) called code ${code ?? 0}`;
       }
+      emit("exit", code ?? 0);
       console.log(message);
       self.close();
     };
@@ -208,39 +209,21 @@ var require_process = __commonJS({
     };
     var initProcess = ({
       args,
-      cwd: cwd2
+      cwd: cwd2,
+      stdin,
+      stdout,
+      stderr
     }) => {
       module.exports.argv = [...args];
       module.exports.argc = args.length;
-      currentDirectory = cwd2;
-    };
-    function initStreams(streamModule) {
-      module.exports.stdout = new streamModule.Writable({
-        write(chunk, encoding, callback) {
-          let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-          console.log(message.substr(0, 500));
-          callback();
-        }
-      });
-      module.exports.stderr = new streamModule.Writable({
-        write(chunk, encoding, callback) {
-          let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-          console.trace(message.substr(0, 500));
-          callback();
-        }
-      });
-      module.exports.stdin = new streamModule.Readable({
-        read(size) {
-          console.log(size);
-          return null;
-        }
-      });
+      module.exports.stdout = stdout;
+      module.exports.stderr = stderr;
+      module.exports.stdin = stdin;
       module.exports.stdin.setEncoding("utf-8");
       module.exports.stdin.resume();
-      delete module.exports.initStreams;
-    }
+      currentDirectory = cwd2;
+    };
     module.exports = {
-      initStreams,
       setTerminal,
       initProcess,
       argc,

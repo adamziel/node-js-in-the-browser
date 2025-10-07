@@ -341,7 +341,6 @@ globalThis.internalModules = {
 			} else {
 				fn = eval(content);
 			}
-			console.log({filename})
 			return {
 				sourceMapURL: () => { },
 				sourceURL: '',
@@ -2494,8 +2493,6 @@ console.log('asyncHooks', asyncHooks);
 await import("./modules/boot.js");
 
 console.log("Setting stdout etc.")
-globalThis.process.initStreams(stream.default);
-
 globalThis.coreModules.os = globalThis.internalModules.os;
 
 // Node Response class has an abort method.

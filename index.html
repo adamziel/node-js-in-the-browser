@@ -301,7 +301,34 @@
 			}
 
 			async runMainWithEntry(entryPath, args) {
-				globalThis.process.initProcess?.({args, cwd: this.shell.cwd});
+				const shell = this.shell;
+				const streamModule = globalThis.coreModules?.stream;
+				globalThis.process.initProcess?.({
+					args,
+					cwd: this.shell.cwd,
+					stdin: new streamModule.Readable({
+						read(size) { return null; },
+					}),
+					stdout: new streamModule.Writable({
+						write(chunk, encoding, callback) {
+							let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+							shell.writeStdout(message);
+							callback();
+						},
+					}),
+					stderr: new streamModule.Writable({
+						write(chunk, encoding, callback) {
+							let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+							shell.writeStderr(message);
+							callback();
+						},
+					}),
+				});
+				function onExit() {
+					shell.showPrompt();
+					globalThis.process.off('exit', onExit);
+				}
+				globalThis.process.on('exit', onExit);
 				// console.log('initArgv', globalThis.process.argv);
 				this.resetModuleState();
 				try {
