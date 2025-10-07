@@ -346,6 +346,9 @@ globalThis.internalModules = {
 			} else {
 				fn = eval(content);
 			}
+			// if (content.includes('brotliDecompressSync')) {
+			// 	window.stableConsole.log('BROTLI DECOMPRESS SYNC', content);
+			// }
 			return {
 				sourceMapURL: () => { },
 				sourceURL: '',
@@ -1488,7 +1491,7 @@ types: createDebugProxy('types', {
 				const fs = globalThis.coreModules.fs
 
 				// Extract the file path from the URL
-				const filePath = globalThis.coreModules.url.fileURLToPath(url)
+				const filePath = globalThis.internalModules.url.fileURLToPath(url)
 
 				// Read the file content
 				const fileContent = fs.readFileSync(filePath, 'utf8')
@@ -2709,6 +2712,13 @@ globalThis.coreModules["fs"].FileHandle = fsPromises.default.FileHandle;
 const events = await import("./modules/events.js");
 globalThis.coreModules.events = events.default;
 
+// Mixin EventEmitter methods into FsWorker prototype
+Object.getOwnPropertyNames(events.default.EventEmitter.prototype).forEach(name => {
+	if (name !== 'constructor') {
+		globalThis.internalModules.worker.Worker.prototype[name] = events.default.EventEmitter.prototype[name];
+	}
+});
+
 const http = await import("./modules/http.js");
 globalThis.coreModules.http = http.default;
 
@@ -2739,6 +2749,7 @@ const url = await import("./modules/url.js");
 globalThis.coreModules.url = {
 	...url.default,
 	pathToFileURL: globalThis.internalModules.url.pathToFileURL,
+	fileURLToPath: globalThis.internalModules.url.fileURLToPath,
 };
 console.log('URL', globalThis.coreModules.url);
 
@@ -2782,16 +2793,13 @@ const v8 = await import("./modules/v8.js");
 globalThis.coreModules.v8 = { ...v8 };
 
 const workerThreads = await import("./modules/worker_threads.js");
-console.log('worker_threads', workerThreads.default);
 globalThis.coreModules.worker_threads = workerThreads.default;
 
 const Module = await import("./src/module.js");
-console.log('MODULE', Module);
 globalThis.coreModules.module = {
 	...Module,
 	runMain: (args) => Module.Module.runMain(args),
 };
-console.log('MODULE FE', globalThis.coreModules.module);
 
 // realm.BuiltinModule
 for(const key in globalThis.coreModules) {

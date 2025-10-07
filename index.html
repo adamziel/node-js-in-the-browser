@@ -28,8 +28,12 @@
 
 	<script type="module">
 		/*
-		 npm install -g corepack
 		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
+
+		 npm install -g corepack
+		 node /lib/node_modules/corepack/dist/corepack.js install -g yarn
+		 node /lib/node_modules/corepack/dist/corepack.js use yarn
+		 node /lib/node_modules/corepack/dist/yarnpkg.js add @wordpress/scripts@*
 
 		 npm install -g yarn
 		 node /lib/node_modules/yarn/bin/yarn.js add @wordpress/scripts
@@ -38,6 +42,7 @@
 		 node /lib/node_modules/pnpm/bin/pnpm.cjs install @wordpress/scripts
 		 # Cannot find module worker_threads
 
+		 
 
 		 npm install @wordpress/scripts --omit=dev --omit=optional
 		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
@@ -277,8 +282,16 @@
 			globalFs.mkdirSync('/node_modules/node-gyp/bin', { recursive: true });
 			globalFs.writeFileSync('/node_modules/node-gyp/package.json', '{}');
 			globalFs.writeFileSync('/node_modules/node-gyp/bin/node-gyp.js', '');
-
 		}
+
+		window.stableConsole = {
+			log: console.log.bind(console),
+			info: console.info.bind(console),
+			warn: console.warn.bind(console),
+			error: console.error.bind(console),
+			trace: console.trace.bind(console),
+		}
+
 		await setupFilesystemAndFetch();
 
 		class NodeRunner {
@@ -518,8 +531,8 @@
 					console: {
 						log: console.log,
 						info: console.info,
-						// warn: console.warn,
-						// error: console.error,
+						warn: console.warn,
+						error: console.error,
 					},
 					fetch: globalThis.fetch,
 					exit: processObj?.exit,
@@ -536,10 +549,10 @@
 					this.shell.writeStdoutForRun(runToken, `${format(...args)}\n`);
 				};
 				console.info = console.log;
-				// console.warn = (...args) => {
-				// 	this.shell.writeStderrForRun(runToken, `${format(...args)}\n`);
-				// };
-				// console.error = console.warn;
+				console.warn = (...args) => {
+					this.shell.writeStderrForRun(runToken, `${format(...args)}\n`);
+				};
+				console.error = console.warn;
 
 				const proxyFetch = async (url, ...args) => {
 					let target = url;
@@ -561,8 +574,8 @@
 					processObj?.setTerminal?.(null);
 					console.log = previous.console.log;
 					console.info = previous.console.info;
-					// console.warn = previous.console.warn;
-					// console.error = previous.console.error;
+					console.warn = previous.console.warn;
+					console.error = previous.console.error;
 					globalThis.fetch = previous.fetch;
 					processObj.exit = previous.exit;
 					processObj.abort = previous.abort;
