@@ -17,6 +17,11 @@ import * as builtins from "./src/builtins.js";
 const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 const globalFs = new InMemoryFileSystem();
 window.globalFs = globalFs;
+try {
+	await globalFs.loadFromStorage();
+} catch(e) {
+	console.log('Error loading from storage', e);
+}
 
 // Global module registry for built modules to register their exports
 // This allows defineLazyProperties to access internal modules
@@ -316,6 +321,17 @@ globalThis.internalModules = {
 	},
 	contextify: createDebugProxy('contextify', {
 		compileFunctionForCJSLoader: (content, filename, is_sea_main, shouldDetectModule) => {
+			// Remove up to two shebang lines if present
+			if (content.startsWith('#!')) {
+				let shebangCount = 0;
+				const lines = content.split('\n')
+				while (lines[0].startsWith('#!') && lines.length > 0 && shebangCount < 2) {
+					lines.shift()
+					shebangCount++;
+				}
+				content = lines.join('\n')
+			}
+
 			content = globalThis.coreModules.module.Module.wrap(`
 				${content}
 			`);
@@ -341,7 +357,65 @@ globalThis.internalModules = {
 		compileCacheStatus: [],
 		cachedCodeTypes: { kStrippedTypeScript: 2, kTransformedTypeScript: 3, kTransformedTypeScriptWithSourceMaps: 4 },
 		readPackageJSON(jsonPath, isESM, base, specifier) {
-			return JSON.parse(globalFs.readFileSync(jsonPath, 'utf8'));
+			try {
+				const parsed = JSON.parse(globalFs.readFileSync(jsonPath, 'utf8'));
+				const {
+					name = null,
+					main = null,
+					type = null,
+					imports: plainImports,
+				} = parsed;
+				let exportsMain = parsed.main;
+				if (exportsMain) {
+					if (!exportsMain.startsWith('./')) {
+						exportsMain = './' + exportsMain;
+					}
+				}
+				return [
+					name,
+					main,
+					type,
+					plainImports ?? undefined,
+					exportsMain ?? undefined,
+					jsonPath,
+				];
+			} catch (error) {
+				console.warn(`Failed to read package.json at ${jsonPath}:`, error);
+				return undefined;
+			}
+		},
+		getNearestParentPackageJSONType(mainPath) {
+			// Start from the directory containing mainPath
+			let currentDir = globalThis.coreModules.path.dirname(mainPath);
+			
+			// Traverse up the directory tree
+			while (currentDir !== '/' && currentDir !== '.') {
+				const packageJsonPath = globalThis.coreModules.path.join(currentDir, 'package.json');
+				
+				try {
+					// Check if package.json exists
+					if (globalFs.existsSync(packageJsonPath)) {
+						const packageJson = JSON.parse(globalFs.readFileSync(packageJsonPath, 'utf8'));
+						
+						// Return the type field, defaulting to 'commonjs'
+						return packageJson.type || 'commonjs';
+					}
+				} catch (error) {
+					// If we can't read the package.json, continue searching up
+					console.warn(`Failed to read package.json at ${packageJsonPath}:`, error.message);
+				}
+				
+				// Move up one directory
+				const parentDir = globalThis.coreModules.path.dirname(currentDir);
+				if (parentDir === currentDir) {
+					// We've reached the root
+					break;
+				}
+				currentDir = parentDir;
+			}
+			
+			// Default to 'commonjs' if no package.json found
+			return 'commonjs';
 		}
 	}),
 	fs: createDebugProxy('fs', {

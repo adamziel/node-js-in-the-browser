@@ -1780,7 +1780,243 @@ renameAsync(oldPath, newPath, req) {
 			}
 		}
 	});
-}
+	}
+
+	// Serialization methods for persistence
+	serialize() {
+		const uint8ArrayToBase64 = (buffer) => {
+			let binary = '';
+			const chunkSize = 0x8000;
+			for (let i = 0; i < buffer.length; i += chunkSize) {
+				const chunk = buffer.subarray(i, i + chunkSize);
+				let chunkString = '';
+				for (let j = 0; j < chunk.length; j++) {
+					chunkString += String.fromCharCode(chunk[j]);
+				}
+				binary += chunkString;
+			}
+			return btoa(binary);
+		};
+
+		const serializeFileContent = (node) => {
+			if (node.content instanceof Uint8Array) {
+				const base64 = uint8ArrayToBase64(node.content);
+				return { type: 'uint8array', data: base64 };
+			}
+			return { type: 'string', data: node.content };
+		};
+
+		const createSerializedDir = (node) => ({
+			type: 'dir',
+			mode: node.mode,
+			children: {},
+			atime: node.atime,
+			mtime: node.mtime,
+			ctime: node.ctime,
+			birthtime: node.birthtime
+		});
+
+		const createSerializedFile = (node) => ({
+			type: 'file',
+			mode: node.mode,
+			content: serializeFileContent(node),
+			atime: node.atime,
+			mtime: node.mtime,
+			ctime: node.ctime,
+			birthtime: node.birthtime
+		});
+
+		const rootNode = this.root;
+		let serializedRoot;
+
+		if (rootNode.type === 'dir') {
+			serializedRoot = createSerializedDir(rootNode);
+		} else if (rootNode.type === 'file') {
+			serializedRoot = createSerializedFile(rootNode);
+		} else {
+			serializedRoot = { ...rootNode };
+		}
+
+		const stack = [];
+		if (rootNode.type === 'dir') {
+			stack.push({ source: rootNode, target: serializedRoot });
+		}
+
+		while (stack.length > 0) {
+			const { source, target } = stack.pop();
+			for (const [name, child] of source.children) {
+				let serializedChild;
+				if (child.type === 'dir') {
+					serializedChild = createSerializedDir(child);
+					stack.push({ source: child, target: serializedChild });
+				} else if (child.type === 'file') {
+					serializedChild = createSerializedFile(child);
+				} else {
+					serializedChild = { ...child };
+				}
+				target.children[name] = serializedChild;
+			}
+		}
+
+		return {
+			root: serializedRoot,
+			nextFd: this.nextFd,
+			version: 1 // for future compatibility
+		};
+	}
+
+	static deserialize(data) {
+		const createDirNode = (nodeData) => ({
+			type: 'dir',
+			mode: nodeData.mode,
+			children: new Map(),
+			atime: nodeData.atime,
+			mtime: nodeData.mtime,
+			ctime: nodeData.ctime,
+			birthtime: nodeData.birthtime
+		});
+
+		const createFileNode = (nodeData) => {
+			let content;
+			if (nodeData.content?.type === 'uint8array') {
+				const binaryString = atob(nodeData.content.data);
+				content = new Uint8Array(binaryString.length);
+				for (let i = 0; i < binaryString.length; i++) {
+					content[i] = binaryString.charCodeAt(i);
+				}
+			} else {
+				content = nodeData.content?.data ?? null;
+			}
+			return {
+				type: 'file',
+				mode: nodeData.mode,
+				content,
+				atime: nodeData.atime,
+				mtime: nodeData.mtime,
+				ctime: nodeData.ctime,
+				birthtime: nodeData.birthtime
+			};
+		};
+
+		let rootNode;
+		if (data.root.type === 'dir') {
+			rootNode = createDirNode(data.root);
+		} else if (data.root.type === 'file') {
+			rootNode = createFileNode(data.root);
+		} else {
+			rootNode = { ...data.root };
+		}
+
+		const stack = [];
+		if (data.root.type === 'dir') {
+			stack.push({ target: rootNode, source: data.root });
+		}
+
+		while (stack.length > 0) {
+			const { target, source } = stack.pop();
+			for (const [name, childData] of Object.entries(source.children)) {
+				let childNode;
+				if (childData.type === 'dir') {
+					childNode = createDirNode(childData);
+					stack.push({ target: childNode, source: childData });
+				} else if (childData.type === 'file') {
+					childNode = createFileNode(childData);
+				} else {
+					childNode = { ...childData };
+				}
+				target.children.set(name, childNode);
+			}
+		}
+
+		const fs = new InMemoryFileSystem();
+		fs.root = rootNode;
+		fs.nextFd = data.nextFd || 3;
+		return fs;
+	}
+
+	// Storage methods using localStorage
+	async saveToStorage(key = 'inmemoryfs-state') {
+		const serialized = this.serialize();
+		const jsonString = JSON.stringify(serialized);
+
+		if (canUseOPFS()) {
+			try {
+				await saveToOPFS(key, jsonString);
+				return true;
+			} catch (error) {
+				console.error('Failed to save filesystem to OPFS, falling back to localStorage:', error);
+			}
+		}
+
+		if (typeof localStorage === 'undefined') {
+			return false;
+		}
+
+		try {
+			localStorage.setItem(key, jsonString);
+			return true;
+		} catch (error) {
+			console.error('Failed to save filesystem to storage:', error);
+			return false;
+		}
+	}
+
+	async loadFromStorage(key = 'inmemoryfs-state') {
+		let jsonString = null;
+
+		if (canUseOPFS()) {
+			try {
+				jsonString = await loadFromOPFS(key);
+			} catch (error) {
+				console.error('Failed to load filesystem from OPFS, falling back to localStorage:', error);
+			}
+		}
+
+		if (!jsonString && typeof localStorage !== 'undefined') {
+			jsonString = localStorage.getItem(key);
+		}
+
+		if (!jsonString) {
+			return false;
+		}
+
+		try {
+			const data = JSON.parse(jsonString);
+			const loadedFs = InMemoryFileSystem.deserialize(data);
+			this.root = loadedFs.root;
+			this.nextFd = loadedFs.nextFd;
+			return true;
+		} catch (error) {
+			console.error('Failed to load filesystem from storage:', error);
+			return false;
+		}
+	}
+
+	// Clear saved state from storage
+	static async clearStorage(key = 'inmemoryfs-state') {
+		let cleared = false;
+
+		if (canUseOPFS()) {
+			try {
+				await removeFromOPFS(key);
+				cleared = true;
+			} catch (error) {
+				console.error('Failed to clear filesystem storage from OPFS:', error);
+			}
+		}
+
+		if (typeof localStorage !== 'undefined') {
+			try {
+				localStorage.removeItem(key);
+				cleared = true;
+			} catch (error) {
+				console.error('Failed to clear filesystem storage:', error);
+			}
+		}
+
+		return cleared;
+	}
+	
 	
 }
 
@@ -1836,4 +2072,59 @@ function cloneBuffer(buffer) {
 	const clone = new Uint8Array(buffer.length);
 	clone.set(buffer);
 	return clone;
+}
+
+function canUseOPFS() {
+	return typeof navigator !== 'undefined' &&
+		navigator.storage &&
+		typeof navigator.storage.getDirectory === 'function';
+}
+
+let opfsRootPromise = null;
+
+async function getOPFSRoot() {
+	if (!canUseOPFS()) {
+		throw new Error('OPFS is not available in this environment');
+	}
+	if (!opfsRootPromise) {
+		opfsRootPromise = navigator.storage.getDirectory();
+	}
+	return opfsRootPromise;
+}
+
+const OPFS_FILE_SUFFIX = '.json';
+
+async function saveToOPFS(key, data) {
+	const root = await getOPFSRoot();
+	const fileHandle = await root.getFileHandle(key + OPFS_FILE_SUFFIX, { create: true });
+	const writable = await fileHandle.createWritable();
+	await writable.truncate(0);
+	await writable.write(data);
+	await writable.close();
+}
+
+async function loadFromOPFS(key) {
+	const root = await getOPFSRoot();
+	try {
+		const fileHandle = await root.getFileHandle(key + OPFS_FILE_SUFFIX, { create: false });
+		const file = await fileHandle.getFile();
+		return await file.text();
+	} catch (error) {
+		if (error && (error.name === 'NotFoundError' || error.code === 8)) {
+			return null;
+		}
+		throw error;
+	}
+}
+
+async function removeFromOPFS(key) {
+	const root = await getOPFSRoot();
+	try {
+		await root.removeEntry(key + OPFS_FILE_SUFFIX);
+	} catch (error) {
+		if (error && (error.name === 'NotFoundError' || error.code === 8)) {
+			return;
+		}
+		throw error;
+	}
 }

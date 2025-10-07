@@ -59,8 +59,8 @@
 						name: 'my-test-app',
 						version: '1.0.0',
 						dependencies: {
-							leftpad: '*',
-							// webpack: '*',
+							// leftpad: '*',
+							webpack: '*',
 						},
 					})
 				);
@@ -78,7 +78,11 @@
 						fs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
 						fs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
 						fs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
-						require('/bin/npm')
+						if (!fs.existsSync('/bin/node_modules/webpack')) {
+							require('/bin/npm')
+						} else {
+							console.log('webpack already installed (cached filesystem used)');
+						}
 					} else if (command === 'ls') {
 						const files = fs.readdirSync(args[1] || process.cwd()).sort();
 						process.stdout.write('\n' + files.join('\n') + '\n');

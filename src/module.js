@@ -20,3 +20,4 @@ export const kIsCachedByESMLoader = ModuleCJSLoader.kIsCachedByESMLoader;
 export const kRequiredModuleSymbol = ModuleCJSLoader.kRequiredModuleSymbol;
 export const kIsExecuting = ModuleCJSLoader.kIsExecuting;
 export const builtinModules = Object.keys(globalThis.coreModules);
+export const globalPaths = ModuleCJSLoader.globalPaths;
