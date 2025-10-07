@@ -28,13 +28,12 @@ var require_process = __commonJS({
       console.error("process.abort() called - aborting execution");
       throw new Error("Process aborted");
     };
+    var currentDirectory = "/bin";
     function chdir(directory) {
-      console.warn(
-        `process.chdir('${directory}') called - not supported in browser environment`
-      );
+      currentDirectory = directory;
     }
     var cwd = () => {
-      return "/bin";
+      return currentDirectory;
     };
     var getuid = () => {
       return 1e3;
@@ -207,9 +206,13 @@ var require_process = __commonJS({
     var features = {
       openssl_is_boringssl: false
     };
-    var initArgv = (args) => {
+    var initProcess = ({
+      args,
+      cwd: cwd2
+    }) => {
       module.exports.argv = [...args];
       module.exports.argc = args.length;
+      currentDirectory = cwd2;
     };
     function initStreams(streamModule) {
       module.exports.stdout = new streamModule.Writable({
@@ -239,7 +242,7 @@ var require_process = __commonJS({
     module.exports = {
       initStreams,
       setTerminal,
-      initArgv,
+      initProcess,
       argc,
       argv,
       env,

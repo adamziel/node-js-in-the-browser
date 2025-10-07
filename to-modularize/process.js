@@ -33,14 +33,14 @@ const abort = () => {
 	throw new Error('Process aborted');
 };
 
+let currentDirectory = '/bin';
+
 function chdir(directory) {
-	console.warn(
-		`process.chdir('${directory}') called - not supported in browser environment`
-	);
+	currentDirectory = directory;
 }
 
 const cwd = () => {
-	return '/bin';
+	return currentDirectory;
 };
 
 const getuid = () => {
@@ -261,9 +261,13 @@ const features = {
 	openssl_is_boringssl: false,
 }
 
-const initArgv = (args) => {
+const initProcess = ({
+	args,
+	cwd,
+}) => {
 	module.exports.argv = [...args];
 	module.exports.argc = args.length;
+	currentDirectory = cwd;
 };
 
 function initStreams(streamModule) {
@@ -295,7 +299,7 @@ function initStreams(streamModule) {
 module.exports = {
 	initStreams,
 	setTerminal,
-	initArgv,
+	initProcess,
 	argc,
 	argv,
 	env,

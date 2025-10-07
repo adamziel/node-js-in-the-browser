@@ -65,6 +65,86 @@
 			}
 		}
 
+		async function setupFilesystemAndFetch() {
+			const fs = globalFs;
+			fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
+			if (!fs.existsSync('/.npm')) {
+				fs.mkdirSync('/.npm');
+			}
+			fs.mkdirSync('/bin', { recursive: true });
+			fs.mkdirSync('/bin/project', { recursive: true });
+			if (!fs.existsSync('/bin/node')) {
+				fs.writeFileSync('/bin/node', '', { mode: 0o755 });
+			}
+
+			let npmCode = null;
+			if (!fs.existsSync('/bin/npm')) {
+				const npmCodeResponse = await fetch('/npm/npm-single.js');
+				const npmCode = await npmCodeResponse.text();
+				fs.writeFileSync('/bin/npm', npmCode, { mode: 0o755 });
+			}
+			if (!fs.existsSync('/bin/default-input.js')) {
+				const defaultInputResponse = await fetch('/npm/default-input.js');
+				const defaultInputCode = await defaultInputResponse.text();
+				fs.writeFileSync('/bin/default-input.js', defaultInputCode);
+			}
+			if (!fs.existsSync('/bin/package.json')) {
+				fs.writeFileSync(
+					'/bin/package.json',
+					JSON.stringify({
+						name: 'web-polyfills-app',
+						version: '1.0.0',
+						private: true,
+						dependencies: {
+							webpack: '*',
+							'webpack-cli': '*',
+							'function-bind': '*',
+						},
+					}, null, 2)
+				);
+			}
+			if (!fs.existsSync('/bin/webpack.config.js')) {
+				fs.writeFileSync('/bin/webpack.config.js', `module.exports = {\n\tentry: '/bin/index.js',\n\toutput: {\n\t\tfilename: 'bundle.js',\n\t},\n};\n`);
+			}
+			if (!fs.existsSync('/bin/index.js')) {
+				fs.writeFileSync('/bin/index.js', "console.log('Hello, world!');\n");
+			}
+			globalFs.mkdirSync('/bin', { recursive: true });
+			globalFs.mkdirSync('/bin/cowsay', { recursive: true });
+			if (!fs.existsSync('/bin/cowsay/package.json')) {
+				fs.writeFileSync(
+					'/bin/cowsay/package.json',
+					JSON.stringify({
+						name: 'cowsay',
+						version: '1.0.0',
+						private: true
+					}, null, 2)
+				);
+				fs.writeFileSync(
+					'/bin/cowsay/test.js',
+					`const cowsay = require('cowsay');
+					console.log(cowsay.say({
+						text : "I'm a moooodule",
+						e : "oO",
+						T : "U "
+					}));
+`
+				);
+			}
+			globalFs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
+			globalFs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
+			globalFs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
+
+			const previousFetch = globalThis.fetch;
+			globalThis.fetch = async (url, ...args) => {
+				if (typeof url === 'string' && url.startsWith('https://')) {
+					url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
+				}
+				return await previousFetch(url, ...args);
+			};
+		}
+		await setupFilesystemAndFetch();
+
 		class NodeRunner {
 			constructor(shell) {
 				this.shell = shell;
@@ -75,64 +155,6 @@
 
 			isNodeCommand(command) {
 				return command === 'node' || command === 'npm';
-			}
-
-			async ensureSetup() {
-				if (this.setupPromise) {
-					return this.setupPromise;
-				}
-				this.setupPromise = (async () => {
-					const fs = this.fs;
-					fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
-					if (!fs.existsSync('/.npm')) {
-						fs.mkdirSync('/.npm');
-					}
-					fs.mkdirSync('/bin', { recursive: true });
-					fs.mkdirSync('/bin/project', { recursive: true });
-					if (!fs.existsSync('/bin/node')) {
-						fs.writeFileSync('/bin/node', '', { mode: 0o755 });
-					}
-
-					let npmCode = null;
-					if (!fs.existsSync('/bin/npm')) {
-						npmCode = await this.fetchText('/npm/npm-single.js');
-						fs.writeFileSync('/bin/npm', npmCode, { mode: 0o755 });
-					}
-					if (!fs.existsSync('/bin/default-input.js')) {
-						const defaultInputCode = await this.fetchText('/npm/default-input.js');
-						fs.writeFileSync('/bin/default-input.js', defaultInputCode);
-					}
-					if (!fs.existsSync('/bin/package.json')) {
-						fs.writeFileSync(
-							'/bin/package.json',
-							JSON.stringify({
-								name: 'web-polyfills-app',
-								version: '1.0.0',
-								private: true,
-								dependencies: {
-									webpack: '*',
-									'webpack-cli': '*',
-									'function-bind': '*',
-								},
-							}, null, 2)
-						);
-					}
-					if (!fs.existsSync('/bin/webpack.config.js')) {
-						fs.writeFileSync('/bin/webpack.config.js', `module.exports = {\n\tentry: '/bin/index.js',\n\toutput: {\n\t\tfilename: 'bundle.js',\n\t},\n};\n`);
-					}
-					if (!fs.existsSync('/bin/index.js')) {
-						fs.writeFileSync('/bin/index.js', "console.log('Hello, world!');\n");
-					}
-				})();
-				return this.setupPromise;
-			}
-
-			async fetchText(url) {
-				const response = await fetch(url);
-				if (!response.ok) {
-					throw new Error(`Failed to fetch ${url}: ${response.status}`);
-				}
-				return response.text();
 			}
 
 			prepareEnvironment() {
@@ -278,15 +300,9 @@
 				}
 			}
 
-			setArgv(argv) {
-				const processObj = globalThis.process;
-				processObj.initArgv?.(argv);
-				processObj.argv = [...argv];
-				processObj.argc = argv.length;
-			}
-
-			async runMainWithEntry(entryPath, argv) {
-				this.setArgv(argv);
+			async runMainWithEntry(entryPath, args) {
+				globalThis.process.initProcess?.({args, cwd: this.shell.cwd});
+				// console.log('initArgv', globalThis.process.argv);
 				this.resetModuleState();
 				try {
 					const result = runMain(entryPath);
@@ -329,7 +345,6 @@
 			}
 
 			async run(command, args) {
-				await this.ensureSetup();
 				const cleanup = this.prepareEnvironment();
 				this.active = true;
 				try {
@@ -371,18 +386,6 @@
 				this.isRunning = false;
 				this.abortCurrent = null;
 				this.cwd = '/bin';
-				globalFs.mkdirSync('/bin', { recursive: true });
-				globalFs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
-				globalFs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
-				globalFs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
-
-				const previousFetch = globalThis.fetch;
-				globalThis.fetch = async (url, ...args) => {
-					if (typeof url === 'string' && url.startsWith('https://')) {
-						url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
-					}
-					return await previousFetch(url, ...args);
-				};
 
 				this.nodeRunner = new NodeRunner(this);
 				this.syncProcessBindings();
@@ -742,6 +745,12 @@
 				case 'ls':
 					this.handleList(args);
 					break;
+				case 'echo':
+					this.handleEcho(args);
+					break;
+				case 'cat':
+					this.handleCat(args);
+					break;
 				case 'mkdir':
 					this.handleMkdir(args);
 					break;
@@ -819,6 +828,26 @@
 						}
 					}
 				}
+			}
+
+			handleCat(args) {
+				if (!args.length) {
+					this.writeStderr('cat: missing operand\n');
+					return;
+				}
+				for (const arg of args) {
+					const resolved = this.resolvePath(arg);
+					try {
+						const content = globalFs.readFileSync(resolved, 'utf-8');
+						this.writeStdout(content);
+					} catch (error) {
+						this.writeStderr(`${this.formatFsError('cat', arg, error)}\n`);
+					}
+				}
+			}
+
+			handleEcho(args) {
+				this.writeStdout(args.join(' '));
 			}
 
 			parseCommand(line) {
