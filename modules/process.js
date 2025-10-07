@@ -15,6 +15,7 @@ var require_process = __commonJS({
     var env = {};
     var execPath = "/bin/node";
     var exit = (code) => {
+      console.log("exit", { code });
       let message = "";
       if (code instanceof Error) {
         message = code.message;

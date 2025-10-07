@@ -469,21 +469,40 @@
 			}
 
 			async runMainWithEntry(entryPath, argv) {
+				/**
+				 * Sometimes onExit is not called even though the process finished running.
+				 * This is a quirk we need to live with until we run those Node.js processes in workers
+				 * that we can actually terminate. For now, we'll assume that a runMainWithEntry call 
+				 * always means the previous one is functionally finished and it's time to clean up.
+				 */
+				if (typeof this._pendingOnExit === 'function') {
+					try {
+						this._pendingOnExit();
+					} catch (error) {
+						console.error('Error while running pending onExit handler:', error);
+					} finally {
+						this._pendingOnExit = null;
+					}
+				}
 				const { stdin, dispose } = this.createTtyStreams(argv);
 				this.stdinStream = stdin;
 				const cleanupEnv = this.prepareEnvironment();
 				const processObj = globalThis.process;
 				const onExit = () => {
-					this.shell.showPrompt();
+					if (this._pendingOnExit !== onExit) {
+						return;
+					}
+					cleanupEnv();
+					dispose();
+					this.stdinStream = null;
 					processObj.off('exit', onExit);
+					this._pendingOnExit = null;
 				};
+				this._pendingOnExit = onExit;
 				processObj.on('exit', onExit);
 				this.resetModuleState();
 				try {
-					const result = runMain(entryPath);
-					if (result && typeof result.then === 'function') {
-						await result;
-					}
+					await runMain(entryPath);
 				} catch (error) {
 					if (error instanceof ProcessExitError) {
 						if (error.code !== 0) {
@@ -492,11 +511,6 @@
 						return;
 					}
 					throw error;
-				} finally {
-					processObj.off('exit', onExit);
-					cleanupEnv();
-					dispose();
-					this.stdinStream = null;
 				}
 			}
 
