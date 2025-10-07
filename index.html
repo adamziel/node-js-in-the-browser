@@ -77,7 +77,6 @@
 				fs.writeFileSync('/bin/node', '', { mode: 0o755 });
 			}
 
-			let npmCode = null;
 			if (!fs.existsSync('/bin/npm')) {
 				const npmCodeResponse = await fetch('/npm/npm-single.js');
 				const npmCode = await npmCodeResponse.text();
@@ -131,9 +130,9 @@
 `
 				);
 			}
-			globalFs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
-			globalFs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
-			globalFs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
+			globalFs.mkdirSync('/node_modules/node-gyp/bin', { recursive: true });
+			globalFs.writeFileSync('/node_modules/node-gyp/package.json', '{}');
+			globalFs.writeFileSync('/node_modules/node-gyp/bin/node-gyp.js', '');
 
 			const previousFetch = globalThis.fetch;
 			globalThis.fetch = async (url, ...args) => {
@@ -149,18 +148,224 @@
 			constructor(shell) {
 				this.shell = shell;
 				this.fs = globalFs;
-				this.setupPromise = null;
 				this.active = false;
+				this.stdinStream = null;
 			}
 
 			isNodeCommand(command) {
 				return command === 'node' || command === 'npm';
 			}
 
+			createTtyStreams(argv) {
+				const streamModule = globalThis.coreModules?.stream;
+				if (!streamModule) {
+					throw new Error('stream module is not available');
+				}
+				const { Writable, Readable } = streamModule;
+				const term = this.shell.term;
+				const initialCols = term?.cols ?? 80;
+				const initialRows = term?.rows ?? 24;
+				const toString = (chunk, encoding) => coerceToString(chunk, encoding);
+
+				class TerminalWriteStream extends Writable {
+					constructor(fd, writer) {
+						super({ decodeStrings: false });
+						this.fd = fd;
+						this.isTTY = true;
+						this.columns = initialCols;
+						this.rows = initialRows;
+						this._writer = writer;
+					}
+
+					_write(chunk, encoding, callback) {
+						try {
+							this._writer(toString(chunk, encoding));
+							callback();
+						} catch (error) {
+							callback(error);
+						}
+					}
+
+					_emit(sequence) {
+						if (sequence) {
+							this._writer(sequence);
+						}
+					}
+
+					cursorTo(x, y, callback) {
+						let sequence = '';
+						if (typeof y === 'number') {
+							const row = Math.max(0, y) + 1;
+							const col = typeof x === 'number' ? Math.max(0, x) + 1 : 1;
+							sequence = `\u001b[${row};${col}H`;
+						} else if (typeof x === 'number') {
+							const col = Math.max(0, x) + 1;
+							sequence = `\u001b[${col}G`;
+						}
+						this._emit(sequence);
+						if (typeof callback === 'function') {
+							callback();
+						}
+						return true;
+					}
+
+					moveCursor(dx, dy, callback) {
+						if (dy) {
+							const vertical = Math.abs(dy);
+							const code = dy > 0 ? 'B' : 'A';
+							this._emit(`\u001b[${vertical}${code}`);
+						}
+						if (dx) {
+							const horizontal = Math.abs(dx);
+							const code = dx > 0 ? 'C' : 'D';
+							this._emit(`\u001b[${horizontal}${code}`);
+						}
+						if (typeof callback === 'function') {
+							callback();
+						}
+						return true;
+					}
+
+					clearLine(dir, callback) {
+						const map = { '-1': '\u001b[1K', '0': '\u001b[2K', '1': '\u001b[0K' };
+						this._emit(map[dir] ?? '\u001b[2K');
+						if (typeof callback === 'function') {
+							callback();
+						}
+						return true;
+					}
+
+					clearScreenDown(callback) {
+						this._emit('\u001b[0J');
+						if (typeof callback === 'function') {
+							callback();
+						}
+						return true;
+					}
+
+					getColorDepth() {
+						return 24;
+					}
+
+					hasColors() {
+						return true;
+					}
+
+					getWindowSize() {
+						return [this.columns, this.rows];
+					}
+
+					updateWindowSize(cols, rows) {
+						if (typeof cols === 'number') {
+							this.columns = cols;
+						}
+						if (typeof rows === 'number') {
+							this.rows = rows;
+						}
+						this.emit('resize');
+					}
+				}
+
+				class TerminalReadStream extends Readable {
+					constructor() {
+						super({ read() {} });
+						this.fd = 0;
+						this.isTTY = true;
+						this.isRaw = false;
+						this.columns = initialCols;
+						this.rows = initialRows;
+					}
+
+					setRawMode(flag) {
+						this.isRaw = !!flag;
+						return this;
+					}
+
+					updateWindowSize(cols, rows) {
+						if (typeof cols === 'number') {
+							this.columns = cols;
+						}
+						if (typeof rows === 'number') {
+							this.rows = rows;
+						}
+						this.emit('resize');
+					}
+
+					writeFromTerminal(data) {
+						if (!this.push(data)) {
+							// Drop data under backpressure; interactive input is best-effort.
+						}
+					}
+
+					endOfInput() {
+						this.push(null);
+					}
+
+					resume() {
+						super.resume();
+						return this;
+					}
+
+					pause() {
+						super.pause();
+						return this;
+					}
+				}
+
+				const stdout = new TerminalWriteStream(1, (text) => this.shell.writeStdout(text));
+				const stderr = new TerminalWriteStream(2, (text) => this.shell.writeStderr(text));
+				const stdin = new TerminalReadStream();
+
+				const ttyModule = globalThis.coreModules?.tty;
+				if (ttyModule && typeof ttyModule.isatty === 'function') {
+					if (!ttyModule.__webPolyfillsOriginalIsatty) {
+						ttyModule.__webPolyfillsOriginalIsatty = ttyModule.isatty;
+						ttyModule.__webPolyfillsTtyFds = new Set();
+						ttyModule.isatty = (fd) => {
+							return ttyModule.__webPolyfillsTtyFds.has(fd) || ttyModule.__webPolyfillsOriginalIsatty(fd);
+						};
+					}
+					const fdSet = ttyModule.__webPolyfillsTtyFds;
+					fdSet.add(stdin.fd);
+					fdSet.add(stdout.fd);
+					fdSet.add(stderr.fd);
+				}
+
+				const unsubscribe = typeof this.shell.onTerminalResize === 'function'
+					? this.shell.onTerminalResize((cols, rows) => {
+						stdout.updateWindowSize(cols, rows);
+						stderr.updateWindowSize(cols, rows);
+						stdin.updateWindowSize(cols, rows);
+					})
+					: () => {};
+
+				globalThis.process.initProcess?.({
+					args: argv,
+					cwd: this.shell.cwd,
+					stdin,
+					stdout,
+					stderr,
+				});
+
+				return {
+					stdin,
+					stdout,
+					stderr,
+					dispose: () => {
+						unsubscribe();
+						stdin.endOfInput();
+						if (ttyModule?.__webPolyfillsTtyFds) {
+							const fdSet = ttyModule.__webPolyfillsTtyFds;
+							fdSet.delete(stdin.fd);
+							fdSet.delete(stdout.fd);
+							fdSet.delete(stderr.fd);
+						}
+					},
+				};
+			}
+
 			prepareEnvironment() {
 				const processObj = globalThis.process;
-				const stdout = processObj?.stdout;
-				const stderr = processObj?.stderr;
 				const utilModule = globalThis.coreModules?.util;
 				const format = typeof utilModule?.format === 'function'
 					? utilModule.format
@@ -172,8 +377,6 @@
 					env: processObj?.env ? { ...processObj.env } : undefined,
 					cwd: processObj?.cwd,
 					chdir: processObj?.chdir,
-					stdoutWrite: stdout?.write,
-					stderrWrite: stderr?.write,
 					console: {
 						log: console.log,
 						info: console.info,
@@ -190,35 +393,6 @@
 					writeStderr: (message) => this.shell.writeStderr(message),
 				};
 				processObj?.setTerminal?.(terminalAdapter);
-
-				if (stdout) {
-					stdout.write = (chunk, encoding, callback) => {
-						if (typeof encoding === 'function') {
-							callback = encoding;
-							encoding = undefined;
-						}
-						const text = coerceToString(chunk, encoding);
-						this.shell.writeStdout(text);
-						if (typeof callback === 'function') {
-							callback();
-						}
-						return true;
-					};
-				}
-				if (stderr) {
-					stderr.write = (chunk, encoding, callback) => {
-						if (typeof encoding === 'function') {
-							callback = encoding;
-							encoding = undefined;
-						}
-						const text = coerceToString(chunk, encoding);
-						this.shell.writeStderr(text);
-						if (typeof callback === 'function') {
-							callback();
-						}
-						return true;
-					};
-				}
 
 				console.log = (...args) => {
 					this.shell.writeStdout(`${format(...args)}\n`);
@@ -247,12 +421,6 @@
 
 				return () => {
 					processObj?.setTerminal?.(null);
-					if (stdout && previous.stdoutWrite) {
-						stdout.write = previous.stdoutWrite;
-					}
-					if (stderr && previous.stderrWrite) {
-						stderr.write = previous.stderrWrite;
-					}
 					console.log = previous.console.log;
 					console.info = previous.console.info;
 					console.warn = previous.console.warn;
@@ -300,36 +468,16 @@
 				}
 			}
 
-			async runMainWithEntry(entryPath, args) {
-				const shell = this.shell;
-				const streamModule = globalThis.coreModules?.stream;
-				globalThis.process.initProcess?.({
-					args,
-					cwd: this.shell.cwd,
-					stdin: new streamModule.Readable({
-						read(size) { return null; },
-					}),
-					stdout: new streamModule.Writable({
-						write(chunk, encoding, callback) {
-							let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-							shell.writeStdout(message);
-							callback();
-						},
-					}),
-					stderr: new streamModule.Writable({
-						write(chunk, encoding, callback) {
-							let message = typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
-							shell.writeStderr(message);
-							callback();
-						},
-					}),
-				});
-				function onExit() {
-					shell.showPrompt();
-					globalThis.process.off('exit', onExit);
-				}
-				globalThis.process.on('exit', onExit);
-				// console.log('initArgv', globalThis.process.argv);
+			async runMainWithEntry(entryPath, argv) {
+				const { stdin, dispose } = this.createTtyStreams(argv);
+				this.stdinStream = stdin;
+				const cleanupEnv = this.prepareEnvironment();
+				const processObj = globalThis.process;
+				const onExit = () => {
+					this.shell.showPrompt();
+					processObj.off('exit', onExit);
+				};
+				processObj.on('exit', onExit);
 				this.resetModuleState();
 				try {
 					const result = runMain(entryPath);
@@ -344,6 +492,11 @@
 						return;
 					}
 					throw error;
+				} finally {
+					processObj.off('exit', onExit);
+					cleanupEnv();
+					dispose();
+					this.stdinStream = null;
 				}
 			}
 
@@ -372,7 +525,6 @@
 			}
 
 			async run(command, args) {
-				const cleanup = this.prepareEnvironment();
 				this.active = true;
 				try {
 					if (command === 'npm') {
@@ -382,9 +534,16 @@
 						await this.runNodeCommand(args);
 					}
 				} finally {
-					cleanup();
 					this.active = false;
 				}
+			}
+
+			handleInput(data) {
+				if (!this.active || !this.stdinStream) {
+					return false;
+				}
+				this.stdinStream.writeFromTerminal(data);
+				return true;
 			}
 
 			abort() {
@@ -396,6 +555,7 @@
 					if (typeof processObj?.emit === 'function') {
 						processObj.emit('SIGINT');
 					}
+					this.stdinStream?.writeFromTerminal('\u0003');
 				} catch (error) {
 					this.shell.writeStderr(`Failed to send SIGINT: ${error.message}\n`);
 				}
@@ -413,11 +573,28 @@
 				this.isRunning = false;
 				this.abortCurrent = null;
 				this.cwd = '/bin';
+				this.resizeSubscribers = new Set();
+				this.term.onResize(({ cols, rows }) => {
+					for (const handler of this.resizeSubscribers) {
+						try {
+							handler(cols, rows);
+						} catch (error) {
+							console.error('Terminal resize handler error:', error);
+						}
+					}
+				});
 
 				this.nodeRunner = new NodeRunner(this);
 				this.syncProcessBindings();
 
 				this.term.onData((data) => this.onData(data));
+			}
+
+			onTerminalResize(handler) {
+				this.resizeSubscribers.add(handler);
+				return () => {
+					this.resizeSubscribers.delete(handler);
+				};
 			}
 
 			syncProcessBindings() {
@@ -453,42 +630,45 @@
 				while (index < data.length) {
 					const char = data[index];
 
-					if (char === '\u001b') {
-						const sequence = data.slice(index, index + 3);
-						if (!this.isRunning) {
-							if (sequence === '\u001b[A') {
-								this.navigateHistory(-1);
-								index += 3;
-								continue;
-							}
-							if (sequence === '\u001b[B') {
-								this.navigateHistory(1);
-								index += 3;
-								continue;
-							}
-							if (sequence === '\u001b[C') {
-								this.moveCursor(1);
-								index += 3;
-								continue;
-							}
-							if (sequence === '\u001b[D') {
-								this.moveCursor(-1);
-								index += 3;
-								continue;
-							}
+					if (this.isRunning) {
+						if (char === '\u0003') {
+							this.handleCtrlC();
+						} else {
+							this.nodeRunner.handleInput(char);
 						}
 						index += 1;
 						continue;
 					}
 
-					index += 1;
-
-					if (char === '\u0003') {
-						this.handleCtrlC();
+					if (char === '\u001b') {
+						const sequence = data.slice(index, index + 3);
+						if (sequence === '\u001b[A') {
+							this.navigateHistory(-1);
+							index += 3;
+							continue;
+						}
+						if (sequence === '\u001b[B') {
+							this.navigateHistory(1);
+							index += 3;
+							continue;
+						}
+						if (sequence === '\u001b[C') {
+							this.moveCursor(1);
+							index += 3;
+							continue;
+						}
+						if (sequence === '\u001b[D') {
+							this.moveCursor(-1);
+							index += 3;
+							continue;
+						}
+						index += 1;
 						continue;
 					}
 
-					if (this.isRunning) {
+					if (char === '\u0003') {
+						this.handleCtrlC();
+						index += 1;
 						continue;
 					}
 
@@ -511,6 +691,8 @@
 							}
 							break;
 					}
+
+					index += 1;
 				}
 			}
 
@@ -891,6 +1073,7 @@
 			convertEol: true,
 			fontFamily: 'Menlo, Monaco, "Courier New", monospace',
 			fontSize: 14,
+			cols: 200,
 		});
 
 		terminal.open(terminalElement);

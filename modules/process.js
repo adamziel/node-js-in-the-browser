@@ -23,7 +23,6 @@ var require_process = __commonJS({
       }
       emit("exit", code ?? 0);
       console.log(message);
-      self.close();
     };
     var abort = () => {
       console.error("process.abort() called - aborting execution");

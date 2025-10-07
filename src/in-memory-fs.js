@@ -1936,12 +1936,9 @@ renameAsync(oldPath, newPath, req) {
 
 	// Storage methods using localStorage
 	async saveToStorage(key = 'inmemoryfs-state') {
-		const serialized = this.serialize();
-		const jsonString = JSON.stringify(serialized);
-
 		if (canUseOPFS()) {
 			try {
-				await saveToOPFS(key, jsonString);
+				await saveToOPFS(key, this);
 				return true;
 			} catch (error) {
 				console.error('Failed to save filesystem to OPFS, falling back to localStorage:', error);
@@ -1953,6 +1950,8 @@ renameAsync(oldPath, newPath, req) {
 		}
 
 		try {
+			const serialized = this.serialize();
+			const jsonString = JSON.stringify(serialized);
 			localStorage.setItem(key, jsonString);
 			return true;
 		} catch (error) {
@@ -1962,25 +1961,28 @@ renameAsync(oldPath, newPath, req) {
 	}
 
 	async loadFromStorage(key = 'inmemoryfs-state') {
-		let jsonString = null;
-
 		if (canUseOPFS()) {
 			try {
-				jsonString = await loadFromOPFS(key);
+				const loaded = await loadFromOPFS(key);
+				if (loaded) {
+					this.root = loaded.root;
+					this.nextFd = loaded.nextFd;
+					return true;
+				}
 			} catch (error) {
 				console.error('Failed to load filesystem from OPFS, falling back to localStorage:', error);
 			}
 		}
 
-		if (!jsonString && typeof localStorage !== 'undefined') {
-			jsonString = localStorage.getItem(key);
-		}
-
-		if (!jsonString) {
+		if (typeof localStorage === 'undefined') {
 			return false;
 		}
 
 		try {
+			const jsonString = localStorage.getItem(key);
+			if (!jsonString) {
+				return false;
+			}
 			const data = JSON.parse(jsonString);
 			const loadedFs = InMemoryFileSystem.deserialize(data);
 			this.root = loadedFs.root;
@@ -2092,39 +2094,350 @@ async function getOPFSRoot() {
 	return opfsRootPromise;
 }
 
-const OPFS_FILE_SUFFIX = '.json';
+const OPFS_LEGACY_FILE_SUFFIX = '.json';
+const OPFS_METADATA_FILE = '__metadata__.json';
+const OPFS_FILES_DIR = '__files__';
+const OPFS_ROOT_FILE_PLACEHOLDER = '__root__';
+const CURRENT_OPFS_VERSION = 2;
 
-async function saveToOPFS(key, data) {
+async function saveToOPFS(key, fsInstance) {
 	const root = await getOPFSRoot();
-	const fileHandle = await root.getFileHandle(key + OPFS_FILE_SUFFIX, { create: true });
-	const writable = await fileHandle.createWritable();
-	await writable.truncate(0);
-	await writable.write(data);
-	await writable.close();
+	await removeExistingOPFSEntry(root, key);
+	const dirHandle = await root.getDirectoryHandle(key, { create: true });
+	const filesDirHandle = await dirHandle.getDirectoryHandle(OPFS_FILES_DIR, { create: true });
+	const metadata = {
+		version: CURRENT_OPFS_VERSION,
+		nextFd: fsInstance.nextFd,
+		nodes: []
+	};
+
+	const stack = [{ path: '', node: fsInstance.root }];
+	while (stack.length > 0) {
+		const { path, node } = stack.pop();
+		const baseMeta = {
+			path,
+			type: node.type,
+			mode: node.mode,
+			atime: node.atime,
+			mtime: node.mtime,
+			ctime: node.ctime,
+			birthtime: node.birthtime
+		};
+
+		if (node.type === 'dir') {
+			metadata.nodes.push(baseMeta);
+			const children = Array.from(node.children.entries());
+			for (let index = children.length - 1; index >= 0; index -= 1) {
+				const [name, child] = children[index];
+				const childPath = path ? `${path}/${name}` : name;
+				stack.push({ path: childPath, node: child });
+			}
+			continue;
+		}
+
+		if (node.type === 'file') {
+			const contentType = node.content instanceof Uint8Array ? 'binary' : 'string';
+			metadata.nodes.push({ ...baseMeta, contentType });
+			const storagePath = path || OPFS_ROOT_FILE_PLACEHOLDER;
+			await writeFileContentToOPFS(filesDirHandle, storagePath, node.content, contentType);
+			continue;
+		}
+
+		if (node.type === 'symlink') {
+			metadata.nodes.push({ ...baseMeta, target: node.target });
+			continue;
+		}
+
+		metadata.nodes.push(baseMeta);
+	}
+
+	await writeJSONFile(dirHandle, OPFS_METADATA_FILE, metadata);
 }
 
 async function loadFromOPFS(key) {
 	const root = await getOPFSRoot();
+	let dirHandle;
+	let metadata = null;
+
 	try {
-		const fileHandle = await root.getFileHandle(key + OPFS_FILE_SUFFIX, { create: false });
-		const file = await fileHandle.getFile();
-		return await file.text();
+		dirHandle = await root.getDirectoryHandle(key, { create: false });
+		metadata = await readOPFSMetadata(dirHandle);
 	} catch (error) {
-		if (error && (error.name === 'NotFoundError' || error.code === 8)) {
+		if (!isNotFoundError(error) && error.name !== 'TypeMismatchError') {
+			throw error;
+		}
+	}
+
+	if (dirHandle && metadata && metadata.version === CURRENT_OPFS_VERSION && Array.isArray(metadata.nodes)) {
+		const filesDirHandle = await dirHandle.getDirectoryHandle(OPFS_FILES_DIR, { create: false }).catch(() => null);
+		const reconstructed = await reconstructFromOPFS(metadata, filesDirHandle);
+		if (reconstructed) {
+			return reconstructed;
+		}
+	}
+
+	const legacyJson = await loadFromOPFSLegacyFile(root, key);
+	if (!legacyJson) {
+		return null;
+	}
+	const data = JSON.parse(legacyJson);
+	const loadedFs = InMemoryFileSystem.deserialize(data);
+	return { root: loadedFs.root, nextFd: loadedFs.nextFd };
+}
+
+async function removeFromOPFS(key) {
+	const root = await getOPFSRoot();
+	try {
+		await root.removeEntry(key, { recursive: true });
+	} catch (error) {
+		if (isNotFoundError(error)) {
+			// Nothing to remove
+		} else if (error && error.name === 'TypeMismatchError') {
+			try {
+				await root.removeEntry(key);
+			} catch (innerError) {
+				if (!isNotFoundError(innerError)) {
+					throw innerError;
+				}
+			}
+		} else {
+			throw error;
+		}
+	}
+
+	try {
+		await root.removeEntry(key + OPFS_LEGACY_FILE_SUFFIX);
+	} catch (error) {
+		if (!isNotFoundError(error)) {
+			throw error;
+		}
+	}
+}
+
+async function removeExistingOPFSEntry(root, key) {
+	try {
+		await root.removeEntry(key, { recursive: true });
+	} catch (error) {
+		if (isNotFoundError(error)) {
+			// Nothing to remove
+		} else if (error && error.name === 'TypeMismatchError') {
+			try {
+				await root.removeEntry(key);
+			} catch (innerError) {
+				if (!isNotFoundError(innerError)) {
+					throw innerError;
+				}
+			}
+		} else {
+			throw error;
+		}
+	}
+	try {
+		await root.removeEntry(key + OPFS_LEGACY_FILE_SUFFIX);
+	} catch (error) {
+		if (!isNotFoundError(error)) {
+			throw error;
+		}
+	}
+}
+
+async function readOPFSMetadata(dirHandle) {
+	try {
+		const fileHandle = await dirHandle.getFileHandle(OPFS_METADATA_FILE, { create: false });
+		const file = await fileHandle.getFile();
+		const text = await file.text();
+		return JSON.parse(text);
+	} catch (error) {
+		if (isNotFoundError(error)) {
 			return null;
 		}
 		throw error;
 	}
 }
 
-async function removeFromOPFS(key) {
-	const root = await getOPFSRoot();
+async function reconstructFromOPFS(metadata, filesDirHandle) {
+	const nodes = new Map();
+	let rootNode = null;
+	const sortedNodes = metadata.nodes.slice().sort((a, b) => getPathDepth(a.path) - getPathDepth(b.path));
+
+	for (const entry of sortedNodes) {
+		let node;
+		if (entry.type === 'dir') {
+			node = {
+				type: 'dir',
+				mode: entry.mode,
+				children: new Map(),
+				atime: entry.atime,
+				mtime: entry.mtime,
+				ctime: entry.ctime,
+				birthtime: entry.birthtime
+			};
+		} else if (entry.type === 'file') {
+			if (!filesDirHandle) {
+				return null;
+			}
+			const storagePath = entry.path || OPFS_ROOT_FILE_PLACEHOLDER;
+			const dataBuffer = await readFileContentFromOPFS(filesDirHandle, storagePath);
+			let content;
+			if (entry.contentType === 'string') {
+				content = fromUint8Array(dataBuffer, 'utf8');
+			} else {
+				content = dataBuffer;
+			}
+			node = {
+				type: 'file',
+				mode: entry.mode,
+				content,
+				atime: entry.atime,
+				mtime: entry.mtime,
+				ctime: entry.ctime,
+				birthtime: entry.birthtime
+			};
+		} else if (entry.type === 'symlink') {
+			node = {
+				type: 'symlink',
+				mode: entry.mode,
+				target: entry.target,
+				atime: entry.atime,
+				mtime: entry.mtime,
+				ctime: entry.ctime,
+				birthtime: entry.birthtime
+			};
+		} else {
+			continue;
+		}
+
+		nodes.set(entry.path, node);
+		if (entry.path === '') {
+			rootNode = node;
+			continue;
+		}
+
+		const parentPath = getParentPath(entry.path);
+		const parentNode = nodes.get(parentPath);
+		if (parentNode && parentNode.type === 'dir') {
+			parentNode.children.set(getBasename(entry.path), node);
+		}
+	}
+
+	if (!rootNode) {
+		return null;
+	}
+
+	return {
+		root: rootNode,
+		nextFd: metadata.nextFd || 3
+	};
+}
+
+async function writeJSONFile(dirHandle, name, data) {
+	const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+	const writable = await fileHandle.createWritable();
 	try {
-		await root.removeEntry(key + OPFS_FILE_SUFFIX);
+		await writable.truncate(0);
+		await writable.write(JSON.stringify(data));
+	} finally {
+		await writable.close();
+	}
+}
+
+async function writeFileContentToOPFS(rootHandle, path, content, contentType) {
+	const segments = pathToSegments(path);
+	if (segments.length === 0) {
+		throw new Error('Invalid path for OPFS file content');
+	}
+	const leafName = segments.pop();
+	let current = rootHandle;
+	for (const segment of segments) {
+		current = await current.getDirectoryHandle(segment, { create: true });
+	}
+	const fileHandle = await current.getFileHandle(leafName, { create: true });
+	const writable = await fileHandle.createWritable();
+	try {
+		await writable.truncate(0);
+		if (contentType === 'string') {
+			await writable.write(content != null ? String(content) : '');
+		} else {
+			const payload = toUint8Array(content instanceof Uint8Array ? content : content || new Uint8Array(0));
+			await writable.write(payload);
+		}
+	} finally {
+		await writable.close();
+	}
+}
+
+async function readFileContentFromOPFS(rootHandle, path) {
+	if (!rootHandle) {
+		return new Uint8Array(0);
+	}
+	const segments = pathToSegments(path);
+	if (segments.length === 0) {
+		return new Uint8Array(0);
+	}
+	const leafName = segments.pop();
+	let current = rootHandle;
+	try {
+		for (const segment of segments) {
+			current = await current.getDirectoryHandle(segment, { create: false });
+		}
+		const fileHandle = await current.getFileHandle(leafName, { create: false });
+		const file = await fileHandle.getFile();
+		const buffer = await file.arrayBuffer();
+		return new Uint8Array(buffer);
 	} catch (error) {
-		if (error && (error.name === 'NotFoundError' || error.code === 8)) {
-			return;
+		if (isNotFoundError(error)) {
+			return new Uint8Array(0);
 		}
 		throw error;
 	}
+}
+
+async function loadFromOPFSLegacyFile(root, key) {
+	try {
+		const fileHandle = await root.getFileHandle(key + OPFS_LEGACY_FILE_SUFFIX, { create: false });
+		const file = await fileHandle.getFile();
+		return await file.text();
+	} catch (error) {
+		if (isNotFoundError(error)) {
+			return null;
+		}
+		throw error;
+	}
+}
+
+function isNotFoundError(error) {
+	return Boolean(error && (error.name === 'NotFoundError' || error.code === 8));
+}
+
+function pathToSegments(path) {
+	if (!path) {
+		return [];
+	}
+	return path.split('/').filter(Boolean);
+}
+
+function getParentPath(path) {
+	if (!path) {
+		return null;
+	}
+	const index = path.lastIndexOf('/');
+	if (index === -1) {
+		return '';
+	}
+	return path.slice(0, index);
+}
+
+function getBasename(path) {
+	const index = path.lastIndexOf('/');
+	if (index === -1) {
+		return path;
+	}
+	return path.slice(index + 1);
+}
+
+function getPathDepth(path) {
+	if (!path) {
+		return 0;
+	}
+	return path.split('/').filter(Boolean).length;
 }

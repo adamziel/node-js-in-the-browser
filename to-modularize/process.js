@@ -26,7 +26,10 @@ const exit = (code) => {
 	}
 	emit('exit', code ?? 0);
 	console.log(message);
-	self.close();
+
+	// Don't close the window.
+	// @TODO: Move code execution to workers that share the same filesystem.
+	// self.close();
 };
 
 const abort = () => {
