@@ -335,11 +335,18 @@ globalThis.internalModules = {
 			content = globalThis.coreModules.module.Module.wrap(`
 				${content}
 			`);
+			let fn = '';
+			if (filename.endsWith('.json')) {
+				fn = () => JSON.parse(content);
+			} else {
+				fn = eval(content);
+			}
+			console.log({filename})
 			return {
 				sourceMapURL: () => { },
 				sourceURL: '',
 				cachedDataRejected: false,
-				function: eval(content),
+				function: fn,
 			}
 		},
 		ContextifyContext: class ContextifyContext {
@@ -369,6 +376,9 @@ globalThis.internalModules = {
 				if (exportsMain) {
 					if (!exportsMain.startsWith('./')) {
 						exportsMain = './' + exportsMain;
+					}
+					if(!exportsMain.endsWith('.js') && !exportsMain.endsWith('.cjs') && !exportsMain.endsWith('.mjs')) {
+						exportsMain += '.js';
 					}
 				}
 				return [

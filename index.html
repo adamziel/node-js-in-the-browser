@@ -25,7 +25,8 @@
 			// works!
 			// process.argv = ["node", "npm", "init"];
 
-			process.initArgv(["node", "npm", "install"])
+			process.initArgv(["node", "webpack", "build"])
+			// process.initArgv(["node", "npm", "install"])
 
 			const args = process.argv;
 
@@ -61,9 +62,18 @@
 						dependencies: {
 							// leftpad: '*',
 							webpack: '*',
+							"webpack-cli": '*',
+							'function-bind': '*',
 						},
 					})
 				);
+				fs.writeFileSync('/bin/webpack.config.js', `module.exports = {
+					entry: '/bin/index.js',
+					output: {
+						filename: 'bundle.js',
+					},
+				}`);
+				fs.writeFileSync('/bin/index.js', 'console.log("Hello, world!");');
 				const previousFetch = globalThis.fetch;
 				globalThis.fetch = async (url, ...args) => {
 					if (typeof url === 'string' && url.startsWith('https://')) {
