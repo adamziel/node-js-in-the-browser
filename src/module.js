@@ -2,6 +2,8 @@ import path from '../modules/path.js';
 import fs from '../modules/fs.js';
 const ModuleCJSLoader = (await import("../modules/internal/modules/cjs/loader.js")).default;
 
+const NodeBuffer = globalThis.Buffer;
+
 export const kModuleSource = ModuleCJSLoader.kModuleSource;
 export const kModuleExport = ModuleCJSLoader.kModuleExport;
 export const kModuleExportNames = ModuleCJSLoader.kModuleExportNames;
@@ -10,7 +12,6 @@ export const initializeCJS = ModuleCJSLoader.initializeCJS;
 export const Module = ModuleCJSLoader.Module;
 
 const DEFAULT_EXPORT_CONDITIONS = Object.freeze(['node', 'require', 'default']);
-const realpathFn = fs?.realpathSync?.native ?? fs?.realpathSync ?? ((inputPath) => path.resolve(inputPath));
 const EXPORTS_PATTERN = /^((?:@[^/\\%]+\/)?[^./\\%][^/\\%]*)(\/.*)?$/;
 const packageJsonCache = new Map();
 
@@ -18,12 +19,223 @@ function isRelativeRequest(request) {
 	return request === '.' || request === '..' || request.startsWith('./') || request.startsWith('../');
 }
 
-function safeRealpath(absolutePath) {
-	try {
-		return realpathFn(absolutePath);
-	} catch {
-		return path.resolve(absolutePath);
+function toPathString(input) {
+	if (typeof input === 'string') {
+		return input;
 	}
+	if (typeof input === 'object' && input !== null) {
+		if (NodeBuffer && typeof NodeBuffer.isBuffer === 'function' && NodeBuffer.isBuffer(input)) {
+			return input.toString();
+		}
+		if (typeof input.path === 'string') {
+			return input.path;
+		}
+	}
+	return String(input);
+}
+
+function isPathNotFoundError(error) {
+	return Boolean(error && (error.code === 'ENOENT' || error.code === 'ENOTDIR'));
+}
+
+function scheduleAsync(callback) {
+	if (typeof queueMicrotask === 'function') {
+		queueMicrotask(callback);
+		return;
+	}
+	Promise.resolve().then(callback);
+}
+
+function getRealpathFn() {
+	if (typeof fs?.realpathSync?.native === 'function') {
+		return fs.realpathSync.native;
+	}
+	if (typeof fs?.realpathSync === 'function') {
+		return fs.realpathSync;
+	}
+	return null;
+}
+
+function resolveRealpathWithSymlinks(inputPath, seen = new Set()) {
+	if (typeof fs?.lstatSync !== 'function' || typeof fs?.readlinkSync !== 'function') {
+		return null;
+	}
+	const absoluteInput = path.resolve(inputPath);
+	const parsed = path.parse(absoluteInput);
+	const segments = absoluteInput.slice(parsed.root.length).split(path.sep).filter(Boolean);
+	let currentPath = parsed.root || path.sep;
+	for (let index = 0; index < segments.length; index += 1) {
+		currentPath = path.join(currentPath, segments[index]);
+		let stats;
+		try {
+			stats = fs.lstatSync(currentPath);
+		} catch (error) {
+			if (isPathNotFoundError(error)) {
+				return null;
+			}
+			throw error;
+		}
+		if (stats?.isSymbolicLink?.()) {
+			const canonicalCurrent = path.resolve(currentPath);
+			if (seen.has(canonicalCurrent)) {
+				const loopError = new Error(`ELOOP: too many symbolic links encountered while resolving '${inputPath}'`);
+				loopError.code = 'ELOOP';
+				throw loopError;
+			}
+			seen.add(canonicalCurrent);
+			let linkTarget;
+			try {
+				linkTarget = fs.readlinkSync(canonicalCurrent);
+			} catch (error) {
+				if (isPathNotFoundError(error) || error?.code === 'EINVAL') {
+					return null;
+				}
+				throw error;
+			}
+			const resolvedTarget = path.isAbsolute(linkTarget)
+				? linkTarget
+				: path.resolve(path.dirname(canonicalCurrent), linkTarget);
+			const remaining = segments.slice(index + 1);
+			const nextPath = remaining.length > 0
+				? path.resolve(resolvedTarget, ...remaining)
+				: resolvedTarget;
+			return resolveRealpathWithSymlinks(nextPath, seen);
+		}
+	}
+	return absoluteInput;
+}
+
+function formatRealpathResult(resolvedPath, options) {
+	const encoding = typeof options === 'string'
+		? options
+		: typeof options === 'object' && options !== null
+			? options.encoding
+			: undefined;
+	if (encoding === 'buffer') {
+		if (NodeBuffer && typeof NodeBuffer.from === 'function') {
+			return NodeBuffer.from(resolvedPath);
+		}
+		throw new Error('Buffer is not available to encode realpath result as buffer');
+	}
+	if (!encoding || encoding === 'utf8') {
+		return resolvedPath;
+	}
+	if (NodeBuffer && typeof NodeBuffer.from === 'function') {
+		return NodeBuffer.from(resolvedPath).toString(encoding);
+	}
+	throw new Error('Buffer is not available to encode realpath result with custom encoding');
+}
+
+function createRealpathNotFoundError(requestPath) {
+	const error = new Error(`ENOENT: no such file or directory, realpath '${requestPath}'`);
+	error.code = 'ENOENT';
+	error.path = requestPath;
+	error.syscall = 'realpath';
+	return error;
+}
+
+function realpathSyncWithSymlinkFallback(requestPath, options) {
+	const pathString = toPathString(requestPath);
+	const manualResolved = resolveRealpathWithSymlinks(pathString);
+	if (!manualResolved) {
+		throw createRealpathNotFoundError(pathString);
+	}
+	return formatRealpathResult(manualResolved, options);
+}
+
+function patchFsRealpath() {
+	if (!fs) {
+		return;
+	}
+	const originalRealpathSync = typeof fs.realpathSync === 'function'
+		? fs.realpathSync.bind(fs)
+		: null;
+	const patchedRealpathSync = function patchedRealpathSync(requestPath, options) {
+		try {
+			if (originalRealpathSync) {
+				return originalRealpathSync(requestPath, options);
+			}
+		} catch (error) {
+			if (!isPathNotFoundError(error) && error?.code !== 'ELOOP') {
+				throw error;
+			}
+		}
+		return realpathSyncWithSymlinkFallback(requestPath, options);
+	};
+	patchedRealpathSync.native = function patchedRealpathNative(requestPath, options) {
+		return realpathSyncWithSymlinkFallback(requestPath, options);
+	};
+	fs.realpathSync = patchedRealpathSync;
+	fs.realpathSync.native = patchedRealpathSync.native;
+	if (typeof fs.realpath === 'function') {
+		fs.realpath = function patchedRealpath(requestPath, options, callback) {
+			let cb = callback;
+			let opts = options;
+			if (typeof opts === 'function') {
+				cb = opts;
+				opts = undefined;
+			}
+			if (typeof cb === 'function') {
+				scheduleAsync(() => {
+					try {
+						const result = realpathSyncWithSymlinkFallback(requestPath, opts);
+						cb(null, result);
+					} catch (error) {
+						cb(error);
+					}
+				});
+				return;
+			}
+			return new Promise((resolve, reject) => {
+				scheduleAsync(() => {
+					try {
+						const result = realpathSyncWithSymlinkFallback(requestPath, opts);
+						resolve(result);
+					} catch (error) {
+						reject(error);
+					}
+				});
+			});
+		};
+	}
+}
+
+patchFsRealpath();
+
+function safeRealpath(absolutePath) {
+	const realpathFn = getRealpathFn();
+	if (realpathFn) {
+		try {
+			return realpathFn(absolutePath);
+		} catch (error) {
+			try {
+				const manualResolved = resolveRealpathWithSymlinks(absolutePath);
+				if (manualResolved) {
+					return manualResolved;
+				}
+			} catch (manualError) {
+				if (manualError?.code !== 'ELOOP') {
+					throw manualError;
+				}
+				return path.resolve(absolutePath);
+			}
+			if (error && (error.code === 'ENOENT' || error.code === 'ENOTDIR' || error.code === 'ELOOP')) {
+				return path.resolve(absolutePath);
+			}
+			throw error;
+		}
+	}
+	try {
+		const manualResolved = resolveRealpathWithSymlinks(absolutePath);
+		if (manualResolved) {
+			return manualResolved;
+		}
+	} catch (manualError) {
+		if (manualError?.code !== 'ELOOP') {
+			throw manualError;
+		}
+	}
+	return path.resolve(absolutePath);
 }
 
 function statPath(targetPath) {
@@ -41,6 +253,28 @@ function statPath(targetPath) {
 		return 2;
 	} catch (error) {
 		if (error && (error.code === 'ENOENT' || error.code === 'ENOTDIR' || error.code === 'ELOOP')) {
+			try {
+				const manualResolved = resolveRealpathWithSymlinks(targetPath);
+				if (manualResolved) {
+					try {
+						const stats = fs.statSync(manualResolved);
+						if (stats.isFile() || stats.isFIFO?.() || stats.isSocket?.() || stats.isSymbolicLink?.()) {
+							return 0;
+						}
+						if (stats.isDirectory()) {
+							return 1;
+						}
+					} catch (manualError) {
+						if (!isPathNotFoundError(manualError) && manualError?.code !== 'ELOOP') {
+							throw manualError;
+						}
+					}
+				}
+			} catch (manualResolveError) {
+				if (manualResolveError?.code !== 'ELOOP') {
+					throw manualResolveError;
+				}
+			}
 			return -1;
 		}
 		throw error;
@@ -305,6 +539,7 @@ Module._findPath = function (request, paths, isMain, conditions) {
 			return filename;
 		}
 	}
+	console.log('Module._findPath', {request, paths, isMain, conditions});
 	return false;
 };
 
