@@ -320,6 +320,10 @@ globalThis.internalModules = {
 		get: () => ({}),
 	},
 	contextify: createDebugProxy('contextify', {
+		containsModuleSyntax() {
+			console.warn('containsModuleSyntax called', {arguments} );
+			return false;
+		},
 		compileFunctionForCJSLoader: (content, filename, is_sea_main, shouldDetectModule) => {
 			// Remove up to two shebang lines if present
 			if (content.startsWith('#!')) {
