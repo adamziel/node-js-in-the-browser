@@ -4,137 +4,325 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Node.js Web Polyfills</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+	<style>
+		:root {
+			color-scheme: dark;
+		}
+
+		html,
+		body {
+			height: 100%;
+			margin: 0;
+			background: #1e1e1e;
+		}
+
+		#terminal {
+			height: 100%;
+			width: 100%;
+		}
+	</style>
 </head>
 <body>
-	<h1>Node.js Web Polyfills</h1>
-	
+	<div id="terminal"></div>
+
 	<script type="module">
-		import { runMain } from "./client-boot.js";
-		window.runMain = runMain;
+		import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm';
 
-		function myNodeModule() {
-			const buffer = require("buffer");
-			globalThis.Buffer = buffer.Buffer;
+		const PROMPT = '$ ';
 
-			const fs = require('fs');
-			const Module = require('module');
-			console.log(Module);
-			// works!
-			// process.argv = ["node", "npm"];
+		class XTermShell {
+			constructor(term) {
+				this.term = term;
+				this.promptText = PROMPT;
+				this.buffer = '';
+				this.cursor = 0;
+				this.history = [];
+				this.historyIndex = 0;
+				this.stashedLine = '';
+				this.isRunning = false;
+				this.abortCurrent = null;
 
-			// works!
-			// process.argv = ["node", "npm", "init"];
+				this.term.onData((data) => this.onData(data));
+			}
 
-			process.initArgv(["node", "webpack", "build"])
-			// process.initArgv(["node", "npm", "install"])
+			start() {
+				this.term.writeln('Welcome to the Node.js Web Polyfills shell. Type "help" to learn more.');
+				this.showPrompt();
+			}
 
-			const args = process.argv;
+			onData(data) {
+				let index = 0;
+				while (index < data.length) {
+					const char = data[index];
 
-			async function doRun() {
-				const npmResponse = await fetch('/npm/npm-single.js');
-				const npmCode = await npmResponse.text();
-
-				const defaultInputResponse = await fetch('/npm/default-input.js');
-				const defaultInputCode = await defaultInputResponse.text();
-
-				fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
-				if (!fs.existsSync('/.npm')) {
-					fs.mkdirSync('/.npm');
-				}
-				if (!fs.existsSync('/bin')) {
-					fs.mkdirSync('/bin');
-				}
-				if (!fs.existsSync('/bin/project')) {
-					fs.mkdirSync('/bin/project');
-				}
-				fs.writeFileSync('/bin/node', '', {
-					mode: 0o755,
-				});
-				fs.writeFileSync('/bin/npm', npmCode, {
-					mode: 0o755,
-				});
-				fs.writeFileSync('/bin/default-input.js', defaultInputCode);
-				fs.writeFileSync(
-					'/bin/package.json',
-					JSON.stringify({
-						name: 'my-test-app',
-						version: '1.0.0',
-						dependencies: {
-							// leftpad: '*',
-							webpack: '*',
-							"webpack-cli": '*',
-							'function-bind': '*',
-						},
-					})
-				);
-				fs.writeFileSync('/bin/webpack.config.js', `module.exports = {
-					entry: '/bin/index.js',
-					output: {
-						filename: 'bundle.js',
-					},
-				}`);
-				fs.writeFileSync('/bin/index.js', 'console.log("Hello, world!");');
-				const previousFetch = globalThis.fetch;
-				globalThis.fetch = async (url, ...args) => {
-					if (typeof url === 'string' && url.startsWith('https://')) {
-						url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
-					}
-					return await previousFetch(url, ...args);
-				};
-
-				try {
-					const command = args[0];
-					if (args[1] === 'npm') {
-						fs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
-						fs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
-						fs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
-						if (!fs.existsSync('/bin/node_modules/webpack')) {
-							require('/bin/npm')
-						} else {
-							console.log('webpack already installed (cached filesystem used)');
+					if (char === '\u001b') {
+						const sequence = data.slice(index, index + 3);
+						if (!this.isRunning) {
+							if (sequence === '\u001b[A') {
+								this.navigateHistory(-1);
+								index += 3;
+								continue;
+							}
+							if (sequence === '\u001b[B') {
+								this.navigateHistory(1);
+								index += 3;
+								continue;
+							}
+							if (sequence === '\u001b[C') {
+								this.moveCursor(1);
+								index += 3;
+								continue;
+							}
+							if (sequence === '\u001b[D') {
+								this.moveCursor(-1);
+								index += 3;
+								continue;
+							}
 						}
-					} else if (command === 'ls') {
-						const files = fs.readdirSync(args[1] || process.cwd()).sort();
-						process.stdout.write('\n' + files.join('\n') + '\n');
-						// process.exit(0);
-					} else if (command === 'pwd') {
-						process.stdout.write('\n' + process.cwd() + '\n');
-						// process.exit(0);
-					} else {
-						process.stderr.write('\ncommand not found: ' + command + '\n');
-						// process.exit(1);
+						index += 1;
+						continue;
 					}
-				} catch(e) {
+
+					index += 1;
+
+					if (char === '\u0003') {
+						this.handleCtrlC();
+						continue;
+					}
+
+					if (this.isRunning) {
+						continue;
+					}
+
+					switch (char) {
+						case '\r':
+							this.handleEnter();
+							break;
+						case '\u0001': // Ctrl+A
+							this.moveCursorToStart();
+							break;
+						case '\u0005': // Ctrl+E
+							this.moveCursorToEnd();
+							break;
+						case '\u007f': // Backspace
+							this.handleBackspace();
+							break;
+						default:
+							if (char >= ' ' && char !== '\u007f') {
+								this.insertText(char);
+							}
+							break;
+					}
 				}
-				setTimeout(() => {
-					console.log('openFiles');
-					const openFiles = globalFs.openFiles;
-					for (const [key, value] of openFiles.entries()) {
-						new TextDecoder().decode(value.node.content)
+			}
+
+			moveCursor(direction) {
+				if (direction === -1 && this.cursor > 0) {
+					this.cursor -= 1;
+					this.term.write('\u001b[D');
+					return;
+				}
+				if (direction === 1 && this.cursor < this.buffer.length) {
+					this.term.write('\u001b[C');
+					this.cursor += 1;
+				}
+			}
+
+			moveCursorToStart() {
+				if (this.cursor > 0) {
+					this.term.write(`\u001b[${this.cursor}D`);
+					this.cursor = 0;
+				}
+			}
+
+			moveCursorToEnd() {
+				const diff = this.buffer.length - this.cursor;
+				if (diff > 0) {
+					this.term.write(`\u001b[${diff}C`);
+					this.cursor = this.buffer.length;
+				}
+			}
+
+			insertText(text) {
+				if (!text) {
+					return;
+				}
+				const before = this.buffer.slice(0, this.cursor);
+				const after = this.buffer.slice(this.cursor);
+				this.buffer = before + text + after;
+				this.cursor += text.length;
+				this.term.write(text + after);
+				if (after.length) {
+					this.term.write(`\u001b[${after.length}D`);
+				}
+			}
+
+			handleBackspace() {
+				if (this.cursor === 0) {
+					return;
+				}
+				this.buffer = this.buffer.slice(0, this.cursor - 1) + this.buffer.slice(this.cursor);
+				this.cursor -= 1;
+				this.term.write('\u001b[D');
+				this.term.write('\u001b[P');
+			}
+
+			handleEnter() {
+				this.term.write('\r\n');
+				const line = this.buffer;
+				const trimmed = line.trim();
+
+				if (!trimmed) {
+					this.showPrompt();
+					return;
+				}
+
+				this.addToHistory(line);
+				this.isRunning = true;
+
+				Promise.resolve(this.executeCommand(line))
+					.catch((error) => {
+						const message = error instanceof Error ? error.message : String(error);
+						this.term.writeln(`Error: ${message}`);
+					})
+					.finally(() => {
+						this.finishCommand();
+					});
+			}
+
+			handleCtrlC() {
+				this.term.write('^C\r\n');
+				if (this.isRunning) {
+					if (typeof this.abortCurrent === 'function') {
+						try {
+							this.abortCurrent();
+						} catch (error) {
+							const message = error instanceof Error ? error.message : String(error);
+							this.term.writeln(`Error: ${message}`);
+						}
 					}
-				}, 8000);
+					this.abortCurrent = null;
+					this.finishCommand();
+				} else {
+					this.showPrompt();
+				}
 			}
-			doRun();
+
+			addToHistory(line) {
+				if (!line.trim()) {
+					return;
+				}
+				if (this.history[this.history.length - 1] !== line) {
+					this.history.push(line);
+				}
+				this.historyIndex = this.history.length;
+				this.stashedLine = '';
+			}
+
+			navigateHistory(direction) {
+				if (!this.history.length) {
+					return;
+				}
+
+				if (direction === -1) {
+					if (this.historyIndex === this.history.length) {
+						this.stashedLine = this.buffer;
+					}
+					if (this.historyIndex > 0) {
+						this.historyIndex -= 1;
+						this.buffer = this.history[this.historyIndex];
+						this.cursor = this.buffer.length;
+						this.renderLine();
+					}
+					return;
+				}
+
+				if (direction === 1) {
+					if (this.historyIndex === this.history.length) {
+						return;
+					}
+					this.historyIndex += 1;
+					if (this.historyIndex === this.history.length) {
+						this.buffer = this.stashedLine;
+					} else {
+						this.buffer = this.history[this.historyIndex];
+					}
+					this.cursor = this.buffer.length;
+					this.renderLine();
+				}
+			}
+
+			renderLine() {
+				this.term.write('\u001b[?25l');
+				this.term.write('\r');
+				this.term.write('\u001b[2K');
+				this.term.write(this.promptText + this.buffer);
+				const offset = this.buffer.length - this.cursor;
+				if (offset > 0) {
+					this.term.write(`\u001b[${offset}D`);
+				}
+				this.term.write('\u001b[?25h');
+			}
+
+			resetLineState() {
+				this.buffer = '';
+				this.cursor = 0;
+				this.historyIndex = this.history.length;
+				this.stashedLine = '';
+			}
+
+			showPrompt() {
+				this.resetLineState();
+				this.term.write(this.promptText);
+			}
+
+			finishCommand() {
+				this.isRunning = false;
+				this.abortCurrent = null;
+				this.showPrompt();
+			}
+
+			async executeCommand(line) {
+				const tokens = this.parseCommand(line);
+				if (!tokens.length) {
+					return;
+				}
+
+				const [command] = tokens;
+				switch (command) {
+					case 'help':
+						this.term.writeln('Available commands:');
+						this.term.writeln('  help    Show this help message');
+						break;
+					default:
+						this.term.writeln(`shell: ${command}: command not found`);
+				}
+			}
+
+			parseCommand(line) {
+				return line
+					.trim()
+					.split(/\s+/)
+					.filter(Boolean);
+			}
 		}
 
-		try {
-			runMain({
-				code: `(${myNodeModule})()`,
-				path: 'main-module.js',
-			});
-		} catch (e) {
-			if (e instanceof Error && e.message.startsWith('process.exit(')) {
-				// This is a normal exit, captured by our process.exit polyfill.
-			} else {
-				// This is an unexpected error.
-				console.error('Worker error:', e);
-				const errorMessage = e instanceof Error ? e.stack : String(e);
-				console.log(`\r\n\x1b[31m${errorMessage}\x1b[0m`);
-			}
-		} finally {
-			self.postMessage({ type: 'status', data: 'finished' });
-		}
+		const terminalElement = document.getElementById('terminal');
+		const terminal = new Terminal({
+			cursorBlink: true,
+			convertEol: true,
+			fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+			fontSize: 14,
+		});
+
+		terminal.open(terminalElement);
+
+		const shell = new XTermShell(terminal);
+		shell.start();
+
+		terminal.focus();
+		document.addEventListener('click', () => terminal.focus());
 	</script>
-
 </body>
 </html>
