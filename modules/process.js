@@ -15,7 +15,6 @@ var require_process = __commonJS({
     var env = {};
     var execPath = "/bin/node";
     var exit = (code) => {
-      console.log("exit", { code });
       let message = "";
       if (code instanceof Error) {
         message = code.message;
@@ -145,6 +144,7 @@ var require_process = __commonJS({
       }
       return globalThis.process;
     };
+    var addListener = on;
     var removeListener = off;
     var emit = (event, ...args) => {
       const listeners = eventListeners.get(event) || [];
@@ -157,13 +157,34 @@ var require_process = __commonJS({
       });
       return listeners.length > 0;
     };
+    var emitWarning = (warning, type, code, ctor) => {
+      let warningObj;
+      if (typeof warning === "string") {
+        warningObj = new Error(warning);
+        warningObj.name = type || "Warning";
+        if (code) warningObj.code = code;
+      } else if (warning instanceof Error) {
+        warningObj = warning;
+        if (type) warningObj.name = type;
+        if (code) warningObj.code = code;
+      } else {
+        throw new TypeError('The "warning" argument must be of type string or an instance of Error');
+      }
+      const hasListeners = emit("warning", warningObj);
+      if (!hasListeners) {
+        console.warn(`(node:${globalThis.process?.pid || 0}) ${warningObj.name}: ${warningObj.message}`);
+        if (warningObj.code) {
+          console.warn(`[${warningObj.code}]`);
+        }
+      }
+    };
     var nextTick = (fn, ...args) => {
       setTimeout(fn.bind(null, ...args), 0);
     };
-    var version = "20.17.0";
+    var version = "v20.17.0";
     var versions = {
       arch: "x64",
-      version: "20.17.0",
+      version,
       platform: "darwin",
       release: {
         name: "node",
@@ -172,7 +193,7 @@ var require_process = __commonJS({
         libUrl: "https://nodejs.org/download/release/v20.17.0/lib.tar.gz"
       },
       modules: "node:buffer",
-      node: "20.17.0",
+      node: version,
       openssl: "3.3.2",
       uv: "1.46.0",
       v8: "11.7.50.18",
@@ -201,8 +222,13 @@ var require_process = __commonJS({
     on("output.standard", (data) => {
       globalThis.process.stdout.write(data);
     });
+    var maxListeners = 50;
+    var setMaxListeners = (n) => {
+      maxListeners = n;
+      return maxListeners;
+    };
     var getMaxListeners = () => {
-      return 50;
+      return maxListeners;
     };
     var features = {
       openssl_is_boringssl: false
@@ -223,7 +249,11 @@ var require_process = __commonJS({
       module.exports.stdin.resume();
       currentDirectory = cwd2;
     };
+    function binding(name) {
+      return globalThis.internalBinding(name);
+    }
     module.exports = {
+      pid: Math.floor(Math.random() * 1e6),
       setTerminal,
       initProcess,
       argc,
@@ -246,12 +276,16 @@ var require_process = __commonJS({
       hrtime,
       memoryUsage,
       cpuUsage,
+      binding,
       kill,
       on,
       off,
+      addListener,
       removeListener,
       emit,
-      getMaxListeners
+      emitWarning,
+      getMaxListeners,
+      setMaxListeners
     };
   }
 });

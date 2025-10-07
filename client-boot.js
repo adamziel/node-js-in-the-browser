@@ -18,7 +18,8 @@ const { InMemoryFileSystem } = await import("./src/in-memory-fs.js");
 const globalFs = new InMemoryFileSystem();
 window.globalFs = globalFs;
 try {
-	await globalFs.loadFromStorage();
+	// Somehow it messes up sha for npm
+	// await globalFs.loadFromStorage();
 } catch(e) {
 	console.log('Error loading from storage', e);
 }
@@ -701,10 +702,11 @@ globalThis.internalModules = {
 			return maybePromiseFromSync(() => globalFs.renameSync(oldPath, newPath), kUsePromises);
 		},
 		rm(path, kUsePromises) {
-			console.log('rm', path, kUsePromises, arguments);
+			// console.log('rm', path, kUsePromises, arguments);
 			return maybePromiseFromSync(() => globalFs.rmSync(path), kUsePromises);
 		},
-		rmdir(path, kUsePromises) { console.log('rmdir', path, kUsePromises, arguments);
+		rmdir(path, kUsePromises) {
+			// console.log('rmdir', path, kUsePromises, arguments);
 			return maybePromiseFromSync(() => globalFs.rmdirSync(path), kUsePromises);
 		},
 		stat(path, useBigint, kUsePromises, throwIfNoEntry) {
@@ -1346,7 +1348,40 @@ types: createDebugProxy('types', {
 		resourceLimits: {},
 		threadId: 0,
 		threadName: 'WorkerThread',
-		Worker: Worker,
+		Worker: class FsWorker extends Worker {
+			constructor(
+				url,
+				envVariables,
+				argv,
+				resourceLimits,
+				trackUnmanagedFds,
+				isInternal,
+				name
+			) {
+				// @TODO: Support env, argv, name...
+				
+				const fs = globalThis.coreModules.fs
+				const path = globalThis.coreModules.path
+
+				// Extract the file path from the URL
+				const filePath = path.fileURLToPath(url)
+
+				// Read the file content
+				const fileContent = fs.readFileSync(filePath, 'utf8')
+
+				// Convert the file content to a base64 string
+				const base64Content = btoa(fileContent)
+
+				// Create a base64 URL
+				const base64Url = `data:text/javascript;base64,${base64Content}`
+
+				// Return or use the base64 URL as needed
+				console.log('Base64 URL:', base64Url)
+				super(base64Url, {
+					name: name,
+				});
+			}
+		},
 		kMaxYoungGenerationSizeMb: 1024,
 		kMaxOldGenerationSizeMb: 1024,
 		kCodeRangeSizeMb: 1024,
@@ -1433,6 +1468,7 @@ types: createDebugProxy('types', {
 		getPriority: () => 0,
 		getHomeDirectory: () => '/home/user',
 		getHostname: () => 'localhost',
+		availableParallelism: () => 1,
 		getCPUs() {
 			return [
 				{
@@ -2383,7 +2419,13 @@ types: createDebugProxy('types', {
 	},
 };
 
+Object.assign(
+	globalThis.internalModules.constants,
+	globalThis.internalModules.constants.fs
+);
+
 globalThis.internalModules.os.constants = globalThis.internalModules.constants.os;
+globalThis.internalModules.os.default = globalThis.internalModules.os;
 console.log(globalThis.internalModules);
 
 await import("./modules/primordials.js");
@@ -2499,6 +2541,7 @@ await import("./modules/boot.js");
 console.log("Setting stdout etc.")
 globalThis.coreModules.os = globalThis.internalModules.os;
 
+
 // Node Response class has an abort method.
 // globalThis.Response.prototype.abort = () => {
 // 	// do nothing
@@ -2596,6 +2639,9 @@ globalThis.coreModules.tty = tty.default;
 const assert = await import("./modules/assert.js");
 globalThis.coreModules.assert = assert.default;
 
+const assertStrict = await import("./modules/assert/strict.js");
+globalThis.coreModules["assert/strict"] = assertStrict.default;
+
 const timers = await import("./modules/timers.js");
 globalThis.coreModules.timers = timers.default;
 
@@ -2611,8 +2657,9 @@ globalThis.coreModules.vm = vm.default;
 const v8 = await import("./modules/v8.js");
 globalThis.coreModules.v8 = { ...v8 };
 
-// const workerThreads = await import("./modules/worker_threads.js");
-// console.log(workerThreads.default);
+const workerThreads = await import("./modules/worker_threads.js");
+console.log('worker_threads', workerThreads.default);
+globalThis.coreModules.worker_threads = workerThreads.default;
 
 const Module = await import("./src/module.js");
 globalThis.coreModules.module = Module;
@@ -2629,6 +2676,8 @@ for(const key in globalThis.coreModules) {
 		compileForPublicLoader() { }
 	});
 }
+
+globalThis.internalModules.natives = Object.keys(globalThis.internalModules);
 
 // const ModuleCJSLoader = await import("./modules/internal/modules/cjs/loader.js");
 // console.log({ ModuleCJSLoader })
@@ -2654,6 +2703,7 @@ export function runMain(options) {
 
 globalThis.setImmediate = setTimeout;
 
+globalThis.coreModules.fs.realpath.native = globalThis.coreModules.fs.realpath;  //globalThis.internalModules.fs.realpathSync;
 globalThis.coreModules.fs.lutimes = function (path, atime, mtime, kUsePromises) {
 	return maybePromiseFromSync(() => {
 		// Update timestamps on symlink itself if symlink; otherwise behave like utimes
@@ -2737,5 +2787,48 @@ globalThis.clearTimeout = (timeout) => {
 	} else {
 		// Handle regular timeout IDs (for compatibility)
 		return originalClearTimeout(timeout);
+	}
+};
+
+const intervals = new Map();
+const originalSetInterval = globalThis.setInterval;
+const originalClearInterval = globalThis.clearInterval;
+
+globalThis.setInterval = (callback, interval, ...args) => {
+	// Start the interval immediately
+	const intervalId = originalSetInterval(callback, interval, ...args);
+	
+	// Create an interval object that mimics Node.js behavior
+	const intervalObj = {
+		_id: intervalId,
+		_unrefd: false,
+		unref() {
+			this._unrefd = true;
+			return this;
+		},
+		ref() {
+			this._unrefd = false;
+			return this;
+		},
+		hasRef() {
+			return !this._unrefd;
+		}
+	};
+	
+	// Store the mapping for clearInterval
+	intervals.set(intervalObj, intervalId);
+	
+	return intervalObj;
+};
+
+globalThis.clearInterval = (interval) => {
+	if (interval && typeof interval === 'object' && intervals.has(interval)) {
+		// Handle our custom interval objects
+		const intervalId = intervals.get(interval);
+		intervals.delete(interval);
+		return originalClearInterval(intervalId);
+	} else {
+		// Handle regular interval IDs (for compatibility)
+		return originalClearInterval(interval);
 	}
 };

@@ -27,6 +27,14 @@
 	<div id="terminal"></div>
 
 	<script type="module">
+		/*
+		 npm install -g yarn
+		 node /lib/node_modules/yarn/bin/yarn.js add @wordpress/scripts
+
+		 npm install -g pnpm
+		 node /lib/node_modules/pnpm/bin/pnpm.cjs install @wordpress/scripts
+		 # Cannot find module worker_threads
+		 */
 		import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm';
 		import { runMain } from './client-boot.js';
 
@@ -72,6 +80,7 @@
 				fs.mkdirSync('/.npm');
 			}
 			fs.mkdirSync('/bin', { recursive: true });
+			fs.mkdirSync('/tmp', { recursive: true });
 			fs.mkdirSync('/bin/project', { recursive: true });
 			if (!fs.existsSync('/bin/node')) {
 				fs.writeFileSync('/bin/node', '', { mode: 0o755 });
@@ -87,26 +96,105 @@
 				const defaultInputCode = await defaultInputResponse.text();
 				fs.writeFileSync('/bin/default-input.js', defaultInputCode);
 			}
-			if (!fs.existsSync('/bin/package.json')) {
-				fs.writeFileSync(
-					'/bin/package.json',
-					JSON.stringify({
-						name: 'web-polyfills-app',
-						version: '1.0.0',
-						private: true,
-						dependencies: {
-							webpack: '*',
-							'webpack-cli': '*',
-							'function-bind': '*',
-						},
-					}, null, 2)
-				);
+			const packageJsonPath = '/bin/package.json';
+			const requiredDependencies = {
+				// webpack: '*',
+				// 'webpack-cli': '*',
+				// 'function-bind': '*',
+				// 'ts-loader': '*',
+				// typescript: '*',
+				// react: '*',
+				// 'react-dom': '*',
+				// '@types/react': '*',
+				// '@types/react-dom': '*',
+				// '@types/node': '*',
+			};
+			let packageJson = {
+				name: 'web-polyfills-app',
+				version: '1.0.0',
+				private: true,
+				dependencies: {},
+			};
+			if (fs.existsSync(packageJsonPath)) {
+				try {
+					const existing = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+					if (existing && typeof existing === 'object') {
+						packageJson = {
+							...packageJson,
+							...existing,
+							dependencies: { ...existing.dependencies },
+						};
+					}
+				} catch (error) {
+					console.warn('Failed to parse existing package.json, recreating it.', error);
+				}
 			}
-			if (!fs.existsSync('/bin/webpack.config.js')) {
-				fs.writeFileSync('/bin/webpack.config.js', `module.exports = {\n\tentry: '/bin/index.js',\n\toutput: {\n\t\tfilename: 'bundle.js',\n\t},\n};\n`);
+			if (!packageJson.dependencies || typeof packageJson.dependencies !== 'object') {
+				packageJson.dependencies = {};
 			}
-			if (!fs.existsSync('/bin/index.js')) {
-				fs.writeFileSync('/bin/index.js', "console.log('Hello, world!');\n");
+			for (const [dep, version] of Object.entries(requiredDependencies)) {
+				if (!(dep in packageJson.dependencies)) {
+					packageJson.dependencies[dep] = version;
+				}
+			}
+			fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
+			const webpackConfigPath = '/bin/webpack.config.js';
+			const webpackConfigContent = `module.exports = {
+	entry: '/bin/typescript-react.tsx',
+	output: {
+		filename: 'typescript-react.js',
+	},
+	module: {
+		rules: [
+			{
+				test: /\\.tsx?$/,
+				use: 'ts-loader',
+				exclude: /node_modules/,
+			},
+		],
+	},
+	resolve: {
+		extensions: ['.tsx', '.ts', '.js'],
+	},
+};
+`;
+			let existingWebpackConfig = null;
+			if (fs.existsSync(webpackConfigPath)) {
+				existingWebpackConfig = fs.readFileSync(webpackConfigPath, 'utf8');
+			}
+			if (existingWebpackConfig !== webpackConfigContent) {
+				fs.writeFileSync(webpackConfigPath, webpackConfigContent);
+			}
+			const tsconfigPath = '/bin/tsconfig.json';
+			const tsconfigObject = {
+				compilerOptions: {
+					target: 'ES2018',
+					module: 'ESNext',
+					moduleResolution: 'Node',
+					jsx: 'react',
+					esModuleInterop: true,
+					allowSyntheticDefaultImports: true,
+					skipLibCheck: true,
+					forceConsistentCasingInFileNames: true,
+					isolatedModules: true,
+					lib: ['DOM', 'DOM.Iterable', 'ESNext'],
+					types: ['node', 'react', 'react-dom'],
+				},
+				include: ['./**/*.ts', './**/*.tsx'],
+			};
+			const tsconfigContent = `${JSON.stringify(tsconfigObject, null, 2)}\n`;
+			if (!fs.existsSync(tsconfigPath) || fs.readFileSync(tsconfigPath, 'utf8') !== tsconfigContent) {
+				fs.writeFileSync(tsconfigPath, tsconfigContent);
+			}
+			if (!fs.existsSync('/bin/hello.js')) {
+				fs.writeFileSync('/bin/hello.js', "console.log('Hello, world!');\n");
+			}
+			if (!fs.existsSync('/bin/typescript-react.tsx')) {
+				fs.writeFileSync('/bin/typescript-react.tsx', `
+				const React = require('react');
+				const ReactDOM = require('react-dom');
+				ReactDOM.render(<h1>Hello, world!</h1>, document.getElementById('root'));
+				`);
 			}
 			globalFs.mkdirSync('/bin', { recursive: true });
 			globalFs.mkdirSync('/bin/cowsay', { recursive: true });
@@ -150,13 +238,14 @@
 				this.fs = globalFs;
 				this.active = false;
 				this.stdinStream = null;
+				this.currentRunToken = null;
 			}
 
 			isNodeCommand(command) {
 				return command === 'node' || command === 'npm';
 			}
 
-			createTtyStreams(argv) {
+			createTtyStreams(argv, runToken) {
 				const streamModule = globalThis.coreModules?.stream;
 				if (!streamModule) {
 					throw new Error('stream module is not available');
@@ -312,8 +401,8 @@
 					}
 				}
 
-				const stdout = new TerminalWriteStream(1, (text) => this.shell.writeStdout(text));
-				const stderr = new TerminalWriteStream(2, (text) => this.shell.writeStderr(text));
+				const stdout = new TerminalWriteStream(1, (text) => this.shell.writeStdoutForRun(runToken, text));
+				const stderr = new TerminalWriteStream(2, (text) => this.shell.writeStderrForRun(runToken, text));
 				const stdin = new TerminalReadStream();
 
 				const ttyModule = globalThis.coreModules?.tty;
@@ -364,7 +453,7 @@
 				};
 			}
 
-			prepareEnvironment() {
+			prepareEnvironment(runToken) {
 				const processObj = globalThis.process;
 				const utilModule = globalThis.coreModules?.util;
 				const format = typeof utilModule?.format === 'function'
@@ -389,17 +478,17 @@
 				};
 
 				const terminalAdapter = {
-					writeStdout: (message) => this.shell.writeStdout(message),
-					writeStderr: (message) => this.shell.writeStderr(message),
+					writeStdout: (message) => this.shell.writeStdoutForRun(runToken, message),
+					writeStderr: (message) => this.shell.writeStderrForRun(runToken, message),
 				};
 				processObj?.setTerminal?.(terminalAdapter);
 
 				console.log = (...args) => {
-					this.shell.writeStdout(`${format(...args)}\n`);
+					this.shell.writeStdoutForRun(runToken, `${format(...args)}\n`);
 				};
 				console.info = console.log;
 				console.warn = (...args) => {
-					this.shell.writeStderr(`${format(...args)}\n`);
+					this.shell.writeStderrForRun(runToken, `${format(...args)}\n`);
 				};
 				console.error = console.warn;
 
@@ -484,13 +573,22 @@
 						this._pendingOnExit = null;
 					}
 				}
-				const { stdin, dispose } = this.createTtyStreams(argv);
+				const runToken = Symbol('node-run');
+				this.currentRunToken = runToken;
+				this.shell.setActiveOutputToken(runToken);
+				const { stdin, dispose } = this.createTtyStreams(argv, runToken);
 				this.stdinStream = stdin;
-				const cleanupEnv = this.prepareEnvironment();
+				const cleanupEnv = this.prepareEnvironment(runToken);
 				const processObj = globalThis.process;
 				const onExit = () => {
 					if (this._pendingOnExit !== onExit) {
 						return;
+					}
+					if (this.currentRunToken === runToken) {
+						this.currentRunToken = null;
+					}
+					if (this.shell.getActiveOutputToken() === runToken) {
+						this.shell.setActiveOutputToken(null);
 					}
 					cleanupEnv();
 					dispose();
@@ -588,6 +686,7 @@
 				this.abortCurrent = null;
 				this.cwd = '/bin';
 				this.resizeSubscribers = new Set();
+				this.activeOutputToken = null;
 				this.term.onResize(({ cols, rows }) => {
 					for (const handler of this.resizeSubscribers) {
 						try {
@@ -633,6 +732,28 @@
 
 			writeStderr(message) {
 				this.term.write(normalizeNewlines(String(message)));
+			}
+
+			setActiveOutputToken(token) {
+				this.activeOutputToken = token ?? null;
+			}
+
+			getActiveOutputToken() {
+				return this.activeOutputToken;
+			}
+
+			writeStdoutForRun(token, message) {
+				if (token && token !== this.activeOutputToken) {
+					return;
+				}
+				this.writeStdout(message);
+			}
+
+			writeStderrForRun(token, message) {
+				if (token && token !== this.activeOutputToken) {
+					return;
+				}
+				this.writeStderr(message);
 			}
 
 			composePrompt() {

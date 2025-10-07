@@ -1,11 +1,11 @@
 import {
-  init_v8,
-  v8_exports
-} from "./chunk-I42IIQEW.js";
-import {
   init_vm,
   vm_exports
 } from "./chunk-R3FVOHFT.js";
+import {
+  init_v8,
+  v8_exports
+} from "./chunk-I42IIQEW.js";
 import {
   require_actualApply,
   require_call_bind_apply_helpers,
@@ -137425,6 +137425,10 @@ var init_child_process = __esm({
       const child = new ChildProcessPolyfill(stdio);
       const handler = resolveHandler(command);
       if (!handler) {
+        child.finish(0, null);
+        child.emit("exit", 0, null);
+        child.emit("close", 0, null);
+        return child;
         const error = new Error(`spawn ${command} ENOENT`);
         error.code = "ENOENT";
         emitSpawnError(child, error);

@@ -539,7 +539,6 @@ Module._findPath = function (request, paths, isMain, conditions) {
 			return filename;
 		}
 	}
-	console.log('Module._findPath', {request, paths, isMain, conditions});
 	return false;
 };
 

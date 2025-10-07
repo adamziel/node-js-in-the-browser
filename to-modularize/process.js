@@ -175,6 +175,7 @@ const off = (event, listener) => {
 	return globalThis.process;
 };
 
+const addListener = on;
 const removeListener = off; // Alias for off
 
 const emit = (event, ...args) => {
@@ -189,13 +190,40 @@ const emit = (event, ...args) => {
 	return listeners.length > 0;
 };
 
+const emitWarning = (warning, type, code, ctor) => {
+	let warningObj;
+
+	if (typeof warning === 'string') {
+		warningObj = new Error(warning);
+		warningObj.name = type || 'Warning';
+		if (code) warningObj.code = code;
+	} else if (warning instanceof Error) {
+		warningObj = warning;
+		if (type) warningObj.name = type;
+		if (code) warningObj.code = code;
+	} else {
+		throw new TypeError('The "warning" argument must be of type string or an instance of Error');
+	}
+
+	// Emit the warning event
+	const hasListeners = emit('warning', warningObj);
+
+	// If no listeners, log to console
+	if (!hasListeners) {
+		console.warn(`(node:${globalThis.process?.pid || 0}) ${warningObj.name}: ${warningObj.message}`);
+		if (warningObj.code) {
+			console.warn(`[${warningObj.code}]`);
+		}
+	}
+};
+
 const nextTick = (fn, ...args) => {
 	setTimeout(fn.bind(null, ...args), 0);
 };
-const version = '20.17.0';
+const version = 'v20.17.0';
 const versions = {
 		arch: 'x64',
-		version: '20.17.0',
+		version: version,
 		platform: 'darwin',
 		release: {
 			name: 'node',
@@ -204,7 +232,7 @@ const versions = {
 			libUrl: 'https://nodejs.org/download/release/v20.17.0/lib.tar.gz',
 		},
 		modules: 'node:buffer',
-		node: '20.17.0',
+		node: version,
 		openssl: '3.3.2',
 		uv: '1.46.0',
 		v8: '11.7.50.18',
@@ -257,8 +285,14 @@ function makeWritable(writeFn) {
 	return stream;
 }
 
+let maxListeners = 50;
+const setMaxListeners = (n) => {
+	maxListeners = n;
+	return maxListeners;
+};
+
 const getMaxListeners = () => {
-	return 50;
+	return maxListeners;
 };
 
 const features = {
@@ -282,7 +316,12 @@ const initProcess = ({
 	currentDirectory = cwd;
 };
 
+function binding(name) {
+	return globalThis.internalBinding(name);
+}
+
 module.exports = {
+	pid: Math.floor(Math.random() * 1000000),
 	setTerminal,
 	initProcess,
 	argc,
@@ -305,10 +344,14 @@ module.exports = {
 	hrtime,
 	memoryUsage,
 	cpuUsage,
+	binding,
 	kill,
 	on,
 	off,
+	addListener,
 	removeListener,
 	emit,
+	emitWarning,
 	getMaxListeners,
+	setMaxListeners,
 };

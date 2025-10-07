@@ -1,5 +1,5 @@
 import {
-  require_path
+  require_assert2 as require_assert
 } from "../chunk-S6RL2TS2.js";
 import "../chunk-R3FVOHFT.js";
 import "../chunk-I42IIQEW.js";
@@ -11,10 +11,10 @@ import {
   __commonJS
 } from "../chunk-IWXS4Z3P.js";
 
-// ../lib/path/win32.js
-var require_win32 = __commonJS({
-  "../lib/path/win32.js"(exports, module) {
-    module.exports = require_path().win32;
+// ../lib/assert/strict.js
+var require_strict = __commonJS({
+  "../lib/assert/strict.js"(exports, module) {
+    module.exports = require_assert().strict;
   }
 });
-export default require_win32();
+export default require_strict();

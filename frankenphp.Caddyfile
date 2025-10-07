@@ -1,0 +1,12 @@
+{
+	frankenphp {
+		num_threads 10
+		max_threads 10
+	}
+}
+
+:8080 {
+	root * ./web-polyfills
+	php_server
+	file_server
+}

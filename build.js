@@ -12,6 +12,7 @@ const entryPoints = {
 	realm: '../lib/internal/bootstrap/realm.js',
 	async_hooks: '../lib/async_hooks.js',
 	assert: '../lib/assert.js',
+	"assert/strict": '../lib/assert/strict.js',
 	buffer: './src/buffer-polyfill.js',
 	blob: '../lib/internal/blob.js',
 	console: '../lib/console.js',
