@@ -12325,11 +12325,11 @@ var require_body = __commonJS({
           }
           resolve();
         }).then(() => stream.concat()).then((buf) => {
-          console.log("then", buf.toString())
+          // console.log("then", buf.toString())
           clearTimeout(resTimeout);
           return buf;
         }).catch((er) => {
-          console.log("catch", er)
+          // console.log("catch", er)
           clearTimeout(resTimeout);
           if (er.name === "AbortError" || er.name === "FetchError") {
             throw er;
@@ -15176,7 +15176,7 @@ var require_lib9 = __commonJS({
         }
         return acc;
       }, new Integrity());
-      console.log("hashes", hashes, {integrity})
+      // console.log("hashes", hashes, {integrity})
       return hashes.isEmpty() ? null : hashes;
     }
     module2.exports.stringify = stringify;
@@ -15203,7 +15203,7 @@ var require_lib9 = __commonJS({
       const optString = getOptString(opts?.options);
       return algorithms.reduce((acc, algo) => {
         const digest = crypto.createHash(algo).update(data).digest("base64");
-        console.log("digest", digest, {algo})
+        // console.log("digest", digest, {algo})
         const hash = new Hash(
           `${algo}-${digest}${optString}`,
           opts
@@ -17968,7 +17968,7 @@ var require_entry_index = __commonJS({
         await appendFile(bucket, `
 ${hashEntry(stringified)}	${stringified}`);
       } catch (err) {
-        console.error(err);
+        // console.error(err);
         if (err.code === "ENOENT") {
           return void 0;
         }
@@ -17989,7 +17989,7 @@ ${hashEntry(stringified)}	${stringified}`);
           }
         }, null);
       } catch (err) {
-        console.error(err);
+        // console.error(err);
         if (err.code === "ENOENT") {
           return null;
         } else {
@@ -18581,7 +18581,7 @@ var require_lib13 = __commonJS({
             try {
               this[_close]();
             } catch (e) {
-              console.error("Unknown error", e)
+              // console.error("Unknown error", e)
             }
           }
         }
@@ -18648,7 +18648,7 @@ var require_read = __commonJS({
         });
         return readPipeline(cpath, stat.size, sri, stream);
       }).catch((err) => {
-        console.error("Unknown error", err);
+        // console.error("Unknown error", err);
         return stream.emit("error", err);
       });
       return stream;
@@ -18826,7 +18826,7 @@ var require_get = __commonJS({
         stream.unshift(src);
         return stream;
       }).catch((err) => {
-        console.error("Unknown error", err);
+        // console.error("Unknown error", err);
         return stream.emit("error", err);
       });
       return stream;
@@ -18946,7 +18946,7 @@ var require_write = __commonJS({
             this.opts
           );
           this.handleContentP.catch((error) => {
-            console.error("Unknown error", error);
+            // console.error("Unknown error", error);
             return this.emit("error", error);
           });
         }
@@ -19041,7 +19041,7 @@ var require_write = __commonJS({
           tmp.moved = true;
           return tmp.moved;
         }).catch(async (err) => {
-          console.error(err);
+          // console.error(err);
           // Treat existing destination as success; otherwise retry with overwrite
           try {
             if (err && err.message && err.message.startsWith("The destination file exists")) {
@@ -82288,10 +82288,10 @@ var require_init_package_json = __commonJS({
         }
         return pkg.content;
       }
-      console.log(`About to write to ${msg}`);
+      // console.log(`About to write to ${msg}`);
       const ok = await read({ prompt: "Is this OK? ", default: "yes" });
       if (!ok || !ok.toLowerCase().startsWith("y")) {
-        console.log("Aborted.");
+        // console.log("Aborted.");
         return;
       }
       await pkg.save({ sort: true });

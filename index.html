@@ -28,13 +28,341 @@
 
 	<script type="module">
 		import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm';
+		import { runMain } from './client-boot.js';
 
-		const PROMPT = '$ ';
+		const globalFs = window.globalFs;
+		const textDecoder = new TextDecoder();
+		const PROMPT_SUFFIX = '$ ';
+
+		function normalizeNewlines(text) {
+			return text.replace(/\r?\n/g, '\r\n');
+		}
+
+		function coerceToString(chunk, encoding) {
+			if (typeof chunk === 'string') {
+				return chunk;
+			}
+			if (chunk instanceof ArrayBuffer) {
+				return textDecoder.decode(new Uint8Array(chunk));
+			}
+			if (ArrayBuffer.isView(chunk)) {
+				return textDecoder.decode(chunk);
+			}
+			if (chunk === undefined || chunk === null) {
+				return '';
+			}
+			if (typeof chunk === 'object' && 'toString' in chunk) {
+				return String(chunk);
+			}
+			return String(chunk ?? '');
+		}
+
+		class ProcessExitError extends Error {
+			constructor(code = 0) {
+				super(`Process exited with code ${code}`);
+				this.name = 'ProcessExitError';
+				this.code = code ?? 0;
+			}
+		}
+
+		class NodeRunner {
+			constructor(shell) {
+				this.shell = shell;
+				this.fs = globalFs;
+				this.setupPromise = null;
+				this.active = false;
+			}
+
+			isNodeCommand(command) {
+				return command === 'node' || command === 'npm';
+			}
+
+			async ensureSetup() {
+				if (this.setupPromise) {
+					return this.setupPromise;
+				}
+				this.setupPromise = (async () => {
+					const fs = this.fs;
+					fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
+					if (!fs.existsSync('/.npm')) {
+						fs.mkdirSync('/.npm');
+					}
+					fs.mkdirSync('/bin', { recursive: true });
+					fs.mkdirSync('/bin/project', { recursive: true });
+					if (!fs.existsSync('/bin/node')) {
+						fs.writeFileSync('/bin/node', '', { mode: 0o755 });
+					}
+
+					let npmCode = null;
+					if (!fs.existsSync('/bin/npm')) {
+						npmCode = await this.fetchText('/npm/npm-single.js');
+						fs.writeFileSync('/bin/npm', npmCode, { mode: 0o755 });
+					}
+					if (!fs.existsSync('/bin/default-input.js')) {
+						const defaultInputCode = await this.fetchText('/npm/default-input.js');
+						fs.writeFileSync('/bin/default-input.js', defaultInputCode);
+					}
+					if (!fs.existsSync('/bin/package.json')) {
+						fs.writeFileSync(
+							'/bin/package.json',
+							JSON.stringify({
+								name: 'web-polyfills-app',
+								version: '1.0.0',
+								private: true,
+								dependencies: {
+									webpack: '*',
+									'webpack-cli': '*',
+									'function-bind': '*',
+								},
+							}, null, 2)
+						);
+					}
+					if (!fs.existsSync('/bin/webpack.config.js')) {
+						fs.writeFileSync('/bin/webpack.config.js', `module.exports = {\n\tentry: '/bin/index.js',\n\toutput: {\n\t\tfilename: 'bundle.js',\n\t},\n};\n`);
+					}
+					if (!fs.existsSync('/bin/index.js')) {
+						fs.writeFileSync('/bin/index.js', "console.log('Hello, world!');\n");
+					}
+				})();
+				return this.setupPromise;
+			}
+
+			async fetchText(url) {
+				const response = await fetch(url);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch ${url}: ${response.status}`);
+				}
+				return response.text();
+			}
+
+			prepareEnvironment() {
+				const processObj = globalThis.process;
+				const stdout = processObj?.stdout;
+				const stderr = processObj?.stderr;
+				const utilModule = globalThis.coreModules?.util;
+				const format = typeof utilModule?.format === 'function'
+					? utilModule.format
+					: (...args) => args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' ');
+
+				const previous = {
+					argv: Array.isArray(processObj?.argv) ? [...processObj.argv] : undefined,
+					argc: processObj?.argc,
+					env: processObj?.env ? { ...processObj.env } : undefined,
+					cwd: processObj?.cwd,
+					chdir: processObj?.chdir,
+					stdoutWrite: stdout?.write,
+					stderrWrite: stderr?.write,
+					console: {
+						log: console.log,
+						info: console.info,
+						warn: console.warn,
+						error: console.error,
+					},
+					fetch: globalThis.fetch,
+					exit: processObj?.exit,
+					abort: processObj?.abort,
+				};
+
+				const terminalAdapter = {
+					writeStdout: (message) => this.shell.writeStdout(message),
+					writeStderr: (message) => this.shell.writeStderr(message),
+				};
+				processObj?.setTerminal?.(terminalAdapter);
+
+				if (stdout) {
+					stdout.write = (chunk, encoding, callback) => {
+						if (typeof encoding === 'function') {
+							callback = encoding;
+							encoding = undefined;
+						}
+						const text = coerceToString(chunk, encoding);
+						this.shell.writeStdout(text);
+						if (typeof callback === 'function') {
+							callback();
+						}
+						return true;
+					};
+				}
+				if (stderr) {
+					stderr.write = (chunk, encoding, callback) => {
+						if (typeof encoding === 'function') {
+							callback = encoding;
+							encoding = undefined;
+						}
+						const text = coerceToString(chunk, encoding);
+						this.shell.writeStderr(text);
+						if (typeof callback === 'function') {
+							callback();
+						}
+						return true;
+					};
+				}
+
+				console.log = (...args) => {
+					this.shell.writeStdout(`${format(...args)}\n`);
+				};
+				console.info = console.log;
+				console.warn = (...args) => {
+					this.shell.writeStderr(`${format(...args)}\n`);
+				};
+				console.error = console.warn;
+
+				const proxyFetch = async (url, ...args) => {
+					let target = url;
+					if (typeof target === 'string' && target.startsWith('https://')) {
+						target = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${target}`;
+					}
+					return previous.fetch(target, ...args);
+				};
+				globalThis.fetch = proxyFetch;
+
+				processObj.exit = (code = 0) => {
+					throw new ProcessExitError(code);
+				};
+				processObj.abort = () => {
+					throw new ProcessExitError(1);
+				};
+
+				return () => {
+					processObj?.setTerminal?.(null);
+					if (stdout && previous.stdoutWrite) {
+						stdout.write = previous.stdoutWrite;
+					}
+					if (stderr && previous.stderrWrite) {
+						stderr.write = previous.stderrWrite;
+					}
+					console.log = previous.console.log;
+					console.info = previous.console.info;
+					console.warn = previous.console.warn;
+					console.error = previous.console.error;
+					globalThis.fetch = previous.fetch;
+					processObj.exit = previous.exit;
+					processObj.abort = previous.abort;
+					if (previous.argv) {
+						processObj.argv = [...previous.argv];
+					}
+					if (typeof previous.argc === 'number') {
+						processObj.argc = previous.argc;
+					}
+					if (previous.env) {
+						const env = processObj.env ?? {};
+						for (const key of Object.keys(env)) {
+							delete env[key];
+						}
+						for (const [key, value] of Object.entries(previous.env)) {
+							env[key] = value;
+						}
+					}
+					if (previous.cwd) {
+						processObj.cwd = previous.cwd;
+					}
+					if (previous.chdir) {
+						processObj.chdir = previous.chdir;
+					}
+				};
+			}
+
+			resetModuleState() {
+				const moduleRuntime = globalThis.coreModules?.module;
+				if (!moduleRuntime) {
+					return;
+				}
+				const Module = moduleRuntime.Module;
+				if (Module) {
+					if (Module._cache) {
+						Module._cache = Object.create(null);
+					}
+					if (Module._pathCache) {
+						Module._pathCache = Object.create(null);
+					}
+				}
+			}
+
+			setArgv(argv) {
+				const processObj = globalThis.process;
+				processObj.initArgv?.(argv);
+				processObj.argv = [...argv];
+				processObj.argc = argv.length;
+			}
+
+			async runMainWithEntry(entryPath, argv) {
+				this.setArgv(argv);
+				this.resetModuleState();
+				try {
+					const result = runMain(entryPath);
+					if (result && typeof result.then === 'function') {
+						await result;
+					}
+				} catch (error) {
+					if (error instanceof ProcessExitError) {
+						if (error.code !== 0) {
+							this.shell.writeStderr(`Process exited with code ${error.code}\n`);
+						}
+						return;
+					}
+					throw error;
+				}
+			}
+
+			async runNodeCommand(args) {
+				if (args.length === 0) {
+					this.shell.writeStderr('node: interactive REPL is not supported yet.\n');
+					return;
+				}
+				const [first, ...rest] = args;
+				if (first === '-v' || first === '--version') {
+					const version = globalThis.process?.version ?? 'v0.0.0';
+					this.shell.writeStdout(`${version}\n`);
+					return;
+				}
+				if (first.startsWith('-')) {
+					this.shell.writeStderr(`node: option '${first}' is not supported yet.\n`);
+					return;
+				}
+				const scriptPath = this.shell.resolvePath(first);
+				if (!this.fs.existsSync(scriptPath)) {
+					this.shell.writeStderr(`node: cannot open '${first}': No such file or directory\n`);
+					return;
+				}
+				const argv = ['node', scriptPath, ...rest];
+				await this.runMainWithEntry(scriptPath, argv);
+			}
+
+			async run(command, args) {
+				await this.ensureSetup();
+				const cleanup = this.prepareEnvironment();
+				this.active = true;
+				try {
+					if (command === 'npm') {
+						const argv = ['node', '/bin/npm', ...args];
+						await this.runMainWithEntry('/bin/npm', argv);
+					} else {
+						await this.runNodeCommand(args);
+					}
+				} finally {
+					cleanup();
+					this.active = false;
+				}
+			}
+
+			abort() {
+				if (!this.active) {
+					return;
+				}
+				try {
+					const processObj = globalThis.process;
+					if (typeof processObj?.emit === 'function') {
+						processObj.emit('SIGINT');
+					}
+				} catch (error) {
+					this.shell.writeStderr(`Failed to send SIGINT: ${error.message}\n`);
+				}
+			}
+		}
 
 		class XTermShell {
 			constructor(term) {
 				this.term = term;
-				this.promptText = PROMPT;
 				this.buffer = '';
 				this.cursor = 0;
 				this.history = [];
@@ -42,13 +370,52 @@
 				this.stashedLine = '';
 				this.isRunning = false;
 				this.abortCurrent = null;
+				this.cwd = '/bin';
+				globalFs.mkdirSync('/bin', { recursive: true });
+				globalFs.mkdirSync('/bin/node_modules/node-gyp/bin', { recursive: true });
+				globalFs.writeFileSync('/bin/node_modules/node-gyp/package.json', '{}');
+				globalFs.writeFileSync('/bin/node_modules/node-gyp/bin/node-gyp.js', '');
+
+				const previousFetch = globalThis.fetch;
+				globalThis.fetch = async (url, ...args) => {
+					if (typeof url === 'string' && url.startsWith('https://')) {
+						url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
+					}
+					return await previousFetch(url, ...args);
+				};
+
+				this.nodeRunner = new NodeRunner(this);
+				this.syncProcessBindings();
 
 				this.term.onData((data) => this.onData(data));
 			}
 
+			syncProcessBindings() {
+				const processObj = globalThis.process;
+				if (!processObj) {
+					return;
+				}
+				processObj.cwd = () => this.cwd;
+				processObj.chdir = (input) => {
+					this.changeDirectory(input, { fromProcess: true });
+				};
+			}
+
 			start() {
-				this.term.writeln('Welcome to the Node.js Web Polyfills shell. Type "help" to learn more.');
+				this.writeStdout('Welcome to the Node.js Web Polyfills shell. Type "help" for available commands.\n');
 				this.showPrompt();
+			}
+
+			writeStdout(message) {
+				this.term.write(normalizeNewlines(String(message)));
+			}
+
+			writeStderr(message) {
+				this.term.write(normalizeNewlines(String(message)));
+			}
+
+			composePrompt() {
+				return `${this.cwd}${PROMPT_SUFFIX}`;
 			}
 
 			onData(data) {
@@ -99,13 +466,13 @@
 						case '\r':
 							this.handleEnter();
 							break;
-						case '\u0001': // Ctrl+A
+						case '\u0001':
 							this.moveCursorToStart();
 							break;
-						case '\u0005': // Ctrl+E
+						case '\u0005':
 							this.moveCursorToEnd();
 							break;
-						case '\u007f': // Backspace
+						case '\u007f':
 							this.handleBackspace();
 							break;
 						default:
@@ -183,8 +550,8 @@
 
 				Promise.resolve(this.executeCommand(line))
 					.catch((error) => {
-						const message = error instanceof Error ? error.message : String(error);
-						this.term.writeln(`Error: ${message}`);
+						const message = error instanceof Error ? error.stack ?? error.message : String(error);
+						this.writeStderr(`${message}\n`);
 					})
 					.finally(() => {
 						this.finishCommand();
@@ -199,7 +566,7 @@
 							this.abortCurrent();
 						} catch (error) {
 							const message = error instanceof Error ? error.message : String(error);
-							this.term.writeln(`Error: ${message}`);
+							this.writeStderr(`${message}\n`);
 						}
 					}
 					this.abortCurrent = null;
@@ -257,7 +624,7 @@
 				this.term.write('\u001b[?25l');
 				this.term.write('\r');
 				this.term.write('\u001b[2K');
-				this.term.write(this.promptText + this.buffer);
+				this.term.write(this.composePrompt() + this.buffer);
 				const offset = this.buffer.length - this.cursor;
 				if (offset > 0) {
 					this.term.write(`\u001b[${offset}D`);
@@ -274,13 +641,71 @@
 
 			showPrompt() {
 				this.resetLineState();
-				this.term.write(this.promptText);
+				this.term.write(this.composePrompt());
 			}
 
 			finishCommand() {
 				this.isRunning = false;
 				this.abortCurrent = null;
+				this.syncProcessBindings();
 				this.showPrompt();
+			}
+
+			resolvePath(input) {
+				if (!input || input === '.') {
+					return this.cwd;
+				}
+				const parts = input.split('/');
+				const base = input.startsWith('/') ? [] : this.cwd.split('/').filter(Boolean);
+				for (const part of parts) {
+					if (!part || part === '.') {
+						continue;
+					}
+					if (part === '..') {
+						base.pop();
+						continue;
+					}
+					base.push(part);
+				}
+				return `/${base.join('/')}` || '/';
+			}
+
+			changeDirectory(target, { fromProcess = false } = {}) {
+				const resolved = this.resolvePath(target ?? '/');
+				try {
+					const stats = globalFs.statSync(resolved);
+					if (!stats.isDirectory()) {
+						const error = new Error(`ENOTDIR: not a directory, chdir '${resolved}'`);
+						error.code = 'ENOTDIR';
+						throw error;
+					}
+					this.cwd = resolved;
+					return resolved;
+				} catch (error) {
+					if (fromProcess) {
+						throw error;
+					}
+					const code = error && error.code ? error.code : 'ERROR';
+					if (code === 'ENOENT') {
+						this.writeStderr(`cd: ${target}: No such file or directory\n`);
+					} else if (code === 'ENOTDIR') {
+						this.writeStderr(`cd: ${target}: Not a directory\n`);
+					} else {
+						this.writeStderr(`cd: ${error.message}\n`);
+					}
+				}
+				return this.cwd;
+			}
+
+			formatFsError(prefix, target, error) {
+				const code = error && error.code ? error.code : 'ERROR';
+				if (code === 'ENOENT') {
+					return `${prefix}: cannot access '${target}': No such file or directory`;
+				}
+				if (code === 'ENOTDIR') {
+					return `${prefix}: cannot access '${target}': Not a directory`;
+				}
+				return `${prefix}: ${error.message}`;
 			}
 
 			async executeCommand(line) {
@@ -289,14 +714,110 @@
 					return;
 				}
 
-				const [command] = tokens;
-				switch (command) {
-					case 'help':
-						this.term.writeln('Available commands:');
-						this.term.writeln('  help    Show this help message');
-						break;
-					default:
-						this.term.writeln(`shell: ${command}: command not found`);
+				const [command, ...args] = tokens;
+
+				if (this.nodeRunner.isNodeCommand(command)) {
+					this.abortCurrent = () => this.nodeRunner.abort();
+					await this.nodeRunner.run(command, args);
+					return;
+				}
+
+			switch (command) {
+				case 'help':
+					this.writeStdout('Available commands:\n');
+					this.writeStdout('  help    Show this help message\n');
+					this.writeStdout('  ls      List files in the current directory\n');
+					this.writeStdout('  pwd     Print the current working directory\n');
+					this.writeStdout('  cd      Change the current working directory\n');
+					this.writeStdout('  mkdir   Create directories (use -p to create parents)\n');
+					this.writeStdout('  node    Run a Node.js script (basic flags supported)\n');
+					this.writeStdout('  npm     Run the bundled npm executable\n');
+					break;
+				case 'pwd':
+					this.writeStdout(`${this.cwd}\n`);
+					break;
+				case 'cd':
+					this.changeDirectory(args[0] ?? '/');
+					break;
+				case 'ls':
+					this.handleList(args);
+					break;
+				case 'mkdir':
+					this.handleMkdir(args);
+					break;
+				default:
+					this.writeStderr(`shell: ${command}: command not found\n`);
+				}
+			}
+
+			handleList(args) {
+				const targets = args.length ? args : ['.'];
+				for (const target of targets) {
+					const resolved = this.resolvePath(target);
+					try {
+						const stats = globalFs.statSync(resolved);
+						if (stats.isDirectory()) {
+							const entries = globalFs.readdirSync(resolved).sort((a, b) => a.localeCompare(b));
+							for (const entry of entries) {
+								this.writeStdout(`${entry}\n`);
+							}
+						} else {
+							this.writeStdout(`${resolved.split('/').pop()}\n`);
+						}
+					} catch (error) {
+						this.writeStderr(`${this.formatFsError('ls', target, error)}\n`);
+						if (targets.length > 1) {
+							continue;
+						}
+					}
+				}
+			}
+
+			handleMkdir(args) {
+				if (!args.length) {
+					this.writeStderr('mkdir: missing operand\n');
+					return;
+				}
+				let recursive = false;
+				const targets = [];
+				for (const arg of args) {
+					if (arg === '-p') {
+						recursive = true;
+						continue;
+					}
+					if (arg.startsWith('-')) {
+						this.writeStderr(`mkdir: invalid option '${arg}'\n`);
+						return;
+					}
+					targets.push(arg);
+				}
+				if (!targets.length) {
+					this.writeStderr('mkdir: missing operand\n');
+					return;
+				}
+				for (const target of targets) {
+					const resolved = this.resolvePath(target);
+					try {
+						if (recursive) {
+							globalFs.mkdirSync(resolved, { recursive: true });
+						} else {
+							globalFs.mkdirSync(resolved);
+						}
+					} catch (error) {
+						const code = error && error.code ? error.code : 'ERROR';
+						if (code === 'EEXIST' && recursive) {
+							continue;
+						}
+						if (code === 'EEXIST') {
+							this.writeStderr(`mkdir: ${target}: File exists\n`);
+						} else if (code === 'ENOENT') {
+							this.writeStderr(`mkdir: ${target}: No such file or directory\n`);
+						} else if (code === 'ENOTDIR') {
+							this.writeStderr(`mkdir: ${target}: Not a directory\n`);
+						} else {
+							this.writeStderr(`mkdir: ${error.message}\n`);
+						}
+					}
 				}
 			}
 

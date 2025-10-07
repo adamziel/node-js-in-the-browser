@@ -63050,7 +63050,6 @@ var require_request = __commonJS({
       var self2 = this;
       import_node_stream.default.Writable.call(self2);
       self2._opts = opts;
-      console.log("opts", self2._opts.url);
       self2._body = [];
       self2._headers = {};
       if (opts.auth)
@@ -63077,7 +63076,6 @@ var require_request = __commonJS({
       self2._socketTimeout = null;
       self2._socketTimer = null;
       self2.on("finish", function() {
-        console.log("client request finish");
         self2._onFinish();
       });
     };
@@ -63104,7 +63102,6 @@ var require_request = __commonJS({
     };
     ClientRequest.prototype._onFinish = function() {
       var self2 = this;
-      console.log("client request _onFinish");
       if (self2._destroyed)
         return;
       var opts = self2._opts;
@@ -63244,7 +63241,6 @@ var require_request = __commonJS({
     };
     ClientRequest.prototype._write = function(chunk, encoding, cb) {
       var self2 = this;
-      console.log("client request _write");
       self2._body.push(chunk);
       cb();
     };
@@ -63434,7 +63430,6 @@ var require_stream_http = __commonJS({
       opts.url = (host ? protocol + "//" + host : "") + (port ? ":" + port : "") + path2;
       opts.method = (opts.method || "GET").toUpperCase();
       opts.headers = opts.headers || {};
-      console.log("Sending a request!");
       var req = new ClientRequest(opts);
       if (cb)
         req.on("response", cb);
@@ -63492,9 +63487,7 @@ var require_http = __commonJS({
     module.exports.request = function() {
       const result = originalRequest(...arguments);
       result.abort = result.destroy = function() {
-        console.log("Abort");
       };
-      console.log("result", result);
       return result;
     };
   }
