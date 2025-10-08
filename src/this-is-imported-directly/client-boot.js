@@ -3295,29 +3295,6 @@ globalThis.coreModules.fs.lutimes = function (
 	}, kUsePromises)
 }
 
-const { fetch: fetchPolyfill } = await import('../../dist/fetch-polyfill.js')
-globalThis.nodeFetch = async (url, ...args) => {
-	if (typeof url === 'string' && url.startsWith('https://')) {
-		url = `${window.corsProxyUrl}?${url}`
-	}
-
-	let result = await fetchPolyfill(url, ...args)
-
-	// Strip content-encoding header to prevent npm from trying
-	// to decompress the already-decompressed fetch() response.
-	if (result.headers.has('content-encoding')) {
-		const newHeaders = new Headers(result.headers)
-		newHeaders.delete('content-encoding')
-
-		result = new Response(result.body, {
-			status: result.status,
-			statusText: result.statusText,
-			headers: newHeaders,
-		})
-	}
-	return result
-}
-
 const timeouts = new Map()
 const originalSetTimeout = globalThis.setTimeout
 const originalClearTimeout = globalThis.clearTimeout

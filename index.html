@@ -20,9 +20,69 @@
 				background: #1e1e1e;
 			}
 
-			#terminal {
-				height: 40%;
+			#terminal-container {
+				position: relative;
+				height: 40vh;
 				width: 100%;
+			}
+
+			#terminal {
+				height: 100%;
+				width: 100%;
+			}
+
+			#loading-overlay {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: rgba(30, 30, 30, 0.95);
+				backdrop-filter: blur(4px);
+				z-index: 1000;
+				color: #fff;
+				font-family: 'Georgia', serif;
+			}
+
+			#loading-card {
+				width: min(320px, 80%);
+				padding: 24px;
+				background: rgba(0, 0, 0, 0.6);
+				border: 1px solid rgba(255, 255, 255, 0.1);
+				border-radius: 12px;
+				box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+			}
+
+			#loading-message {
+				margin: 0 0 16px;
+				font-size: 1.1em;
+				text-align: center;
+			}
+
+			#progress-bar-track {
+				position: relative;
+				height: 8px;
+				border-radius: 20px;
+				background: rgba(255, 255, 255, 0.1);
+				overflow: hidden;
+			}
+
+			#progress-bar-fill {
+				position: absolute;
+				top: 0;
+				left: 0;
+				height: 100%;
+				width: 0%;
+				border-radius: 20px;
+				background: linear-gradient(
+					90deg,
+					rgba(30, 144, 255, 0.7),
+					rgba(30, 144, 255, 1)
+				);
+				transition: width 0.3s ease;
 			}
 
 			#readme {
@@ -52,14 +112,83 @@
 		</style>
 	</head>
 	<body>
+		<div id="terminal-container">
+			<div id="terminal"></div>
+			<div id="loading-overlay">
+				<div id="loading-card">
+					<p id="loading-message">Preparing the runtime…</p>
+					<div id="progress-bar-track">
+						<div id="progress-bar-fill"></div>
+					</div>
+				</div>
+			</div>
+		</div>
 		<script>
-			window.corsProxyUrl = new URL('./php-cors-proxy/cors-proxy.php', window.location.href)
+			window.corsProxyUrl = new URL(
+				'./php-cors-proxy/cors-proxy.php',
+				window.location.href
+			)
 		</script>
 		<script type="module">
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
 			import { runMain } from './src/this-is-imported-directly/client-boot.js'
+			import { FitAddon } from 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/+esm'
+
+			function createProgressTracker() {
+				const overlay = document.getElementById('loading-overlay')
+				const messageEl = document.getElementById('loading-message')
+				const barFill = document.getElementById('progress-bar-fill')
+				if (!overlay || !messageEl || !barFill) {
+					return {
+						show() {},
+						update() {},
+						complete() {},
+					}
+				}
+
+				const clamp = (value) =>
+					Math.max(
+						0,
+						Math.min(100, Number.isFinite(value) ? value : 0)
+					)
+
+				let current = 0
+
+				return {
+					show(message = 'Loading…') {
+						messageEl.textContent = message
+						barFill.style.width = `${clamp(current)}%`
+						overlay.style.opacity = '1'
+						overlay.style.pointerEvents = 'auto'
+						overlay.hidden = false
+					},
+					update({ message, progress }) {
+						if (message) {
+							messageEl.textContent = message
+						}
+						if (typeof progress === 'number') {
+							current = clamp(progress)
+							barFill.style.width = `${current}%`
+						}
+					},
+					complete({ delay = 250 } = {}) {
+						current = 100
+						barFill.style.width = '100%'
+						setTimeout(() => {
+							overlay.style.opacity = '0'
+							overlay.style.pointerEvents = 'none'
+							barFill.style.width = '0%'
+							setTimeout(() => {
+								overlay.hidden = true
+							}, 200)
+						}, delay)
+					},
+				}
+			}
 
 			const globalFs = window.globalFs
+			const progress = createProgressTracker()
+			progress.show('Preparing the runtime…')
 			const textDecoder = new TextDecoder()
 			const PROMPT_SUFFIX = '$ '
 
@@ -144,6 +273,10 @@
 
 			async function setupFilesystemAndFetch() {
 				const fs = globalFs
+				progress.update({
+					message: 'Initializing virtual filesystem…',
+					progress: 5,
+				})
 				fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true })
 				if (!fs.existsSync('/.npm')) {
 					fs.mkdirSync('/.npm')
@@ -153,6 +286,11 @@
 				if (!fs.existsSync('/bin/node')) {
 					fs.writeFileSync('/bin/node', '', { mode: 0o755 })
 				}
+
+				progress.update({
+					message: 'Preparing npm runtime…',
+					progress: 15,
+				})
 
 				// Set up NPM
 				if (!fs.existsSync('/bin/npm')) {
@@ -167,6 +305,11 @@
 					const defaultInputCode = await defaultInputResponse.text()
 					fs.writeFileSync('/bin/default-input.js', defaultInputCode)
 				}
+
+				progress.update({
+					message: 'Seeding demo workspace…',
+					progress: 30,
+				})
 
 				// Set up demo projects
 				fs.mkdirSync('/demos', { recursive: true })
@@ -190,6 +333,11 @@
 						2
 					)
 				)
+
+				progress.update({
+					message: 'Configuring TypeScript demo…',
+					progress: 45,
+				})
 
 				fs.mkdirSync('/demos/demo-ts', { recursive: true })
 				const packageJsonPath = '/demos/demo-ts/package.json'
@@ -247,6 +395,12 @@
 					packageJsonPath,
 					`${JSON.stringify(packageJson, null, 2)}\n`
 				)
+
+				progress.update({
+					message: 'Writing webpack configuration…',
+					progress: 55,
+				})
+
 				const webpackConfigPath = '/demos/demo-ts/webpack.config.js'
 				const webpackConfigContent = `module.exports = {
 	entry: '/demos/demo-ts/typescript-react.tsx',
@@ -305,6 +459,12 @@
 				) {
 					fs.writeFileSync(tsconfigPath, tsconfigContent)
 				}
+
+				progress.update({
+					message: 'Generating sample React entrypoint…',
+					progress: 65,
+				})
+
 				if (!fs.existsSync('/demos/demo-ts/typescript-react.tsx')) {
 					fs.writeFileSync(
 						'/demos/demo-ts/typescript-react.tsx',
@@ -315,6 +475,12 @@
 				`
 					)
 				}
+
+				progress.update({
+					message: 'Adding additional demos…',
+					progress: 70,
+				})
+
 				globalFs.mkdirSync('/bin', { recursive: true })
 				globalFs.mkdirSync('/demos/demo-cowsay', { recursive: true })
 				if (!fs.existsSync('/demos/demo-cowsay/package.json')) {
@@ -345,6 +511,11 @@
 					)
 				}
 
+				progress.update({
+					message: 'Touching required npm shims…',
+					progress: 80,
+				})
+
 				// npm really wants to see a module called `node-gyp` in the filesystem,
 				// even if it doesn't actually run it.
 				globalFs.mkdirSync('/node_modules/node-gyp/bin', {
@@ -358,6 +529,11 @@
 					'/node_modules/node-gyp/bin/node-gyp.js',
 					''
 				)
+
+				progress.update({
+					message: 'Environment ready!',
+					progress: 90,
+				})
 			}
 
 			window.stableConsole = {
@@ -368,7 +544,20 @@
 				trace: console.trace.bind(console),
 			}
 
-			await setupFilesystemAndFetch()
+			try {
+				await setupFilesystemAndFetch()
+				progress.update({
+					message: 'Launching terminal…',
+					progress: 98,
+				})
+			} catch (error) {
+				progress.update({
+					message:
+						'Failed to prepare the runtime. Check console logs.',
+					progress: 100,
+				})
+				throw error
+			}
 
 			class NodeRunner {
 				constructor(shell) {
@@ -639,7 +828,6 @@
 							warn: console.warn,
 							error: console.error,
 						},
-						fetch: globalThis.fetch,
 						exit: processObj?.exit,
 						abort: processObj?.abort,
 					}
@@ -667,18 +855,6 @@
 					}
 					console.error = console.warn
 
-					const proxyFetch = async (url, ...args) => {
-						let target = url
-						if (
-							typeof target === 'string' &&
-							target.startsWith('https://')
-						) {
-							target = `${window.corsProxyUrl}?${target}`
-						}
-						return previous.fetch(target, ...args)
-					}
-					globalThis.fetch = proxyFetch
-
 					processObj.exit = (code = 0) => {
 						throw new ProcessExitError(code)
 					}
@@ -692,7 +868,6 @@
 						console.info = previous.console.info
 						console.warn = previous.console.warn
 						console.error = previous.console.error
-						globalThis.fetch = previous.fetch
 						processObj.exit = previous.exit
 						processObj.abort = previous.abort
 						if (previous.argv) {
@@ -1919,13 +2094,25 @@
 				cols: 200,
 			})
 
+			const fitAddon = new FitAddon()
+			terminal.loadAddon(fitAddon)
+
+			const resizeTerminal = () => {
+				requestAnimationFrame(() => {
+					fitAddon.fit()
+				})
+			}
+
 			terminal.open(terminalElement)
+			resizeTerminal()
+			window.addEventListener('resize', resizeTerminal)
 
 			const shell = new XTermShell(terminal)
 			shell.start()
+			progress.complete()
 
 			terminal.focus()
-			document.addEventListener('click', () => terminal.focus())
+			terminalElement.addEventListener('click', () => terminal.focus())
 			/*
 		I tried getting alrernative package managers to work, but they
 		rely on deep Node internals and will require more work:
@@ -1949,8 +2136,6 @@
 		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
 		 */
 		</script>
-
-		<div id="terminal"></div>
 
 		<div id="readme">
 			<h2 id="node-js-runtime-in-the-browser">
@@ -1986,6 +2171,40 @@
 				those features, it can already run <code>npm</code>, build
 				TypeScript, etc.
 			</p>
+
+			<h3 id="examples">Examples</h3>
+			<p>
+				Run these in the XTerm shell above.
+			</p>
+			<p>
+				<strong>There&#39;s a big gotcha with CWD!</strong> Once you run
+				<code>npm</code> for the first time, node CWD will be stuck in
+				your current <code>cwd</code>! This means you must refresh the
+				page before going to another demo and running
+				<code>npm install</code> there! This will be fixed in the
+				future.
+			</p>
+			<p>
+				Also! The terminal will not always show you the prompt once
+				it&#39;s ready for interactions! If your command finished, just
+				press enter again and you&#39;ll be back in the interactive
+				shell!
+			</p>
+			<h4 id="hello-world">Hello world</h4>
+			<pre><code><span class="hljs-keyword">node</span> <span class="hljs-title">hello</span>.js
+</code></pre>
+			<h4 id="cowsay">Cowsay</h4>
+			<pre><code>cd demo-cowsay
+npm install
+<span class="hljs-keyword">node</span> <span class="hljs-title">test</span>.js
+</code></pre>
+			<h4 id="webpack">Webpack</h4>
+			<pre><code>cd demo-ts
+npm install
+<span class="hljs-keyword">node</span> <span class="hljs-title">./node_modules</span>/.bin/webpack build
+ls dist
+cat dist/bundle.js
+</code></pre>
 		</div>
 	</body>
 </html>
