@@ -1,1 +1,1 @@
-export * from '../../lib/internal/modules/esm/resolve.js';
+export * from '../node/lib/internal/modules/esm/resolve.js';

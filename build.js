@@ -6,7 +6,6 @@ fs.rmSync('modules', { recursive: true, force: true });
 fs.mkdirSync('modules');
 
 const entryPoints = {
-	boot: './to-modularize/boot.js',
 	child_process: './to-modularize/child_process.js',
 	primordials: './node/lib/internal/per_context/primordials.js',
 	realm: './node/lib/internal/bootstrap/realm.js',
@@ -55,6 +54,7 @@ const entryPoints = {
 	'stream/web': './node/lib/stream/web.js',
 	vm: './to-modularize/vm.js',
 	v8: './to-modularize/v8.js',
+	"internal/util/debuglog": './node/lib/internal/util/debuglog.js',
 	// module: './node/lib/module.js',
 	// child_process: './node/lib/child_process.js',
 	net: './node/lib/net.js',

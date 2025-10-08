@@ -896,7 +896,11 @@ globalThis.internalModules = {
 		isBuildingSnapshotBuffer: []
 	},
 	"internal/errors": {
-		exitCodes: {}
+		exitCodes: {},
+        fatalExceptionStackEnhancers: {
+          beforeInspector: () => {},
+          afterInspector: () => {},
+        }
 	},
 	errors: createDebugProxy('errors', {
 		exitCodes: {},
@@ -2663,7 +2667,10 @@ const asyncHooks = await import("./modules/async_hooks.js");
 globalThis.coreModules.async_hooks = asyncHooks.default;
 console.log('asyncHooks', asyncHooks);
 
-await import("./modules/boot.js");
+const debuglog = await import("./modules/internal/util/debuglog.js");
+globalThis.internalModules.util = { ...globalThis.internalModules.util, debuglog: debuglog.default };
+console.log('debuglog', debuglog);
+debuglog.default.initializeDebugEnv("debug");
 
 console.log("Setting stdout etc.")
 globalThis.coreModules.os = globalThis.internalModules.os;
