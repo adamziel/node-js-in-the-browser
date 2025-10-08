@@ -1,3 +1,7 @@
+This is sourced from the WordPress Playground project: https://github.com/WordPress/wordpress-playground/tree/trunk/packages/playground/php-cors-proxy
+
+---
+
 ## PHP CORS Proxy
 
 A PHP CORS proxy need to integrate git clone via fetch().

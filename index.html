@@ -27,27 +27,6 @@
 	<div id="terminal"></div>
 
 	<script type="module">
-		/*
-		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
-
-		 npm install -g corepack
-		 node /lib/node_modules/corepack/dist/corepack.js install -g yarn
-		 node /lib/node_modules/corepack/dist/corepack.js use yarn
-		 node /lib/node_modules/corepack/dist/yarnpkg.js add @wordpress/scripts@*
-
-		 npm install -g yarn
-		 node /lib/node_modules/yarn/bin/yarn.js add @wordpress/scripts
-
-		 npm install -g pnpm
-		 node /lib/node_modules/pnpm/bin/pnpm.cjs install @wordpress/scripts
-		 # Cannot find module worker_threads
-
-		 npm pack @wordpress/scripts
-		 extract-targz /bin/wordpress-scripts-30.25.0.tgz /bin/wordpress-scripts
-
-		 npm install @wordpress/scripts --omit=dev --omit=optional
-		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
-		 */
 		import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm';
 		import { runMain } from './src/this-is-imported-directly/client-boot.js';
 
@@ -143,11 +122,11 @@
 			}
 			fs.mkdirSync('/bin', { recursive: true });
 			fs.mkdirSync('/tmp', { recursive: true });
-			fs.mkdirSync('/bin/project', { recursive: true });
 			if (!fs.existsSync('/bin/node')) {
 				fs.writeFileSync('/bin/node', '', { mode: 0o755 });
 			}
 
+			// Set up NPM
 			if (!fs.existsSync('/bin/npm')) {
 				const npmCodeResponse = await fetch('/npm/npm-single.js');
 				const npmCode = await npmCodeResponse.text();
@@ -158,18 +137,25 @@
 				const defaultInputCode = await defaultInputResponse.text();
 				fs.writeFileSync('/bin/default-input.js', defaultInputCode);
 			}
-			const packageJsonPath = '/bin/package.json';
+
+			// Set up demo projects
+			if (!fs.existsSync('/bin/hello.js')) {
+				fs.writeFileSync('/bin/hello.js', "console.log('Hello, world!');\n");
+			}
+
+			fs.mkdirSync('/bin/demo-ts', { recursive: true });
+			const packageJsonPath = '/bin/demo-ts/package.json';
 			const requiredDependencies = {
-				// webpack: '*',
-				// 'webpack-cli': '*',
-				// 'function-bind': '*',
-				// 'ts-loader': '*',
-				// typescript: '*',
-				// react: '*',
-				// 'react-dom': '*',
-				// '@types/react': '*',
-				// '@types/react-dom': '*',
-				// '@types/node': '*',
+				webpack: '*',
+				'webpack-cli': '*',
+				'function-bind': '*',
+				'ts-loader': '*',
+				typescript: '*',
+				react: '*',
+				'react-dom': '*',
+				'@types/react': '*',
+				'@types/react-dom': '*',
+				'@types/node': '*',
 			};
 			let packageJson = {
 				name: 'web-polyfills-app',
@@ -200,11 +186,11 @@
 				}
 			}
 			fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
-			const webpackConfigPath = '/bin/webpack.config.js';
+			const webpackConfigPath = '/bin/demo-ts/webpack.config.js';
 			const webpackConfigContent = `module.exports = {
-	entry: '/bin/typescript-react.tsx',
+	entry: '/bin/demo-ts/typescript-react.tsx',
 	output: {
-		filename: 'typescript-react.js',
+		filename: 'bundle.js',
 	},
 	module: {
 		rules: [
@@ -217,7 +203,7 @@
 	},
 	resolve: {
 		extensions: ['.tsx', '.ts', '.js'],
-	},
+	}
 };
 `;
 			let existingWebpackConfig = null;
@@ -227,7 +213,7 @@
 			if (existingWebpackConfig !== webpackConfigContent) {
 				fs.writeFileSync(webpackConfigPath, webpackConfigContent);
 			}
-			const tsconfigPath = '/bin/tsconfig.json';
+			const tsconfigPath = '/bin/demo-ts/tsconfig.json';
 			const tsconfigObject = {
 				compilerOptions: {
 					target: 'ES2018',
@@ -248,29 +234,29 @@
 			if (!fs.existsSync(tsconfigPath) || fs.readFileSync(tsconfigPath, 'utf8') !== tsconfigContent) {
 				fs.writeFileSync(tsconfigPath, tsconfigContent);
 			}
-			if (!fs.existsSync('/bin/hello.js')) {
-				fs.writeFileSync('/bin/hello.js', "console.log('Hello, world!');\n");
-			}
-			if (!fs.existsSync('/bin/typescript-react.tsx')) {
-				fs.writeFileSync('/bin/typescript-react.tsx', `
+			if (!fs.existsSync('/bin/demo-ts/typescript-react.tsx')) {
+				fs.writeFileSync('/bin/demo-ts/typescript-react.tsx', `
 				const React = require('react');
 				const ReactDOM = require('react-dom');
 				ReactDOM.render(<h1>Hello, world!</h1>, document.getElementById('root'));
 				`);
 			}
 			globalFs.mkdirSync('/bin', { recursive: true });
-			globalFs.mkdirSync('/bin/cowsay', { recursive: true });
-			if (!fs.existsSync('/bin/cowsay/package.json')) {
+			globalFs.mkdirSync('/bin/demo-cowsay', { recursive: true });
+			if (!fs.existsSync('/bin/demo-cowsay/package.json')) {
 				fs.writeFileSync(
-					'/bin/cowsay/package.json',
+					'/bin/demo-cowsay/package.json',
 					JSON.stringify({
 						name: 'cowsay',
 						version: '1.0.0',
-						private: true
+						private: true,
+						dependencies: {
+							cowsay: '*',
+						},
 					}, null, 2)
 				);
 				fs.writeFileSync(
-					'/bin/cowsay/test.js',
+					'/bin/demo-cowsay/test.js',
 					`const cowsay = require('cowsay');
 					console.log(cowsay.say({
 						text : "I'm a moooodule",
@@ -280,6 +266,9 @@
 `
 				);
 			}
+
+			// npm really wants to see a module called `node-gyp` in the filesystem,
+			// even if it doesn't actually run it.
 			globalFs.mkdirSync('/node_modules/node-gyp/bin', { recursive: true });
 			globalFs.writeFileSync('/node_modules/node-gyp/package.json', '{}');
 			globalFs.writeFileSync('/node_modules/node-gyp/bin/node-gyp.js', '');
@@ -1621,6 +1610,28 @@
 
 		terminal.focus();
 		document.addEventListener('click', () => terminal.focus());
+		/*
+		I tried getting alrernative package managers to work, but they
+		rely on deep Node internals and will require more work:
+
+		 npm install -g corepack
+		 node /lib/node_modules/corepack/dist/corepack.js install -g yarn
+		 node /lib/node_modules/corepack/dist/corepack.js use yarn
+		 node /lib/node_modules/corepack/dist/yarnpkg.js add @wordpress/scripts@*
+
+		 npm install -g yarn
+		 node /lib/node_modules/yarn/bin/yarn.js add @wordpress/scripts
+
+		 npm install -g pnpm
+		 node /lib/node_modules/pnpm/bin/pnpm.cjs install @wordpress/scripts
+		 # Cannot find module worker_threads
+
+		 npm pack @wordpress/scripts
+		 extract-targz /bin/wordpress-scripts-30.25.0.tgz /bin/wordpress-scripts
+
+		 npm install @wordpress/scripts --omit=dev --omit=optional
+		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
+		 */
 	</script>
 </body>
 </html>
