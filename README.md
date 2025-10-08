@@ -30,6 +30,10 @@ but even without those features, it can already run `npm`, build TypeScript, etc
 
 Run these in the XTerm shell at http://127.0.0.1:8043/.
 
+**There's a big gotcha with CWD!** Once you run `npm` for the first time, node CWD will be
+stuck in your current `cwd`! This means you must refresh the page before going to another
+demo and running `npm install` there! This will be fixed in the future.
+
 #### Hello world
 
 ```
