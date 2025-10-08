@@ -52,6 +52,9 @@
 		</style>
 	</head>
 	<body>
+		<script>
+			window.corsProxyUrl = new URL('./php-cors-proxy/cors-proxy.php', window.location.href)
+		</script>
 		<script type="module">
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
 			import { runMain } from './src/this-is-imported-directly/client-boot.js'
@@ -97,7 +100,7 @@
 			globalThis.fetch = async (url, ...args) => {
 				const originalUrl = url
 				if (typeof url === 'string' && url.startsWith('https://')) {
-					url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`
+					url = `${window.corsProxyUrl}?${url}`
 				}
 
 				// Create cache key from URL and relevant options
@@ -153,13 +156,13 @@
 
 				// Set up NPM
 				if (!fs.existsSync('/bin/npm')) {
-					const npmCodeResponse = await fetch('/npm/npm-single.js')
+					const npmCodeResponse = await fetch('./npm/npm-single.js')
 					const npmCode = await npmCodeResponse.text()
 					fs.writeFileSync('/bin/npm', npmCode, { mode: 0o755 })
 				}
 				if (!fs.existsSync('/bin/default-input.js')) {
 					const defaultInputResponse = await fetch(
-						'/npm/default-input.js'
+						'./npm/default-input.js'
 					)
 					const defaultInputCode = await defaultInputResponse.text()
 					fs.writeFileSync('/bin/default-input.js', defaultInputCode)
@@ -670,7 +673,7 @@
 							typeof target === 'string' &&
 							target.startsWith('https://')
 						) {
-							target = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${target}`
+							target = `${window.corsProxyUrl}?${target}`
 						}
 						return previous.fetch(target, ...args)
 					}
@@ -1948,7 +1951,7 @@
 		</script>
 
 		<div id="terminal"></div>
-		
+
 		<div id="readme">
 			<h2 id="node-js-runtime-in-the-browser">
 				Node.js Runtime in the browser

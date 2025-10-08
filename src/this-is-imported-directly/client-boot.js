@@ -3298,7 +3298,7 @@ globalThis.coreModules.fs.lutimes = function (
 const { fetch: fetchPolyfill } = await import('../../dist/fetch-polyfill.js')
 globalThis.nodeFetch = async (url, ...args) => {
 	if (typeof url === 'string' && url.startsWith('https://')) {
-		url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`
+		url = `${window.corsProxyUrl}?${url}`
 	}
 
 	let result = await fetchPolyfill(url, ...args)
