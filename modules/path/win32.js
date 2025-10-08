@@ -1,19 +1,19 @@
 import {
   require_path
-} from "../chunk-JWC7RZDF.js";
+} from "../chunk-F4SYJEY3.js";
 import "../chunk-R3FVOHFT.js";
 import "../chunk-JEHFPE6G.js";
 import "../chunk-BVUF56MI.js";
-import "../chunk-UWEHO5PT.js";
-import "../chunk-EV3FV3XH.js";
+import "../chunk-4AVSCSZ6.js";
+import "../chunk-LX6EKM7T.js";
 import "../chunk-YC7P67L4.js";
 import {
   __commonJS
 } from "../chunk-IWXS4Z3P.js";
 
-// ../lib/path/win32.js
+// node/lib/path/win32.js
 var require_win32 = __commonJS({
-  "../lib/path/win32.js"(exports, module) {
+  "node/lib/path/win32.js"(exports, module) {
     module.exports = require_path().win32;
   }
 });

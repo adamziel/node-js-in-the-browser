@@ -6,26 +6,26 @@ import {
   require_js_transferable,
   require_queuingstrategies,
   require_readablestream,
-  require_util,
+  require_util2 as require_util,
   require_util3 as require_util2,
   require_validators,
   require_webidl,
   require_writablestream,
   require_zlib
-} from "../chunk-JWC7RZDF.js";
+} from "../chunk-F4SYJEY3.js";
 import "../chunk-R3FVOHFT.js";
 import "../chunk-JEHFPE6G.js";
 import "../chunk-BVUF56MI.js";
-import "../chunk-UWEHO5PT.js";
-import "../chunk-EV3FV3XH.js";
+import "../chunk-4AVSCSZ6.js";
+import "../chunk-LX6EKM7T.js";
 import "../chunk-YC7P67L4.js";
 import {
   __commonJS
 } from "../chunk-IWXS4Z3P.js";
 
-// ../lib/internal/webstreams/transformstream.js
+// node/lib/internal/webstreams/transformstream.js
 var require_transformstream = __commonJS({
-  "../lib/internal/webstreams/transformstream.js"(exports, module) {
+  "node/lib/internal/webstreams/transformstream.js"(exports, module) {
     "use strict";
     var {
       FunctionPrototypeCall,
@@ -597,9 +597,9 @@ var require_transformstream = __commonJS({
   }
 });
 
-// ../lib/internal/webstreams/encoding.js
+// node/lib/internal/webstreams/encoding.js
 var require_encoding2 = __commonJS({
-  "../lib/internal/webstreams/encoding.js"(exports, module) {
+  "node/lib/internal/webstreams/encoding.js"(exports, module) {
     "use strict";
     var {
       ObjectDefineProperties,
@@ -796,9 +796,9 @@ var require_encoding2 = __commonJS({
   }
 });
 
-// ../lib/internal/webstreams/compression.js
+// node/lib/internal/webstreams/compression.js
 var require_compression = __commonJS({
-  "../lib/internal/webstreams/compression.js"(exports, module) {
+  "node/lib/internal/webstreams/compression.js"(exports, module) {
     "use strict";
     var {
       ObjectDefineProperties,
@@ -954,9 +954,9 @@ var require_compression = __commonJS({
   }
 });
 
-// ../lib/stream/web.js
+// node/lib/stream/web.js
 var require_web = __commonJS({
-  "../lib/stream/web.js"(exports, module) {
+  "node/lib/stream/web.js"(exports, module) {
     var {
       TransformStream,
       TransformStreamDefaultController

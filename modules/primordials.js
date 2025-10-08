@@ -1,4 +1,4 @@
-// ../lib/internal/per_context/primordials.js
+// node/lib/internal/per_context/primordials.js
 var {
   defineProperty: ReflectDefineProperty,
   getOwnPropertyDescriptor: ReflectGetOwnPropertyDescriptor,

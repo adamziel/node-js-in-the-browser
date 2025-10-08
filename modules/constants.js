@@ -2,9 +2,9 @@ import {
   __commonJS
 } from "./chunk-IWXS4Z3P.js";
 
-// ../lib/constants.js
+// node/lib/constants.js
 var require_constants = __commonJS({
-  "../lib/constants.js"(exports) {
+  "node/lib/constants.js"(exports) {
     var {
       ObjectAssign,
       ObjectFreeze
