@@ -1,8 +1,8 @@
 globalThis.SharedArrayBuffer = ArrayBuffer
 globalThis.primordials = {}
 globalThis.global = globalThis
-import * as builtins from './/builtins.js'
-const { InMemoryFileSystem } = await import('.//in-memory-fs.js')
+import * as builtins from './builtins.js'
+const { InMemoryFileSystem } = await import('./in-memory-fs.js')
 const globalFs = new InMemoryFileSystem()
 window.globalFs = globalFs
 try {

@@ -55,7 +55,7 @@ node test.js
 
 ```
 cd demo-ts
-npm install
+npm install --verbose
 node ./node_modules/.bin/webpack build
 ls dist
 cat dist/bundle.js

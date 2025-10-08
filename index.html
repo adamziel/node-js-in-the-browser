@@ -123,13 +123,41 @@
 				</div>
 			</div>
 		</div>
-		<script>
+		<script type="module">
 			window.corsProxyUrl = new URL(
 				'./php-cors-proxy/cors-proxy.php',
 				window.location.href
-			)
-		</script>
-		<script type="module">
+			);
+
+			const previousFetch = globalThis.fetch
+			globalThis.fetch = async (url, ...args) => {
+				const parsed = new URL(url, window.location.href);
+				if(parsed.hostname === window.location.hostname) {
+					return previousFetch(url, ...args);
+				}
+
+				if (typeof url === 'string' && url.startsWith('https://')) {
+					url = `${window.corsProxyUrl}?${url}`
+				}
+
+				let result = await previousFetch(url, ...args);
+
+				// Strip content-encoding header to prevent npm from trying
+				// to decompress the already-decompressed fetch() response.
+				if (result.headers.has('content-encoding')) {
+					const newHeaders = new Headers(result.headers)
+					newHeaders.delete('content-encoding')
+
+					result = new Response(result.body, {
+						status: result.status,
+						statusText: result.statusText,
+						headers: newHeaders,
+					})
+				}
+				
+				return result
+			}
+			
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
 			import { runMain } from './src/this-is-imported-directly/client-boot.js'
 			import { FitAddon } from 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/+esm'
@@ -224,52 +252,6 @@
 			}
 
 			const CACHE_NAME = 'node-polyfill-fetch-cache-v1'
-			const previousFetch = globalThis.fetch
-
-			globalThis.fetch = async (url, ...args) => {
-				const originalUrl = url
-				if (typeof url === 'string' && url.startsWith('https://')) {
-					url = `${window.corsProxyUrl}?${url}`
-				}
-
-				// Create cache key from URL and relevant options
-				const options = args[0] || {}
-				const method = options.method || 'GET'
-
-				// Only cache GET requests
-				if (method === 'GET' && 'caches' in globalThis) {
-					try {
-						// Open the cache
-						const cache = await caches.open(CACHE_NAME)
-
-						// Check if we have a cached response
-						const cachedResponse = await cache.match(url)
-						if (cachedResponse) {
-							// console.log('[Cache] Using cached response for:', originalUrl);
-							return cachedResponse.clone()
-						}
-
-						// Make the actual fetch request
-						const response = await previousFetch(url, ...args)
-
-						// Cache successful GET responses
-						if (response.ok) {
-							// Clone the response before caching to allow the original to be consumed
-							await cache.put(url, response.clone())
-							// console.log('[Cache] Cached response for:', originalUrl);
-						}
-
-						return response
-					} catch (error) {
-						console.warn('[Cache] Error using cache:', error)
-						// Fall back to regular fetch if caching fails
-						return await previousFetch(url, ...args)
-					}
-				}
-
-				// For non-GET requests or if Cache API not available
-				return await previousFetch(url, ...args)
-			}
 
 			async function setupFilesystemAndFetch() {
 				const fs = globalFs
@@ -2113,6 +2095,9 @@
 
 			terminal.focus()
 			terminalElement.addEventListener('click', () => terminal.focus())
+			setTimeout(() => {
+				terminal.focus()
+			}, 50);
 			/*
 		I tried getting alrernative package managers to work, but they
 		rely on deep Node internals and will require more work:
@@ -2200,7 +2185,7 @@ npm install
 </code></pre>
 			<h4 id="webpack">Webpack</h4>
 			<pre><code>cd demo-ts
-npm install
+npm install --verbose
 <span class="hljs-keyword">node</span> <span class="hljs-title">./node_modules</span>/.bin/webpack build
 ls dist
 cat dist/bundle.js
