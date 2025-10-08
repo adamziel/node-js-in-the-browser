@@ -42,7 +42,8 @@
 		 node /lib/node_modules/pnpm/bin/pnpm.cjs install @wordpress/scripts
 		 # Cannot find module worker_threads
 
-		 
+		 npm pack @wordpress/scripts
+		 extract-targz /bin/wordpress-scripts-30.25.0.tgz /bin/wordpress-scripts
 
 		 npm install @wordpress/scripts --omit=dev --omit=optional
 		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
@@ -1161,6 +1162,9 @@
 				case 'mkdir':
 					this.handleMkdir(args);
 					break;
+				case 'extract-targz':
+					this.handleExtractTarGz(args);
+					break;
 				default:
 					this.writeStderr(`shell: ${command}: command not found\n`);
 				}
@@ -1255,6 +1259,26 @@
 
 			handleEcho(args) {
 				this.writeStdout(args.join(' '));
+			}
+
+			handleExtractTarGz(args) {
+				if (!args.length) {
+					this.writeStderr('extract-targz: missing operand\n');
+					return;
+				}
+				const [source, target] = args;
+				const resolvedTarget = this.resolvePath(target);
+				const resolvedSource = this.resolvePath(source);
+				
+				globalFs.writeFileSync('/bin/extract-targz.js', `
+				const { gunzip } = require('zlib');
+				const fs = require('fs');
+				const extracted = gunzip(fs.readFileSync(${JSON.stringify(resolvedSource)}));
+				fs.writeFileSync(${JSON.stringify(resolvedTarget)}, extracted);
+				`);
+				
+				const line = args.join(' ');
+				this.executeCommand(`node /bin/extract-targz.js ${line}`);
 			}
 
 			parseCommand(line) {
