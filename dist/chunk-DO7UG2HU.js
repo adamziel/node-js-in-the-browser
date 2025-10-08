@@ -3,7 +3,7 @@ import {
   __export
 } from "./chunk-IWXS4Z3P.js";
 
-// to-modularize/vm.js
+// src/this-is-bundled/node-lib/vm.js
 var vm_exports = {};
 __export(vm_exports, {
   default: () => vm_default
@@ -114,7 +114,7 @@ function runInContextifiedSandbox(code, contextifiedSandbox, options = {}) {
 }
 var Script, vm_default;
 var init_vm = __esm({
-  "to-modularize/vm.js"() {
+  "src/this-is-bundled/node-lib/vm.js"() {
     Script = class {
       constructor(code, options = {}) {
         if (typeof code !== "string") {

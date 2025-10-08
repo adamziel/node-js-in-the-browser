@@ -1,4 +1,4 @@
-const cryptoBrowserifyModule = require('../node_modules/crypto-browserify/index.js');
+const cryptoBrowserifyModule = require('../../../node_modules/crypto-browserify/index.js');
 
 module.exports = {
 	...cryptoBrowserifyModule,

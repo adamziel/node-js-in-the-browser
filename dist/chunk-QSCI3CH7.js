@@ -3,7 +3,7 @@ import {
   __export
 } from "./chunk-IWXS4Z3P.js";
 
-// to-modularize/v8.js
+// src/this-is-bundled/node-lib/v8.js
 var v8_exports = {};
 __export(v8_exports, {
   default: () => v8_default,
@@ -209,7 +209,7 @@ function deserialize(buffer) {
 }
 var estimatedHeapStats, getHeapStatistics, getHeapSpaceStatistics, v8_default;
 var init_v8 = __esm({
-  "to-modularize/v8.js"() {
+  "src/this-is-bundled/node-lib/v8.js"() {
     estimatedHeapStats = () => {
       var _a, _b, _c, _d, _e, _f, _g;
       const memory = performance === null || performance === void 0 ? void 0 : performance.memory;

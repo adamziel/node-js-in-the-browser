@@ -1,11 +1,11 @@
 import {
   init_v8,
   v8_exports
-} from "./chunk-JEHFPE6G.js";
+} from "./chunk-QSCI3CH7.js";
 import {
   init_vm,
   vm_exports
-} from "./chunk-R3FVOHFT.js";
+} from "./chunk-DO7UG2HU.js";
 import {
   require_actualApply,
   require_call_bind_apply_helpers,
@@ -20,7 +20,7 @@ import {
   require_syntax,
   require_type,
   require_url
-} from "./chunk-BVUF56MI.js";
+} from "./chunk-J3NVLLRQ.js";
 import {
   require_constants
 } from "./chunk-4AVSCSZ6.js";
@@ -38222,9 +38222,9 @@ ${StringPrototypeRepeat(" ", col - 1)}^
   }
 });
 
-// to-modularize/internal/modules/cjs/loader.js
+// src/this-is-bundled/node-lib/internal/modules/cjs/loader.js
 var require_loader3 = __commonJS({
-  "to-modularize/internal/modules/cjs/loader.js"(exports2, module) {
+  "src/this-is-bundled/node-lib/internal/modules/cjs/loader.js"(exports2, module) {
     var cjsLoader = require_loader2();
     module.exports = cjsLoader;
     var originalModuleLoad = cjsLoader.Module._load;
@@ -56879,9 +56879,9 @@ var require_url2 = __commonJS({
   }
 });
 
-// to-modularize/internal/url.js
+// src/this-is-bundled/node-lib/internal/url.js
 var require_url3 = __commonJS({
-  "to-modularize/internal/url.js"(exports2, module) {
+  "src/this-is-bundled/node-lib/internal/url.js"(exports2, module) {
     var internalUrl = require_url2();
     module.exports = {
       ...internalUrl,
@@ -63702,9 +63702,9 @@ var require_stream_http = __commonJS({
   }
 });
 
-// to-modularize/http.js
+// src/this-is-bundled/node-lib/http.js
 var require_http = __commonJS({
-  "to-modularize/http.js"(exports2, module) {
+  "src/this-is-bundled/node-lib/http.js"(exports2, module) {
     module.exports = require_stream_http();
     module.exports.ours = true;
     var originalRequest = module.exports.request;
@@ -105035,9 +105035,9 @@ var require_crypto_browserify = __commonJS({
   }
 });
 
-// to-modularize/crypto.js
+// src/this-is-bundled/node-lib/crypto.js
 var require_crypto = __commonJS({
-  "to-modularize/crypto.js"(exports2, module) {
+  "src/this-is-bundled/node-lib/crypto.js"(exports2, module) {
     var cryptoBrowserifyModule = require_crypto_browserify();
     module.exports = {
       ...cryptoBrowserifyModule,
@@ -112519,9 +112519,9 @@ var require_lib = __commonJS({
   }
 });
 
-// to-modularize/zlib.js
+// src/this-is-bundled/node-lib/zlib.js
 var require_zlib = __commonJS({
-  "to-modularize/zlib.js"(exports2, module) {
+  "src/this-is-bundled/node-lib/zlib.js"(exports2, module) {
     var { decompress: brotliDecompress } = require_js();
     module.exports = require_lib();
     module.exports.brotliDecompressSync = function(buffer) {
@@ -138217,7 +138217,7 @@ var require_inspector_network_tracking = __commonJS({
   }
 });
 
-// to-modularize/child_process.js
+// src/this-is-bundled/node-lib/child_process.js
 var child_process_exports = {};
 __export(child_process_exports, {
   ChildProcess: () => ChildProcess,
@@ -138231,7 +138231,7 @@ __export(child_process_exports, {
 });
 var import_events, import_stream, __classPrivateFieldGet, __classPrivateFieldSet, _ChildProcessPolyfill_finishListeners, _ChildProcessPolyfill_killListeners, _ChildProcessPolyfill_finished, sharedDecoder, randomPid, ChildProcessPolyfill, spawnHandlers, defaultSpawnHandler, registerSpawnHandler, setDefaultSpawnHandler, resolveHandler, createStream, normaliseStdio, emitSpawnError, runHandler, spawn, execFile, exec, fork, ChildProcess, child_process_default;
 var init_child_process = __esm({
-  "to-modularize/child_process.js"() {
+  "src/this-is-bundled/node-lib/child_process.js"() {
     import_events = __toESM(require_events());
     import_stream = __toESM(require_stream());
     __classPrivateFieldGet = function(receiver, state, kind, f) {

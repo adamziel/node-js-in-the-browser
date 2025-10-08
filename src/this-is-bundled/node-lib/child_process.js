@@ -10,8 +10,8 @@ var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (
     return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
 };
 var _ChildProcessPolyfill_finishListeners, _ChildProcessPolyfill_killListeners, _ChildProcessPolyfill_finished;
-import { EventEmitter } from '../node/lib/events.js';
-import { PassThrough } from '../node/lib/stream.js';
+import { EventEmitter } from '../../../node/lib/events.js';
+import { PassThrough } from '../../../node/lib/stream.js';
 const sharedDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : undefined;
 const randomPid = (() => {
     let next = 1000;

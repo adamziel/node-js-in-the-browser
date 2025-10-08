@@ -5,7 +5,7 @@ import {
   init_v8,
   serialize,
   v8_default
-} from "./chunk-JEHFPE6G.js";
+} from "./chunk-QSCI3CH7.js";
 import "./chunk-IWXS4Z3P.js";
 init_v8();
 export {

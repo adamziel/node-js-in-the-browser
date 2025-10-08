@@ -15,10 +15,10 @@ import {
   require_util,
   require_worker_threads,
   require_zlib
-} from "./chunk-LB6FKT5G.js";
-import "./chunk-JEHFPE6G.js";
-import "./chunk-R3FVOHFT.js";
-import "./chunk-BVUF56MI.js";
+} from "./chunk-HNF72HH4.js";
+import "./chunk-QSCI3CH7.js";
+import "./chunk-DO7UG2HU.js";
+import "./chunk-J3NVLLRQ.js";
 import "./chunk-4AVSCSZ6.js";
 import "./chunk-2ADPWB2N.js";
 import {
@@ -15778,7 +15778,7 @@ ${value}`;
   }
 });
 
-// to-modularize/fetch-polyfill.js
+// src/this-is-bundled/node-lib/fetch-polyfill.js
 var import_undici = __toESM(require_undici());
 var {
   Request: NodeRequest,

@@ -1,4 +1,4 @@
-const cjsLoader = require("../../../../node/lib/internal/modules/cjs/loader.js");
+const cjsLoader = require("../../../../../../node/lib/internal/modules/cjs/loader.js");
 
 module.exports = cjsLoader;
 

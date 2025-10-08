@@ -2,9 +2,9 @@ import {
   __commonJS
 } from "./chunk-IWXS4Z3P.js";
 
-// to-modularize/process.js
+// src/this-is-bundled/node-lib/process.js
 var require_process = __commonJS({
-  "to-modularize/process.js"(exports, module) {
+  "src/this-is-bundled/node-lib/process.js"(exports, module) {
     var term = null;
     function setTerminal(terminal) {
       term = terminal;

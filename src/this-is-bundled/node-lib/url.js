@@ -1,4 +1,4 @@
-const urlModule = require('../node_modules/url/url.js');
+const urlModule = require('../../../node_modules/url/url.js');
 
 // class Url extends urlModule.Url {
 // 	constructor(urlStr, base) {

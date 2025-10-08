@@ -1,4 +1,4 @@
-const internalUrl = require('../../node/lib/internal/url');
+const internalUrl = require('../../../../node/lib/internal/url');
 
 module.exports = {
 	...internalUrl,

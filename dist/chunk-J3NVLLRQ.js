@@ -3202,9 +3202,9 @@ var require_url = __commonJS({
   }
 });
 
-// to-modularize/url.js
+// src/this-is-bundled/node-lib/url.js
 var require_url2 = __commonJS({
-  "to-modularize/url.js"(exports, module) {
+  "src/this-is-bundled/node-lib/url.js"(exports, module) {
     var urlModule = require_url();
     function urlParse(urlStr, parseQueryString, slashesDenoteHost) {
       if (!urlStr) {
