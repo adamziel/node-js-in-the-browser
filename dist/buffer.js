@@ -2,11 +2,11 @@ import {
   Buffer,
   INSPECT_MAX_BYTES,
   SlowBuffer,
-  init_buffer_polyfill,
+  init_buffer,
   kMaxLength
-} from "./chunk-2CPQJHAN.js";
+} from "./chunk-N26B3L3P.js";
 import "./chunk-IWXS4Z3P.js";
-init_buffer_polyfill();
+init_buffer();
 export {
   Buffer,
   INSPECT_MAX_BYTES,

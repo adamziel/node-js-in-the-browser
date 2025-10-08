@@ -8,8 +8,8 @@
 
 'use strict'
 
-import * as base64 from './base64-js.js'
-import ieee754 from './ieee754.js'
+import * as base64 from '../base64-js.js'
+import ieee754 from '../ieee754.js'
 
 export const INSPECT_MAX_BYTES = 50
 

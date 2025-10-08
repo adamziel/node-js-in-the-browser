@@ -130,9 +130,9 @@ var init_ieee754 = __esm({
   }
 });
 
-// src/this-is-bundled/buffer-polyfill.js
-var buffer_polyfill_exports = {};
-__export(buffer_polyfill_exports, {
+// src/this-is-bundled/node-lib/buffer.js
+var buffer_exports = {};
+__export(buffer_exports, {
   Buffer: () => Buffer,
   INSPECT_MAX_BYTES: () => INSPECT_MAX_BYTES,
   SlowBuffer: () => SlowBuffer,
@@ -780,8 +780,8 @@ function numberIsNaN(obj) {
   return obj !== obj;
 }
 var INSPECT_MAX_BYTES, K_MAX_LENGTH, kMaxLength, MAX_ARGUMENTS_LENGTH, INVALID_BASE64_RE;
-var init_buffer_polyfill = __esm({
-  "src/this-is-bundled/buffer-polyfill.js"() {
+var init_buffer = __esm({
+  "src/this-is-bundled/node-lib/buffer.js"() {
     init_base64_js();
     init_ieee754();
     INSPECT_MAX_BYTES = 50;
@@ -1494,8 +1494,8 @@ export {
   kMaxLength,
   Buffer,
   SlowBuffer,
-  buffer_polyfill_exports,
-  init_buffer_polyfill
+  buffer_exports,
+  init_buffer
 };
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
 /*!

@@ -12,7 +12,7 @@ const entryPoints = {
 	async_hooks: './node/lib/async_hooks.js',
 	assert: './node/lib/assert.js',
 	"assert/strict": './node/lib/assert/strict.js',
-	buffer: './src/this-is-bundled/buffer-polyfill.js',
+	buffer: './src/this-is-bundled/node-lib/buffer.js',
 	blob: './node/lib/internal/blob.js',
 	console: './node/lib/console.js',
 	constants: './node/lib/constants.js',
