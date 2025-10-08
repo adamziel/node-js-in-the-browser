@@ -1,9 +1,9 @@
-import esbuild from 'esbuild';
-import fs from 'fs';
-import path from 'path';
+import esbuild from 'esbuild'
+import fs from 'fs'
+import path from 'path'
 
-fs.rmSync('dist', { recursive: true, force: true });
-fs.mkdirSync('dist');
+fs.rmSync('dist', { recursive: true, force: true })
+fs.mkdirSync('dist')
 
 const entryPoints = {
 	child_process: './src/this-is-bundled/node-lib/child_process.js',
@@ -11,15 +11,16 @@ const entryPoints = {
 	realm: './node/lib/internal/bootstrap/realm.js',
 	async_hooks: './node/lib/async_hooks.js',
 	assert: './node/lib/assert.js',
-	"assert/strict": './node/lib/assert/strict.js',
+	'assert/strict': './node/lib/assert/strict.js',
 	buffer: './src/this-is-bundled/node-lib/buffer.js',
 	blob: './node/lib/internal/blob.js',
 	console: './node/lib/console.js',
 	constants: './node/lib/constants.js',
-	"internal/constants": './node/lib/internal/constants.js',
-	"internal/modules/cjs/loader": './src/this-is-bundled/node-lib/internal/modules/cjs/loader.js',
+	'internal/constants': './node/lib/internal/constants.js',
+	'internal/modules/cjs/loader':
+		'./src/this-is-bundled/node-lib/internal/modules/cjs/loader.js',
 	process: './src/this-is-bundled/node-lib/process.js',
-	"internal/resolve": './src/this-is-bundled/node-lib/resolve.js',
+	'internal/resolve': './src/this-is-bundled/node-lib/resolve.js',
 	'fetch-polyfill': './src/this-is-bundled/node-lib/fetch-polyfill.js',
 	// crypto: './node/lib/crypto.js',
 	crypto: './src/this-is-bundled/node-lib/crypto.js',
@@ -30,7 +31,7 @@ const entryPoints = {
 	https: './src/this-is-bundled/node-lib/http.js',
 	// https: './node/lib/https.js',
 	fs: './node/lib/fs.js',
-	"fs/promises": './node/lib/internal/fs/promises.js',
+	'fs/promises': './node/lib/internal/fs/promises.js',
 	os: './node/lib/os.js',
 	// module: './src/this-is-bundled/node-lib/module.js',
 	querystring: './node/lib/querystring.js',
@@ -42,19 +43,19 @@ const entryPoints = {
 	tty: './node/lib/tty.js',
 	// url: './node/lib/url.js',
 	url: './src/this-is-bundled/node-lib/url.js',
-	"internal/url": './src/this-is-bundled/node-lib/internal/url.js',
+	'internal/url': './src/this-is-bundled/node-lib/internal/url.js',
 	perf_hooks: './node/lib/perf_hooks.js',
 	string_decoder: './node/lib/string_decoder.js',
 	util: './node/lib/util.js',
-	"util/types": './node/lib/internal/util/types.js',
-	"internal/types": './node/lib/internal/util/types.js',
+	'util/types': './node/lib/internal/util/types.js',
+	'internal/types': './node/lib/internal/util/types.js',
 	'util/inspect': './node/lib/internal/util/inspect.js',
 	// zlib: './node/lib/zlib.js',
 	zlib: './src/this-is-bundled/node-lib/zlib.js',
 	'stream/web': './node/lib/stream/web.js',
 	vm: './src/this-is-bundled/node-lib/vm.js',
 	v8: './src/this-is-bundled/node-lib/v8.js',
-	"internal/util/debuglog": './node/lib/internal/util/debuglog.js',
+	'internal/util/debuglog': './node/lib/internal/util/debuglog.js',
 	// module: './node/lib/module.js',
 	// child_process: './node/lib/child_process.js',
 	net: './node/lib/net.js',
@@ -71,35 +72,35 @@ const entryPoints = {
 	// 'assert/strict': '.build-tmp/assert-strict.js',
 	// 'dns/promises': '.build-tmp/dns-promises.js',
 	// 'util/types': '.build-tmp/util-types.js',
-};
-
+}
 
 const nodePolyfillPlugin = {
 	name: 'node-polyfill',
 	setup(build) {
-		const nodeBuiltins = Object.keys(entryPoints);
-		const filter = new RegExp(`^(node:)?(${nodeBuiltins.join('|')})$`);
+		const nodeBuiltins = Object.keys(entryPoints)
+		const filter = new RegExp(`^(node:)?(${nodeBuiltins.join('|')})$`)
 		build.onResolve({ filter }, (args) => {
 			const modulePath = args.path.startsWith('node:')
 				? args.path.slice(5)
-				: args.path;
+				: args.path
 			if (entryPoints[modulePath]) {
-				return { path: path.resolve(entryPoints[modulePath]) };
+				return { path: path.resolve(entryPoints[modulePath]) }
 			}
-		});
+		})
 
 		// Plugin to append module.exports to realm.js
 		build.onLoad({ filter: /realm\.js$/ }, (args) => {
-			const content = fs.readFileSync(args.path, 'utf8');
+			const content = fs.readFileSync(args.path, 'utf8')
 			// Append module.exports = loaderExports to the end of the realm.js file
-			const modifiedContent = content + '\nmodule.exports = loaderExports;';
+			const modifiedContent =
+				content + '\nmodule.exports = loaderExports;'
 			return {
 				contents: modifiedContent,
-				loader: 'default'
-			};
-		});
-	}
-};
+				loader: 'default',
+			}
+		})
+	},
+}
 
 esbuild
 	.build({
@@ -117,5 +118,5 @@ esbuild
 	.catch(() => process.exit(1))
 	.finally(() => {
 		// Clean up temporary files
-		fs.rmSync('.build-tmp', { recursive: true, force: true });
-	});
+		fs.rmSync('.build-tmp', { recursive: true, force: true })
+	})

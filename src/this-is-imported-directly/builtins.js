@@ -1,22 +1,20 @@
-export const builtinIds = [
-	"internal/errors"
-];
+export const builtinIds = ['internal/errors']
 export const compileFunction = (id) => {
-	if(id === "internal/errors") {
+	if (id === 'internal/errors') {
 		return () => {
 			return {
 				compileForInternalLoader: () => {
-					return { }
+					return {}
 				},
-				prepareStackTraceCallback: () => { },
+				prepareStackTraceCallback: () => {},
 				fatalExceptionStackEnhancers: {
-					beforeInspector: () => { },
-					afterInspector: () => { },
-				}
-			};
-		};
+					beforeInspector: () => {},
+					afterInspector: () => {},
+				},
+			}
+		}
 	} else {
-		throw new Error(`Unknown builtin id: ${id}`);
+		throw new Error(`Unknown builtin id: ${id}`)
 	}
-};
-export const setInternalLoaders = () => {};
+}
+export const setInternalLoaders = () => {}

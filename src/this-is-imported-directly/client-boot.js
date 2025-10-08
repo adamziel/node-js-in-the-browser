@@ -1,117 +1,123 @@
-globalThis.SharedArrayBuffer = ArrayBuffer;
-globalThis.primordials = { };
-globalThis.global = globalThis;
-import * as builtins from ".//builtins.js";
-const { InMemoryFileSystem } = await import(".//in-memory-fs.js");
-const globalFs = new InMemoryFileSystem();
-window.globalFs = globalFs;
+globalThis.SharedArrayBuffer = ArrayBuffer
+globalThis.primordials = {}
+globalThis.global = globalThis
+import * as builtins from './/builtins.js'
+const { InMemoryFileSystem } = await import('.//in-memory-fs.js')
+const globalFs = new InMemoryFileSystem()
+window.globalFs = globalFs
 try {
 	// Somehow it messes up sha for npm
 	// await globalFs.loadFromStorage();
-} catch(e) {
-	console.log('Error loading from storage', e);
+} catch (e) {
+	console.log('Error loading from storage', e)
 }
 
 // Global module registry for built modules to register their exports
 // This allows defineLazyProperties to access internal modules
-globalThis.__moduleRegistry = new Map();
+globalThis.__moduleRegistry = new Map()
 
 function maybePromiseFromSync(syncFn, kUsePromisesOrReq) {
 	// Sync call
 	if (kUsePromisesOrReq === undefined) {
-		return syncFn();
+		return syncFn()
 	}
 	const promise = new Promise((resolve, reject) => {
 		try {
-			resolve(syncFn());
+			resolve(syncFn())
 		} catch (err) {
-			reject(err);
+			reject(err)
 		}
-	});
+	})
 
 	// Callback mode
-	if (kUsePromisesOrReq && typeof kUsePromisesOrReq === 'object' && 'oncomplete' in kUsePromisesOrReq) {
+	if (
+		kUsePromisesOrReq &&
+		typeof kUsePromisesOrReq === 'object' &&
+		'oncomplete' in kUsePromisesOrReq
+	) {
 		// @TODO Don't return promise in this case
 		return promise.then(
 			(result) => {
-				kUsePromisesOrReq.oncomplete(null, result);
+				kUsePromisesOrReq.oncomplete(null, result)
 			},
 			(err) => {
-				kUsePromisesOrReq.oncomplete(err);
+				kUsePromisesOrReq.oncomplete(err)
 			}
-		);
-		return;
+		)
+		return
 	}
 
 	// Promise mode
-	return promise;
+	return promise
 }
 
 // Implement V8 internal functions in JavaScript
 function getOwnNonIndexProperties(obj, filter) {
 	if (typeof obj !== 'object' || obj === null) {
-		return [];
+		return []
 	}
 
-	const ALL_PROPERTIES = 0;
-	const ONLY_WRITABLE = 1;
-	const ONLY_ENUMERABLE = 2;
-	const ONLY_CONFIGURABLE = 4;
-	const SKIP_STRINGS = 8;
-	const SKIP_SYMBOLS = 16;
+	const ALL_PROPERTIES = 0
+	const ONLY_WRITABLE = 1
+	const ONLY_ENUMERABLE = 2
+	const ONLY_CONFIGURABLE = 4
+	const SKIP_STRINGS = 8
+	const SKIP_SYMBOLS = 16
 
-	let keys = [];
-	
+	let keys = []
+
 	// Get string keys
 	if (!(filter & SKIP_STRINGS)) {
-		keys = keys.concat(Object.getOwnPropertyNames(obj).filter(k => {
-			// Skip numeric indices
-			const num = Number(k);
-			if (Number.isInteger(num) && num >= 0 && String(num) === k) {
-				return false;
-			}
-			return true;
-		}));
+		keys = keys.concat(
+			Object.getOwnPropertyNames(obj).filter((k) => {
+				// Skip numeric indices
+				const num = Number(k)
+				if (Number.isInteger(num) && num >= 0 && String(num) === k) {
+					return false
+				}
+				return true
+			})
+		)
 	}
 
 	// Get symbol keys
 	if (!(filter & SKIP_SYMBOLS)) {
-		keys = keys.concat(Object.getOwnPropertySymbols(obj));
+		keys = keys.concat(Object.getOwnPropertySymbols(obj))
 	}
 
 	// Apply property filters
 	if (filter !== ALL_PROPERTIES) {
-		keys = keys.filter(key => {
-			const desc = Object.getOwnPropertyDescriptor(obj, key);
-			if (!desc) return false;
+		keys = keys.filter((key) => {
+			const desc = Object.getOwnPropertyDescriptor(obj, key)
+			if (!desc) return false
 
-			if ((filter & ONLY_WRITABLE) && !desc.writable) return false;
-			if ((filter & ONLY_ENUMERABLE) && !desc.enumerable) return false;
-			if ((filter & ONLY_CONFIGURABLE) && !desc.configurable) return false;
+			if (filter & ONLY_WRITABLE && !desc.writable) return false
+			if (filter & ONLY_ENUMERABLE && !desc.enumerable) return false
+			if (filter & ONLY_CONFIGURABLE && !desc.configurable) return false
 
-			return true;
-		});
+			return true
+		})
 	}
 
-	return keys;
+	return keys
 }
 
 function getPromiseDetails(promise) {
 	// Return undefined if it's not a Promise
 	if (!(promise instanceof Promise)) {
-		return undefined;
+		return undefined
 	}
 
-	// We can't directly access promise state in JavaScript, 
+	// We can't directly access promise state in JavaScript,
 	// but we can use a trick with Promise.race
-	const kPending = 0;
-	const kFulfilled = 1;
-	const kRejected = 2;
+	const kPending = 0
+	const kFulfilled = 1
+	const kRejected = 2
 
 	// This is a best-effort polyfill since JavaScript doesn't expose promise internals
 	// For synchronous inspection, we'd need to track promises ourselves
 	// Return pending state as fallback
-	return [kPending];
+	return [kPending]
 }
 
 function getProxyDetails(proxy, includeTarget = true) {
@@ -119,99 +125,132 @@ function getProxyDetails(proxy, includeTarget = true) {
 	// Unfortunately, JavaScript doesn't provide a way to detect if something is a Proxy
 	// or to extract its target and handler
 	// This is a limitation of the language
-	return undefined;
+	return undefined
 }
 
 function previewEntries(obj) {
 	// Preview entries for Maps, Sets, typed arrays etc
 	if (obj instanceof Map) {
-		const entries = Array.from(obj.entries()).slice(0, 100);
-		return [entries, entries.length < obj.size];
+		const entries = Array.from(obj.entries()).slice(0, 100)
+		return [entries, entries.length < obj.size]
 	}
 	if (obj instanceof Set) {
-		const entries = Array.from(obj.values()).slice(0, 100);
-		return [entries, entries.length < obj.size];
+		const entries = Array.from(obj.values()).slice(0, 100)
+		return [entries, entries.length < obj.size]
 	}
 	// For arrays and typed arrays
 	if (Array.isArray(obj) || ArrayBuffer.isView(obj)) {
-		const entries = Array.from(obj).slice(0, 100);
-		return [entries, entries.length < obj.length];
+		const entries = Array.from(obj).slice(0, 100)
+		return [entries, entries.length < obj.length]
 	}
-	return undefined;
+	return undefined
 }
 
 function internalGetConstructorName(obj) {
 	if (obj === null || obj === undefined) {
-		return '';
+		return ''
 	}
 	if (typeof obj !== 'object' && typeof obj !== 'function') {
-		return '';
+		return ''
 	}
 	// Get constructor name
 	if (obj.constructor && obj.constructor.name) {
-		return obj.constructor.name;
+		return obj.constructor.name
 	}
 	// Fallback to Object.prototype.toString
-	const str = Object.prototype.toString.call(obj);
-	const match = str.match(/^\[object (\w+)\]$/);
-	return match ? match[1] : 'Object';
+	const str = Object.prototype.toString.call(obj)
+	const match = str.match(/^\[object (\w+)\]$/)
+	return match ? match[1] : 'Object'
 }
 
 function getExternalValue(external) {
 	// External values are V8-specific and represent C++ pointers
 	// We can't truly polyfill this in JavaScript
 	// Return 0n as a placeholder
-	return 0n;
+	return 0n
 }
 
 function createDebugProxy(name, target) {
 	return new Proxy(target, {
 		get(obj, prop) {
-			const value = obj[prop];
+			const value = obj[prop]
 			if (value === undefined) {
-				console.log(`${name} binding: undefined property '${String(prop)}' accessed`);
+				console.log(
+					`${name} binding: undefined property '${String(
+						prop
+					)}' accessed`
+				)
 			}
-			return value;
-		}
-	});
+			return value
+		},
+	})
 }
 
 globalThis.internalModules = {
 	builtins: {
-		...builtins 
+		...builtins,
 	},
 	util: createDebugProxy('util', {
 		privateSymbols: {
-			module_source_private_symbol: Symbol('module_source_private_symbol'),
-			module_export_names_private_symbol: Symbol('module_export_names_private_symbol'),
-			module_circular_visited_private_symbol: Symbol('module_circular_visited_private_symbol'),
-			module_export_private_symbol: Symbol('module_export_private_symbol'),
-			module_first_parent_private_symbol: Symbol('module_first_parent_private_symbol'),
-			module_last_parent_private_symbol: Symbol('module_last_parent_private_symbol'),
+			module_source_private_symbol: Symbol(
+				'module_source_private_symbol'
+			),
+			module_export_names_private_symbol: Symbol(
+				'module_export_names_private_symbol'
+			),
+			module_circular_visited_private_symbol: Symbol(
+				'module_circular_visited_private_symbol'
+			),
+			module_export_private_symbol: Symbol(
+				'module_export_private_symbol'
+			),
+			module_first_parent_private_symbol: Symbol(
+				'module_first_parent_private_symbol'
+			),
+			module_last_parent_private_symbol: Symbol(
+				'module_last_parent_private_symbol'
+			),
 			arrow_message_private_symbol: Symbol('node:arrowMessage'),
-			contextify_context_private_symbol: Symbol('node:contextify:context'),
+			contextify_context_private_symbol: Symbol(
+				'node:contextify:context'
+			),
 			decorated_private_symbol: Symbol('node:decorated'),
 			transfer_mode_private_symbol: Symbol('node:transfer_mode'),
-			host_defined_option_symbol: Symbol('node:host_defined_option_symbol'),
-			js_transferable_wrapper_private_symbol: Symbol('node:js_transferable_wrapper'),
-			entry_point_module_private_symbol: Symbol('node:entry_point_module'),
-			entry_point_promise_private_symbol: Symbol('node:entry_point_promise'),
+			host_defined_option_symbol: Symbol(
+				'node:host_defined_option_symbol'
+			),
+			js_transferable_wrapper_private_symbol: Symbol(
+				'node:js_transferable_wrapper'
+			),
+			entry_point_module_private_symbol: Symbol(
+				'node:entry_point_module'
+			),
+			entry_point_promise_private_symbol: Symbol(
+				'node:entry_point_promise'
+			),
 			napi_type_tag: Symbol('node:napi:type_tag'),
 			napi_wrapper: Symbol('node:napi:wrapper'),
-			untransferable_object_private_symbol: Symbol('node:untransferableObject'),
+			untransferable_object_private_symbol: Symbol(
+				'node:untransferableObject'
+			),
 			exit_info_private_symbol: Symbol('node:exit_info_private_symbol'),
 			promise_trace_id: Symbol('node:promise_trace_id'),
-			source_map_data_private_symbol: Symbol('node:source_map_data_private_symbol'),
+			source_map_data_private_symbol: Symbol(
+				'node:source_map_data_private_symbol'
+			),
 			exiting_aliased_Uint32Array: Symbol('exiting_aliased_Uint32Array'),
 		},
 		defineLazyProperties: (target, id, keys, writable = true) => {
 			for (let i = 0; i < keys.length; i++) {
-				const key = keys[i];
-				let value;
-				let setterCalled = false;
+				const key = keys[i]
+				let value
+				let setterCalled = false
 
 				// Create a getter that will lazy-load the module
-				const getter = new Function('id', 'key', `
+				const getter = new Function(
+					'id',
+					'key',
+					`
 					if (this.__lazyValue_${key}) {
 						return this.__lazyValue_${key};
 					}
@@ -231,14 +270,19 @@ globalThis.internalModules = {
 					}
 					
 					return undefined;
-				`);
+				`
+				)
 
 				Object.defineProperty(target, key, {
 					enumerable: true,
 					configurable: true,
 					get: getter,
-					set: writable ? function(val) { this[`__lazyValue_${key}`] = val; } : undefined,
-				});
+					set: writable
+						? function (val) {
+								this[`__lazyValue_${key}`] = val
+						  }
+						: undefined,
+				})
 			}
 		},
 		constants: {
@@ -271,20 +315,23 @@ globalThis.internalModules = {
 		getProxyDetails,
 		previewEntries,
 		getConstructorName: internalGetConstructorName,
-		getExternalValue
+		getExternalValue,
 	}),
 	options: {
 		// CLI Flags here.
 		// By default, no flags are passed.
 		getCLIOptionsValues: () => {
-			return new Proxy({}, {
-				get: (target, prop) => {
-					if (!(prop in target)) {
-						target[prop] = ''
-					}
-					return target[prop]
+			return new Proxy(
+				{},
+				{
+					get: (target, prop) => {
+						if (!(prop in target)) {
+							target[prop] = ''
+						}
+						return target[prop]
+					},
 				}
-			})
+			)
 		},
 		getCLIOptionsInfo: () => {
 			return {
@@ -293,16 +340,16 @@ globalThis.internalModules = {
 			}
 		},
 		getOptionsAsFlags: () => {
-			return [];
+			return []
 		},
 		getEmbedderOptions: () => {
-			return {};
+			return {}
 		},
 		getEnvOptionsInputType: () => {
 			return {}
 		},
 		getNamespaceOptionsInputType: () => {
-			return {};
+			return {}
 		},
 	},
 	config: {
@@ -310,35 +357,44 @@ globalThis.internalModules = {
 	},
 	contextify: createDebugProxy('contextify', {
 		containsModuleSyntax() {
-			console.warn('containsModuleSyntax called', {arguments} );
-			return false;
+			console.warn('containsModuleSyntax called', { arguments })
+			return false
 		},
-		compileFunctionForCJSLoader: (content, filename, is_sea_main, shouldDetectModule) => {
+		compileFunctionForCJSLoader: (
+			content,
+			filename,
+			is_sea_main,
+			shouldDetectModule
+		) => {
 			// Remove up to two shebang lines if present
 			if (content.startsWith('#!')) {
-				let shebangCount = 0;
+				let shebangCount = 0
 				const lines = content.split('\n')
-				while (lines[0].startsWith('#!') && lines.length > 0 && shebangCount < 2) {
+				while (
+					lines[0].startsWith('#!') &&
+					lines.length > 0 &&
+					shebangCount < 2
+				) {
 					lines.shift()
-					shebangCount++;
+					shebangCount++
 				}
 				content = lines.join('\n')
 			}
 
 			content = globalThis.coreModules.module.Module.wrap(`
 				${content}
-			`);
-			let fn = '';
+			`)
+			let fn = ''
 			if (filename.endsWith('.json')) {
-				fn = () => JSON.parse(content);
+				fn = () => JSON.parse(content)
 			} else {
-				fn = eval(content);
+				fn = eval(content)
 			}
 			// if (content.includes('brotliDecompressSync')) {
 			// 	window.stableConsole.log('BROTLI DECOMPRESS SYNC', content);
 			// }
 			return {
-				sourceMapURL: () => { },
+				sourceMapURL: () => {},
 				sourceURL: '',
 				cachedDataRejected: false,
 				function: fn,
@@ -346,34 +402,44 @@ globalThis.internalModules = {
 		},
 		ContextifyContext: class ContextifyContext {
 			constructor() {
-				this.context = undefined;
+				this.context = undefined
 			}
 		},
 		ContextifyScript: class ContextifyScript {
 			constructor() {
-				this.context = undefined;
+				this.context = undefined
 			}
 		},
 	}),
 	modules: createDebugProxy('modules', {
 		compileCacheStatus: [],
-		cachedCodeTypes: { kStrippedTypeScript: 2, kTransformedTypeScript: 3, kTransformedTypeScriptWithSourceMaps: 4 },
+		cachedCodeTypes: {
+			kStrippedTypeScript: 2,
+			kTransformedTypeScript: 3,
+			kTransformedTypeScriptWithSourceMaps: 4,
+		},
 		readPackageJSON(jsonPath, isESM, base, specifier) {
 			try {
-				const parsed = JSON.parse(globalFs.readFileSync(jsonPath, 'utf8'));
+				const parsed = JSON.parse(
+					globalFs.readFileSync(jsonPath, 'utf8')
+				)
 				const {
 					name = null,
 					main = null,
 					type = null,
 					imports: plainImports,
-				} = parsed;
-				let exportsMain = parsed.main;
+				} = parsed
+				let exportsMain = parsed.main
 				if (exportsMain) {
 					if (!exportsMain.startsWith('./')) {
-						exportsMain = './' + exportsMain;
+						exportsMain = './' + exportsMain
 					}
-					if(!exportsMain.endsWith('.js') && !exportsMain.endsWith('.cjs') && !exportsMain.endsWith('.mjs')) {
-						exportsMain += '.js';
+					if (
+						!exportsMain.endsWith('.js') &&
+						!exportsMain.endsWith('.cjs') &&
+						!exportsMain.endsWith('.mjs')
+					) {
+						exportsMain += '.js'
 					}
 				}
 				return [
@@ -383,530 +449,711 @@ globalThis.internalModules = {
 					plainImports ?? undefined,
 					exportsMain ?? undefined,
 					jsonPath,
-				];
+				]
 			} catch (error) {
-				console.warn(`Failed to read package.json at ${jsonPath}:`, error);
-				return undefined;
+				console.warn(
+					`Failed to read package.json at ${jsonPath}:`,
+					error
+				)
+				return undefined
 			}
 		},
 		getNearestParentPackageJSONType(mainPath) {
 			// Start from the directory containing mainPath
-			let currentDir = globalThis.coreModules.path.dirname(mainPath);
-			
+			let currentDir = globalThis.coreModules.path.dirname(mainPath)
+
 			// Traverse up the directory tree
 			while (currentDir !== '/' && currentDir !== '.') {
-				const packageJsonPath = globalThis.coreModules.path.join(currentDir, 'package.json');
-				
+				const packageJsonPath = globalThis.coreModules.path.join(
+					currentDir,
+					'package.json'
+				)
+
 				try {
 					// Check if package.json exists
 					if (globalFs.existsSync(packageJsonPath)) {
-						const packageJson = JSON.parse(globalFs.readFileSync(packageJsonPath, 'utf8'));
-						
+						const packageJson = JSON.parse(
+							globalFs.readFileSync(packageJsonPath, 'utf8')
+						)
+
 						// Return the type field, defaulting to 'commonjs'
-						return packageJson.type || 'commonjs';
+						return packageJson.type || 'commonjs'
 					}
 				} catch (error) {
 					// If we can't read the package.json, continue searching up
-					console.warn(`Failed to read package.json at ${packageJsonPath}:`, error.message);
+					console.warn(
+						`Failed to read package.json at ${packageJsonPath}:`,
+						error.message
+					)
 				}
-				
+
 				// Move up one directory
-				const parentDir = globalThis.coreModules.path.dirname(currentDir);
+				const parentDir =
+					globalThis.coreModules.path.dirname(currentDir)
 				if (parentDir === currentDir) {
 					// We've reached the root
-					break;
+					break
 				}
-				currentDir = parentDir;
+				currentDir = parentDir
 			}
-			
+
 			// Default to 'commonjs' if no package.json found
-			return 'commonjs';
-		}
+			return 'commonjs'
+		},
 	}),
-	fs: createDebugProxy('fs', {
-		kUsePromises: Symbol("kUsePromises"),
-		StatWatcher: class StatWatcher {
-			constructor() {
-				this.persistent = false;
-				console.trace('StatWatcher constructor');
-			}
-		},
-		FileHandle: class FileHandle {
-			constructor() {
-				this.persistent = false;
-				console.trace('FileHandle constructor');
-			}
-		},
-		FSReqCallback: class FSReqCallback {
-			constructor() {
-				this.context = undefined;
-				this.oncomplete = () => {};
-			}
-			
-			// Called when the async operation completes
-			// Node.js C++ code calls this with (err, result, ...)
-			// We simulate this pattern
-		},
-		// Stat arrays - shared buffers for performance
-		// These hold stat data and are reused across stat calls
-		// Buffer is 2x the field count to hold 2 Stats instances (for StatWatcher)
-		statValues: new Float64Array(18 * 2),
-		bigintStatValues: new BigInt64Array(18 * 2),
-		statFsValues: new Float64Array(7),
-		bigintStatFsValues: new BigInt64Array(7),
-		kFsStatsFieldsNumber: 18,
-		constants: {},
-		open(path, flags, mode, reqOrPromise) {
-			return maybePromiseFromSync(() => globalFs.openSync(path, flags, mode), reqOrPromise);
-		},
-		openFileHandle(path, flags, mode, usePromises) {
-			return globalFs.openFileHandle(path, flags, mode, usePromises);
-		},
-		// Used to speed up module loading.  Returns 0 if the path refers to
-		// a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
-		// The speedup comes from not creating thousands of Stat and Error objects.
-		// Do not expose this function through public API as it doesn't hold
-		// Permission Model checks.
-		// @see node_file.cc
-		internalModuleStat(receiver /* unknown */, path /* string */) {
-			let stats;
-			try {
-				stats = globalFs.statSync(path ?? receiver);
-			} catch (e) {
-				return -1;
-			}
-			return stats?.isDirectory() ? 1 : stats?.isFile() ? 0 : -1;
-		},
-		exists(path) {
-			console.log("Regular exists – how is it different from existsSync?")
-			return globalFs.existsSync(path);
-		},
-		existsSync(path) {
-			return globalFs.existsSync(path);
-		},
-		mkdir(path, options, recursive, kUsePromises) {
-			// Properly merge options and recursive parameter
-			let finalOptions = options;
-			if (typeof options === 'number') {
-				// If options is a number, it's the mode
-				finalOptions = { mode: options, recursive: recursive };
-			} else if (options && typeof options === 'object') {
-				// If options is an object, merge in the recursive parameter
-				finalOptions = { ...options, recursive: recursive };
-			} else if (recursive !== undefined) {
-				// If only recursive is provided
-				finalOptions = { recursive: recursive };
-			}
-			
-			return maybePromiseFromSync(() => globalFs.mkdirSync(path, finalOptions), kUsePromises);
-		},
-		close(fd, reqOrPromise) {
-			return maybePromiseFromSync(() => globalFs.closeSync(fd), reqOrPromise);
-		},
-		read(fd, buffer, offset, length, position, reqOrPromise) {
-			return maybePromiseFromSync(() => globalFs.readSync(fd, buffer, offset, length, position), reqOrPromise);
-		},
-		readdir(path, encoding, withFileTypes, kUsePromises) {
-			// Native binding returns [names, types] tuple where types are UV_DIRENT_* constants
-			// This is different from readdirSync which returns strings or Dirent objects
-			return maybePromiseFromSync(() => {
-				// Get the raw directory node to access children
-				const { node, blockedBy, missingParent } = globalFs.walk(path);
-				
-				if (missingParent || !node) {
-					const error = new Error(`ENOENT: no such file or directory, scandir '${path}'`);
-					error.code = 'ENOENT';
-					throw error;
+	fs: createDebugProxy(
+		'fs',
+		{
+			kUsePromises: Symbol('kUsePromises'),
+			StatWatcher: class StatWatcher {
+				constructor() {
+					this.persistent = false
+					console.trace('StatWatcher constructor')
 				}
-				
-				if (blockedBy || node.type !== 'dir') {
-					const error = new Error(`ENOTDIR: not a directory, scandir '${path}'`);
-					error.code = 'ENOTDIR';
-					throw error;
+			},
+			FileHandle: class FileHandle {
+				constructor() {
+					this.persistent = false
+					console.trace('FileHandle constructor')
 				}
-				
-				// Extract names and types from children
-				const names = [];
-				const types = [];
-				
-				// Map node types to UV_DIRENT constants
-				const UV_DIRENT_FILE = 1;
-				const UV_DIRENT_DIR = 2;
-				const UV_DIRENT_UNKNOWN = 0;
-				
-				for (const [name, childNode] of node.children.entries()) {
-					// When encoding is 'buffer', return Buffer names; otherwise strings
-					if (encoding === 'buffer') {
-						names.push(globalThis.Buffer.from(name));
-					} else {
-						names.push(name);
-					}
-					
-					// Map the type string to UV_DIRENT constant
-					let typeConstant = UV_DIRENT_UNKNOWN;
-					if (childNode.type === 'file') {
-						typeConstant = UV_DIRENT_FILE;
-					} else if (childNode.type === 'dir') {
-						typeConstant = UV_DIRENT_DIR;
-					}
-					
-					types.push(typeConstant);
+			},
+			FSReqCallback: class FSReqCallback {
+				constructor() {
+					this.context = undefined
+					this.oncomplete = () => {}
 				}
-				
-				// Return tuple [names, types] like the native binding
-				return withFileTypes ? [names, types] : names;
-			}, kUsePromises);
-		},
-		readFileUtf8(path, flags) {
-			// readFileUtf8 is a synchronous optimized path for reading UTF-8 files
-			// It takes a path (string, Buffer, or file descriptor) and flags (number)
-			// Returns the file contents as a UTF-8 string
-			
-			// If path is a file descriptor (number), use it directly
-			// Otherwise, treat it as a path string
-			const isFileDescriptor = typeof path === 'number';
-			
-			if (isFileDescriptor) {
-				// Read from file descriptor
-				const stats = globalFs.fstatSync(path);
-				const size = stats.size;
-				
-				if (size === 0) {
-					// Empty file or special file (like /dev/null)
-					let result = '';
-					const buffer = Buffer.allocUnsafe(8192);
-					let bytesRead;
-					
-					do {
-						bytesRead = globalFs.readSync(path, buffer, 0, 8192, null);
-						if (bytesRead > 0) {
-							result += buffer.toString('utf8', 0, bytesRead);
-						}
-					} while (bytesRead > 0);
-					
-					return result;
-				} else {
-					// Regular file with known size
-					const buffer = Buffer.allocUnsafe(size);
-					let pos = 0;
-					let bytesRead;
-					
-					do {
-						bytesRead = globalFs.readSync(path, buffer, pos, size - pos, pos);
-						pos += bytesRead;
-					} while (bytesRead > 0 && pos < size);
-					
-					return buffer.toString('utf8', 0, pos);
-				}
-			} else {
-				// Read from path - open, read, close
-				// Note: flags parameter is used for opening the file
-				// In Node.js, this is typically O_RDONLY (0) for reading
-				const fd = globalFs.openSync(path, flags || 0);
-				
+
+				// Called when the async operation completes
+				// Node.js C++ code calls this with (err, result, ...)
+				// We simulate this pattern
+			},
+			// Stat arrays - shared buffers for performance
+			// These hold stat data and are reused across stat calls
+			// Buffer is 2x the field count to hold 2 Stats instances (for StatWatcher)
+			statValues: new Float64Array(18 * 2),
+			bigintStatValues: new BigInt64Array(18 * 2),
+			statFsValues: new Float64Array(7),
+			bigintStatFsValues: new BigInt64Array(7),
+			kFsStatsFieldsNumber: 18,
+			constants: {},
+			open(path, flags, mode, reqOrPromise) {
+				return maybePromiseFromSync(
+					() => globalFs.openSync(path, flags, mode),
+					reqOrPromise
+				)
+			},
+			openFileHandle(path, flags, mode, usePromises) {
+				return globalFs.openFileHandle(path, flags, mode, usePromises)
+			},
+			// Used to speed up module loading.  Returns 0 if the path refers to
+			// a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
+			// The speedup comes from not creating thousands of Stat and Error objects.
+			// Do not expose this function through public API as it doesn't hold
+			// Permission Model checks.
+			// @see node_file.cc
+			internalModuleStat(receiver /* unknown */, path /* string */) {
+				let stats
 				try {
-					const stats = globalFs.fstatSync(fd);
-					const size = stats.size;
-					
+					stats = globalFs.statSync(path ?? receiver)
+				} catch (e) {
+					return -1
+				}
+				return stats?.isDirectory() ? 1 : stats?.isFile() ? 0 : -1
+			},
+			exists(path) {
+				console.log(
+					'Regular exists – how is it different from existsSync?'
+				)
+				return globalFs.existsSync(path)
+			},
+			existsSync(path) {
+				return globalFs.existsSync(path)
+			},
+			mkdir(path, options, recursive, kUsePromises) {
+				// Properly merge options and recursive parameter
+				let finalOptions = options
+				if (typeof options === 'number') {
+					// If options is a number, it's the mode
+					finalOptions = { mode: options, recursive: recursive }
+				} else if (options && typeof options === 'object') {
+					// If options is an object, merge in the recursive parameter
+					finalOptions = { ...options, recursive: recursive }
+				} else if (recursive !== undefined) {
+					// If only recursive is provided
+					finalOptions = { recursive: recursive }
+				}
+
+				return maybePromiseFromSync(
+					() => globalFs.mkdirSync(path, finalOptions),
+					kUsePromises
+				)
+			},
+			close(fd, reqOrPromise) {
+				return maybePromiseFromSync(
+					() => globalFs.closeSync(fd),
+					reqOrPromise
+				)
+			},
+			read(fd, buffer, offset, length, position, reqOrPromise) {
+				return maybePromiseFromSync(
+					() =>
+						globalFs.readSync(fd, buffer, offset, length, position),
+					reqOrPromise
+				)
+			},
+			readdir(path, encoding, withFileTypes, kUsePromises) {
+				// Native binding returns [names, types] tuple where types are UV_DIRENT_* constants
+				// This is different from readdirSync which returns strings or Dirent objects
+				return maybePromiseFromSync(() => {
+					// Get the raw directory node to access children
+					const { node, blockedBy, missingParent } =
+						globalFs.walk(path)
+
+					if (missingParent || !node) {
+						const error = new Error(
+							`ENOENT: no such file or directory, scandir '${path}'`
+						)
+						error.code = 'ENOENT'
+						throw error
+					}
+
+					if (blockedBy || node.type !== 'dir') {
+						const error = new Error(
+							`ENOTDIR: not a directory, scandir '${path}'`
+						)
+						error.code = 'ENOTDIR'
+						throw error
+					}
+
+					// Extract names and types from children
+					const names = []
+					const types = []
+
+					// Map node types to UV_DIRENT constants
+					const UV_DIRENT_FILE = 1
+					const UV_DIRENT_DIR = 2
+					const UV_DIRENT_UNKNOWN = 0
+
+					for (const [name, childNode] of node.children.entries()) {
+						// When encoding is 'buffer', return Buffer names; otherwise strings
+						if (encoding === 'buffer') {
+							names.push(globalThis.Buffer.from(name))
+						} else {
+							names.push(name)
+						}
+
+						// Map the type string to UV_DIRENT constant
+						let typeConstant = UV_DIRENT_UNKNOWN
+						if (childNode.type === 'file') {
+							typeConstant = UV_DIRENT_FILE
+						} else if (childNode.type === 'dir') {
+							typeConstant = UV_DIRENT_DIR
+						}
+
+						types.push(typeConstant)
+					}
+
+					// Return tuple [names, types] like the native binding
+					return withFileTypes ? [names, types] : names
+				}, kUsePromises)
+			},
+			readFileUtf8(path, flags) {
+				// readFileUtf8 is a synchronous optimized path for reading UTF-8 files
+				// It takes a path (string, Buffer, or file descriptor) and flags (number)
+				// Returns the file contents as a UTF-8 string
+
+				// If path is a file descriptor (number), use it directly
+				// Otherwise, treat it as a path string
+				const isFileDescriptor = typeof path === 'number'
+
+				if (isFileDescriptor) {
+					// Read from file descriptor
+					const stats = globalFs.fstatSync(path)
+					const size = stats.size
+
 					if (size === 0) {
-						// Empty file or special file
-						let result = '';
-						const buffer = Buffer.allocUnsafe(8192);
-						let bytesRead;
-						
+						// Empty file or special file (like /dev/null)
+						let result = ''
+						const buffer = Buffer.allocUnsafe(8192)
+						let bytesRead
+
 						do {
-							bytesRead = globalFs.readSync(fd, buffer, 0, 8192, null);
+							bytesRead = globalFs.readSync(
+								path,
+								buffer,
+								0,
+								8192,
+								null
+							)
 							if (bytesRead > 0) {
-								result += buffer.toString('utf8', 0, bytesRead);
+								result += buffer.toString('utf8', 0, bytesRead)
 							}
-						} while (bytesRead > 0);
-						
-						return result;
+						} while (bytesRead > 0)
+
+						return result
 					} else {
 						// Regular file with known size
-						const buffer = Buffer.allocUnsafe(size);
-						let pos = 0;
-						let bytesRead;
-						
+						const buffer = Buffer.allocUnsafe(size)
+						let pos = 0
+						let bytesRead
+
 						do {
-							bytesRead = globalFs.readSync(fd, buffer, pos, size - pos, pos);
-							pos += bytesRead;
-						} while (bytesRead > 0 && pos < size);
-						
-						return buffer.toString('utf8', 0, pos);
+							bytesRead = globalFs.readSync(
+								path,
+								buffer,
+								pos,
+								size - pos,
+								pos
+							)
+							pos += bytesRead
+						} while (bytesRead > 0 && pos < size)
+
+						return buffer.toString('utf8', 0, pos)
 					}
-				} finally {
-					globalFs.closeSync(fd);
+				} else {
+					// Read from path - open, read, close
+					// Note: flags parameter is used for opening the file
+					// In Node.js, this is typically O_RDONLY (0) for reading
+					const fd = globalFs.openSync(path, flags || 0)
+
+					try {
+						const stats = globalFs.fstatSync(fd)
+						const size = stats.size
+
+						if (size === 0) {
+							// Empty file or special file
+							let result = ''
+							const buffer = Buffer.allocUnsafe(8192)
+							let bytesRead
+
+							do {
+								bytesRead = globalFs.readSync(
+									fd,
+									buffer,
+									0,
+									8192,
+									null
+								)
+								if (bytesRead > 0) {
+									result += buffer.toString(
+										'utf8',
+										0,
+										bytesRead
+									)
+								}
+							} while (bytesRead > 0)
+
+							return result
+						} else {
+							// Regular file with known size
+							const buffer = Buffer.allocUnsafe(size)
+							let pos = 0
+							let bytesRead
+
+							do {
+								bytesRead = globalFs.readSync(
+									fd,
+									buffer,
+									pos,
+									size - pos,
+									pos
+								)
+								pos += bytesRead
+							} while (bytesRead > 0 && pos < size)
+
+							return buffer.toString('utf8', 0, pos)
+						}
+					} finally {
+						globalFs.closeSync(fd)
+					}
 				}
-			}
-		},
-		readFile(path, options, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.readFileSync(path, options), kUsePromises);
-		},
-		writeFile(path, data, options, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.writeFileSync(path, data, options), kUsePromises);
-		},
-		rmSync(path, maxRetries, recursive, retryDelay) {
-			return globalFs.rmSync(path, maxRetries, recursive, retryDelay);
-		},
-		cpSyncCheckPaths(src, dest, dereference, recursive) {
-			return globalFs.cpSyncCheckPaths(src, dest, dereference, recursive);
-		},
-		cpSync(src, dest, options) {
-			return globalFs.cpSync(src, dest, options);
-		},
-		cpSyncCopyDir(src, dest, force, dereference, errorOnExist, verbatimSymlinks, preserveTimestamps) {
-			// This is an optimization for cpSync when no filter is provided
-			// We can just call our cpSync implementation with the appropriate options
-			const options = {
+			},
+			readFile(path, options, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.readFileSync(path, options),
+					kUsePromises
+				)
+			},
+			writeFile(path, data, options, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.writeFileSync(path, data, options),
+					kUsePromises
+				)
+			},
+			rmSync(path, maxRetries, recursive, retryDelay) {
+				return globalFs.rmSync(path, maxRetries, recursive, retryDelay)
+			},
+			cpSyncCheckPaths(src, dest, dereference, recursive) {
+				return globalFs.cpSyncCheckPaths(
+					src,
+					dest,
+					dereference,
+					recursive
+				)
+			},
+			cpSync(src, dest, options) {
+				return globalFs.cpSync(src, dest, options)
+			},
+			cpSyncCopyDir(
+				src,
+				dest,
 				force,
 				dereference,
 				errorOnExist,
 				verbatimSymlinks,
-				preserveTimestamps,
-				recursive: true,
-				filter: null
-			};
-			return globalFs.cpSync(src, dest, options);
-		},
-		cpSyncOverrideFile(src, dest) {
-			// This is used to override a file during copy
-			// Just copy the file, overwriting if it exists
-			return globalFs.copyFileSync(src, dest, 0);
-		},
-		symlink(target, path, type, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.symlinkSync(target, path, type), kUsePromises);
-		},
-		readBuffers(fd, buffers, position, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.readBuffers(fd, buffers, position), kUsePromises);
-		},
-		mkdtemp(prefix, encoding, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.mkdtemp(prefix, encoding), kUsePromises);
-		},
-		ftruncate(fd, len, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.ftruncateSync(fd, len), kUsePromises);
-		},
-		truncate(path, len, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.truncateSync(path, len), kUsePromises);
-		},
-		rename(oldPath, newPath, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.renameSync(oldPath, newPath), kUsePromises);
-		},
-		rm(path, kUsePromises) {
-			// console.log('rm', path, kUsePromises, arguments);
-			return maybePromiseFromSync(() => globalFs.rmSync(path), kUsePromises);
-		},
-		rmdir(path, kUsePromises) {
-			// console.log('rmdir', path, kUsePromises, arguments);
-			return maybePromiseFromSync(() => globalFs.rmdirSync(path), kUsePromises);
-		},
-		stat(path, useBigint, kUsePromises, throwIfNoEntry) {
-			// Native binding populates global statValues/bigintStatValues arrays
-			// throwIfNoEntry defaults to true for backwards compatibility
-			return maybePromiseFromSync(() => {
-				try {
-					const stats = globalFs.statSync(path);
-					// Populate the global stat arrays
-					const targetArray = useBigint ? globalThis.internalModules.fs.bigintStatValues : globalThis.internalModules.fs.statValues;
-					globalFs.fillStatsArray(targetArray, stats, useBigint, 0);
-					return targetArray;
-				} catch (err) {
-					// If throwIfNoEntry is false and error is ENOENT, return undefined
-					if (throwIfNoEntry === false && err.code === 'ENOENT') {
-						return undefined;
-					}
-					throw err;
+				preserveTimestamps
+			) {
+				// This is an optimization for cpSync when no filter is provided
+				// We can just call our cpSync implementation with the appropriate options
+				const options = {
+					force,
+					dereference,
+					errorOnExist,
+					verbatimSymlinks,
+					preserveTimestamps,
+					recursive: true,
+					filter: null,
 				}
-			}, kUsePromises);
-		},
-		lstat(path, useBigint, kUsePromises, throwIfNoEntry) {
-			// Native binding populates global statValues/bigintStatValues arrays
-			return maybePromiseFromSync(() => {
-				try {
-					const stats = globalFs.lstatSync(path);
-					// Populate the global stat arrays
-					const targetArray = useBigint ? globalThis.internalModules.fs.bigintStatValues : globalThis.internalModules.fs.statValues;
-					globalFs.fillStatsArray(targetArray, stats, useBigint, 0);
-					return targetArray;
-				} catch (err) {
-					// If throwIfNoEntry is false and error is ENOENT, return undefined
-					if (throwIfNoEntry === false && err.code === 'ENOENT') {
-						return undefined;
+				return globalFs.cpSync(src, dest, options)
+			},
+			cpSyncOverrideFile(src, dest) {
+				// This is used to override a file during copy
+				// Just copy the file, overwriting if it exists
+				return globalFs.copyFileSync(src, dest, 0)
+			},
+			symlink(target, path, type, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.symlinkSync(target, path, type),
+					kUsePromises
+				)
+			},
+			readBuffers(fd, buffers, position, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.readBuffers(fd, buffers, position),
+					kUsePromises
+				)
+			},
+			mkdtemp(prefix, encoding, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.mkdtemp(prefix, encoding),
+					kUsePromises
+				)
+			},
+			ftruncate(fd, len, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.ftruncateSync(fd, len),
+					kUsePromises
+				)
+			},
+			truncate(path, len, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.truncateSync(path, len),
+					kUsePromises
+				)
+			},
+			rename(oldPath, newPath, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.renameSync(oldPath, newPath),
+					kUsePromises
+				)
+			},
+			rm(path, kUsePromises) {
+				// console.log('rm', path, kUsePromises, arguments);
+				return maybePromiseFromSync(
+					() => globalFs.rmSync(path),
+					kUsePromises
+				)
+			},
+			rmdir(path, kUsePromises) {
+				// console.log('rmdir', path, kUsePromises, arguments);
+				return maybePromiseFromSync(
+					() => globalFs.rmdirSync(path),
+					kUsePromises
+				)
+			},
+			stat(path, useBigint, kUsePromises, throwIfNoEntry) {
+				// Native binding populates global statValues/bigintStatValues arrays
+				// throwIfNoEntry defaults to true for backwards compatibility
+				return maybePromiseFromSync(() => {
+					try {
+						const stats = globalFs.statSync(path)
+						// Populate the global stat arrays
+						const targetArray = useBigint
+							? globalThis.internalModules.fs.bigintStatValues
+							: globalThis.internalModules.fs.statValues
+						globalFs.fillStatsArray(
+							targetArray,
+							stats,
+							useBigint,
+							0
+						)
+						return targetArray
+					} catch (err) {
+						// If throwIfNoEntry is false and error is ENOENT, return undefined
+						if (throwIfNoEntry === false && err.code === 'ENOENT') {
+							return undefined
+						}
+						throw err
 					}
-					throw err;
-				}
-			}, kUsePromises);
-		},
-		fstat(fd, useBigint, kUsePromises, throwIfNoEntry) {
-			// Native binding populates global statValues/bigintStatValues arrays
-			// throwIfNoEntry defaults to true for backwards compatibility
-			return maybePromiseFromSync(() => {
-				try {
-					const stats = globalFs.fstatSync(fd);
-					// Populate the global stat arrays
-					const targetArray = useBigint ? globalThis.internalModules.fs.bigintStatValues : globalThis.internalModules.fs.statValues;
-					globalFs.fillStatsArray(targetArray, stats, useBigint, 0);
-					return targetArray;
-				} catch (err) {
-					// If throwIfNoEntry is false and error is EBADF, return undefined
-					if (throwIfNoEntry === false && (err.code === 'ENOENT' || err.code === 'EBADF')) {
-						return undefined;
+				}, kUsePromises)
+			},
+			lstat(path, useBigint, kUsePromises, throwIfNoEntry) {
+				// Native binding populates global statValues/bigintStatValues arrays
+				return maybePromiseFromSync(() => {
+					try {
+						const stats = globalFs.lstatSync(path)
+						// Populate the global stat arrays
+						const targetArray = useBigint
+							? globalThis.internalModules.fs.bigintStatValues
+							: globalThis.internalModules.fs.statValues
+						globalFs.fillStatsArray(
+							targetArray,
+							stats,
+							useBigint,
+							0
+						)
+						return targetArray
+					} catch (err) {
+						// If throwIfNoEntry is false and error is ENOENT, return undefined
+						if (throwIfNoEntry === false && err.code === 'ENOENT') {
+							return undefined
+						}
+						throw err
 					}
-					throw err;
-				}
-			}, kUsePromises);
+				}, kUsePromises)
+			},
+			fstat(fd, useBigint, kUsePromises, throwIfNoEntry) {
+				// Native binding populates global statValues/bigintStatValues arrays
+				// throwIfNoEntry defaults to true for backwards compatibility
+				return maybePromiseFromSync(() => {
+					try {
+						const stats = globalFs.fstatSync(fd)
+						// Populate the global stat arrays
+						const targetArray = useBigint
+							? globalThis.internalModules.fs.bigintStatValues
+							: globalThis.internalModules.fs.statValues
+						globalFs.fillStatsArray(
+							targetArray,
+							stats,
+							useBigint,
+							0
+						)
+						return targetArray
+					} catch (err) {
+						// If throwIfNoEntry is false and error is EBADF, return undefined
+						if (
+							throwIfNoEntry === false &&
+							(err.code === 'ENOENT' || err.code === 'EBADF')
+						) {
+							return undefined
+						}
+						throw err
+					}
+				}, kUsePromises)
+			},
+			fsSync(path) {
+				return globalFs.fsSync(path)
+			},
+			unlink(path, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.unlinkSync(path),
+					kUsePromises
+				)
+			},
+
+			symlink(existingPath, newPath, type, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.symlinkSync(existingPath, newPath),
+					kUsePromises
+				)
+			},
+			writeBuffer(fd, buffer, offset, length, position, reqOrPromise) {
+				return globalFs.writeBuffer(
+					fd,
+					buffer,
+					offset,
+					length,
+					position,
+					reqOrPromise
+				)
+			},
+			writeString(fd, string, position, encoding, reqOrPromise) {
+				// Promise or sync pattern
+				return maybePromiseFromSync(() => {
+					return globalFs.writeSync(fd, string, position, encoding)
+				}, reqOrPromise)
+			},
+			writeBuffers(fd, buffers, position, kUsePromises) {
+				// Native binding for writing multiple buffers (writev)
+				return maybePromiseFromSync(() => {
+					return globalFs.writeBuffersSync(fd, buffers, position)
+				}, kUsePromises)
+			},
+			writeFileUtf8(path, data, flags, mode, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.writeFileUtf8(path, data, flags, mode),
+					kUsePromises
+				)
+			},
+			access(path, mode, kUsePromises) {
+				// Check file access permissions
+				return maybePromiseFromSync(() => {
+					const exists = globalFs.existsSync(path)
+					if (!exists) {
+						const error = new Error(
+							`ENOENT: no such file or directory, access '${path}'`
+						)
+						error.code = 'ENOENT'
+						throw error
+					}
+					// In browser environment, all existing files are readable/writable
+					// mode parameter is ignored for simplicity
+					return undefined
+				}, kUsePromises)
+			},
+			copyFile(src, dest, mode, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.copyFileSync(src, dest, mode),
+					kUsePromises
+				)
+			},
+			readlink(path, encoding, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.readlinkSync(path, encoding),
+					kUsePromises
+				)
+			},
+			realpath(path, encoding, kUsePromises) {
+				// Return the absolute path if file exists, otherwise throw ENOENT
+				// Since we don't have symlinks, realpath just verifies the file exists
+				// and returns its path
+				return maybePromiseFromSync(() => {
+					// Check if file exists
+					if (!globalFs.existsSync(path)) {
+						const error = new Error(
+							`ENOENT: no such file or directory, realpath '${path}'`
+						)
+						error.code = 'ENOENT'
+						throw error
+					}
+					// Return the path as-is since we don't have symlinks to resolve
+					// In a real filesystem, this would resolve symlinks and return canonical path
+					return path
+				}, kUsePromises)
+			},
+			utimes(path, atime, mtime, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.utimesSync(path, atime, mtime),
+					kUsePromises
+				)
+			},
+			futimes(fd, atime, mtime, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.futimesSync(fd, atime, mtime),
+					kUsePromises
+				)
+			},
+			lutimes(path, atime, mtime, kUsePromises) {
+				return maybePromiseFromSync(() => {
+					// Update timestamps on symlink itself if symlink; otherwise behave like utimes
+					const { node } = globalFs.walk(path)
+					if (!node) {
+						const error = new Error(
+							`ENOENT: no such file or directory, lutimes '${path}'`
+						)
+						error.code = 'ENOENT'
+						throw error
+					}
+					if (node.type !== 'symlink') {
+						// If not a symlink, match Node: apply to target file
+						return globalFs.utimesSync(path, atime, mtime)
+					}
+					// For symlink, store times on the link node
+					// Node.js binding receives UNIX timestamps in seconds, we store in milliseconds
+					node.atime =
+						typeof atime === 'number'
+							? atime * 1000
+							: atime.getTime()
+					node.mtime =
+						typeof mtime === 'number'
+							? mtime * 1000
+							: mtime.getTime()
+					node.ctime = Date.now()
+				}, kUsePromises)
+			},
+			ftruncate(fd, len, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.ftruncateSync(fd, len),
+					kUsePromises
+				)
+			},
+			chmod(path, mode, kUsePromises) {
+				// File permissions are simplified in browser environment
+				return maybePromiseFromSync(() => undefined, kUsePromises)
+			},
+			fchmod(fd, mode, kUsePromises) {
+				// File permissions are simplified in browser environment
+				return maybePromiseFromSync(() => undefined, kUsePromises)
+			},
+			chown(path, uid, gid, kUsePromises) {
+				// File ownership is not supported in browser environment
+				return maybePromiseFromSync(() => undefined, kUsePromises)
+			},
+			fchown(fd, uid, gid, kUsePromises) {
+				// File ownership is not supported in browser environment
+				return maybePromiseFromSync(() => undefined, kUsePromises)
+			},
+			fsync(fd, kUsePromises) {
+				// Always synced in memory filesystem
+				return maybePromiseFromSync(() => undefined, kUsePromises)
+			},
+			fdatasync(fd, kUsePromises) {
+				// Always synced in memory filesystem
+				return maybePromiseFromSync(() => undefined, kUsePromises)
+			},
+			link(existingPath, newPath, kUsePromises) {
+				return maybePromiseFromSync(
+					() => globalFs.linkSync(existingPath, newPath),
+					kUsePromises
+				)
+			},
 		},
-		fsSync(path) {
-			return globalFs.fsSync(path);
-		},
-		unlink(path, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.unlinkSync(path), kUsePromises);
-		},
-		
-		symlink(existingPath, newPath, type, kUsePromises) {
-			return maybePromiseFromSync(() => globalFs.symlinkSync(existingPath, newPath), kUsePromises);
-		},
-	writeBuffer(fd, buffer, offset, length, position, reqOrPromise) {
-		return globalFs.writeBuffer(fd, buffer, offset, length, position, reqOrPromise);
-	},
-	writeString(fd, string, position, encoding, reqOrPromise) {
-		// Promise or sync pattern
-		return maybePromiseFromSync(() => {
-			return globalFs.writeSync(fd, string, position, encoding);
-		}, reqOrPromise);
-	},
-	writeBuffers(fd, buffers, position, kUsePromises) {
-		// Native binding for writing multiple buffers (writev)
-		return maybePromiseFromSync(() => {
-			return globalFs.writeBuffersSync(fd, buffers, position);
-		}, kUsePromises);
-	},
-	writeFileUtf8(path, data, flags, mode, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.writeFileUtf8(path, data, flags, mode), kUsePromises);
-	},
-	access(path, mode, kUsePromises) {
-		// Check file access permissions
-		return maybePromiseFromSync(() => {
-			const exists = globalFs.existsSync(path);
-			if (!exists) {
-				const error = new Error(`ENOENT: no such file or directory, access '${path}'`);
-				error.code = 'ENOENT';
-				throw error;
-			}
-			// In browser environment, all existing files are readable/writable
-			// mode parameter is ignored for simplicity
-			return undefined;
-		}, kUsePromises);
-	},
-	copyFile(src, dest, mode, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.copyFileSync(src, dest, mode), kUsePromises);
-	},
-	readlink(path, encoding, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.readlinkSync(path, encoding), kUsePromises);
-	},
-	realpath(path, encoding, kUsePromises) {
-		// Return the absolute path if file exists, otherwise throw ENOENT
-		// Since we don't have symlinks, realpath just verifies the file exists
-		// and returns its path
-		return maybePromiseFromSync(() => {
-			// Check if file exists
-			if (!globalFs.existsSync(path)) {
-				const error = new Error(`ENOENT: no such file or directory, realpath '${path}'`);
-				error.code = 'ENOENT';
-				throw error;
-			}
-			// Return the path as-is since we don't have symlinks to resolve
-			// In a real filesystem, this would resolve symlinks and return canonical path
-			return path;
-		}, kUsePromises);
-	},
-	utimes(path, atime, mtime, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.utimesSync(path, atime, mtime), kUsePromises);
-	},
-	futimes(fd, atime, mtime, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.futimesSync(fd, atime, mtime), kUsePromises);
-	},
-	lutimes(path, atime, mtime, kUsePromises) {
-		return maybePromiseFromSync(() => {
-			// Update timestamps on symlink itself if symlink; otherwise behave like utimes
-			const { node } = globalFs.walk(path);
-			if (!node) {
-				const error = new Error(`ENOENT: no such file or directory, lutimes '${path}'`);
-				error.code = 'ENOENT';
-				throw error;
-			}
-			if (node.type !== 'symlink') {
-				// If not a symlink, match Node: apply to target file
-				return globalFs.utimesSync(path, atime, mtime);
-			}
-			// For symlink, store times on the link node
-			// Node.js binding receives UNIX timestamps in seconds, we store in milliseconds
-			node.atime = typeof atime === 'number' ? atime * 1000 : atime.getTime();
-			node.mtime = typeof mtime === 'number' ? mtime * 1000 : mtime.getTime();
-			node.ctime = Date.now();
-		}, kUsePromises);
-	},
-	ftruncate(fd, len, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.ftruncateSync(fd, len), kUsePromises);
-	},
-	chmod(path, mode, kUsePromises) {
-		// File permissions are simplified in browser environment
-		return maybePromiseFromSync(() => undefined, kUsePromises);
-	},
-	fchmod(fd, mode, kUsePromises) {
-		// File permissions are simplified in browser environment
-		return maybePromiseFromSync(() => undefined, kUsePromises);
-	},
-	chown(path, uid, gid, kUsePromises) {
-		// File ownership is not supported in browser environment
-		return maybePromiseFromSync(() => undefined, kUsePromises);
-	},
-	fchown(fd, uid, gid, kUsePromises) {
-		// File ownership is not supported in browser environment
-		return maybePromiseFromSync(() => undefined, kUsePromises);
-	},
-	fsync(fd, kUsePromises) {
-		// Always synced in memory filesystem
-		return maybePromiseFromSync(() => undefined, kUsePromises);
-	},
-	fdatasync(fd, kUsePromises) {
-		// Always synced in memory filesystem
-		return maybePromiseFromSync(() => undefined, kUsePromises);
-	},
-	link(existingPath, newPath, kUsePromises) {
-		return maybePromiseFromSync(() => globalFs.linkSync(existingPath, newPath), kUsePromises);
-	},
-}, 'fs'),
+		'fs'
+	),
 	mksnapshot: {
 		setSerializeCallback() {},
 		setDeserializeCallback() {},
 		setDeserializeMainFunction() {},
-		isBuildingSnapshotBuffer: []
+		isBuildingSnapshotBuffer: [],
 	},
-	"internal/errors": {
+	'internal/errors': {
 		exitCodes: {},
-        fatalExceptionStackEnhancers: {
-          beforeInspector: () => {},
-          afterInspector: () => {},
-        }
+		fatalExceptionStackEnhancers: {
+			beforeInspector: () => {},
+			afterInspector: () => {},
+		},
 	},
-	errors: createDebugProxy('errors', {
-		exitCodes: {},
-		codes: {
-			kGenericUserError: 1,
+	errors: createDebugProxy(
+		'errors',
+		{
+			exitCodes: {},
+			codes: {
+				kGenericUserError: 1,
+			},
+			noSideEffectsToString() {},
+			triggerUncaughtException() {},
+			getErrorSourcePositions(error) {
+				// Minimal polyfill: provide defaults to satisfy error_source.js
+				return {
+					sourceLine: '',
+					scriptResourceName: 'eval',
+					lineNumber: 1,
+					startColumn: 0,
+				}
+			},
 		},
-		noSideEffectsToString() {},
-		triggerUncaughtException() {},
-		getErrorSourcePositions(error) {
-			// Minimal polyfill: provide defaults to satisfy error_source.js
-			return {
-				sourceLine: '',
-				scriptResourceName: 'eval',
-				lineNumber: 1,
-				startColumn: 0,
-			}
-		},
-	}, 'errors'),
+		'errors'
+	),
 	string_decoder: createDebugProxy('string_decoder', {
 		kIncompleteCharactersStart: 0,
 		kIncompleteCharactersEnd: 4,
@@ -914,12 +1161,7 @@ globalThis.internalModules = {
 		kBufferedBytes: 5,
 		kEncodingField: 6,
 		kNumFields: 7,
-		encodings: [
-			'utf-8',
-			'ascii',
-			'base64',
-			'hex'
-		],
+		encodings: ['utf-8', 'ascii', 'base64', 'hex'],
 		kIncompleteCharactersStart: 0,
 		kIncompleteCharactersEnd: 4,
 		kMissingBytes: 4,
@@ -929,513 +1171,654 @@ globalThis.internalModules = {
 		kSize: 2048,
 		decode: (encodingBuffer, buffer, options) => {
 			// encodingBuffer is a UInt8Array with 1 at the index of the encoding
-			const encodingIndex = encodingBuffer[
-				globalThis.internalModules.string_decoder.kEncodingField
-			];
-			const encoding = globalThis.internalModules.string_decoder.encodings[encodingIndex] ?? 'utf-8';
-			return buffer.toString(encoding, options);
+			const encodingIndex =
+				encodingBuffer[
+					globalThis.internalModules.string_decoder.kEncodingField
+				]
+			const encoding =
+				globalThis.internalModules.string_decoder.encodings[
+					encodingIndex
+				] ?? 'utf-8'
+			return buffer.toString(encoding, options)
 		},
 		flush: (buffer) => {
-			return buffer.toString();
-		}
+			return buffer.toString()
+		},
 	}),
 	// buffer: createDebugProxy('buffer', {
-	buffer: ({
+	buffer: {
 		compare: (buf1, buf2) => {
 			// Validate inputs are Uint8Array or Buffer
-			if (!(buf1 instanceof Uint8Array) || !(buf2 instanceof Uint8Array)) {
-				throw new TypeError('Arguments must be Buffer or Uint8Array');
+			if (
+				!(buf1 instanceof Uint8Array) ||
+				!(buf2 instanceof Uint8Array)
+			) {
+				throw new TypeError('Arguments must be Buffer or Uint8Array')
 			}
 
-			const len = Math.min(buf1.length, buf2.length);
+			const len = Math.min(buf1.length, buf2.length)
 
 			// Byte-by-byte comparison
 			for (let i = 0; i < len; i++) {
 				if (buf1[i] !== buf2[i]) {
-					return buf1[i] < buf2[i] ? -1 : 1;
+					return buf1[i] < buf2[i] ? -1 : 1
 				}
 			}
 
 			// If all compared bytes are equal, compare lengths
 			// Normalize to -1, 0, or 1 as per Node.js behavior
 			if (buf1.length === buf2.length) {
-				return 0;
+				return 0
 			}
-			return buf1.length < buf2.length ? -1 : 1;
-		}
+			return buf1.length < buf2.length ? -1 : 1
+		},
+	},
+	types: createDebugProxy('types', {
+		isRegExp(value) {
+			return Object.prototype.toString.call(value) === '[object RegExp]'
+		},
+		isDate(value) {
+			return Object.prototype.toString.call(value) === '[object Date]'
+		},
+		isNativeError(value) {
+			if (value === null || value === undefined) {
+				return false
+			}
+			// Check if it's an instance of Error or one of the native error types
+			return (
+				value instanceof Error ||
+				value instanceof EvalError ||
+				value instanceof RangeError ||
+				value instanceof ReferenceError ||
+				value instanceof SyntaxError ||
+				value instanceof TypeError ||
+				value instanceof URIError ||
+				(typeof AggregateError !== 'undefined' &&
+					value instanceof AggregateError)
+			)
+		},
+		isPromise(value) {
+			return value instanceof Promise
+		},
+		isProxy(value) {
+			// JavaScript doesn't provide a way to detect proxies reliably
+			// This is a limitation of the language
+			return false
+		},
+		isMap(value) {
+			return Object.prototype.toString.call(value) === '[object Map]'
+		},
+		isSet(value) {
+			return Object.prototype.toString.call(value) === '[object Set]'
+		},
+		isMapIterator(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object Map Iterator]'
+			)
+		},
+		isSetIterator(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object Set Iterator]'
+			)
+		},
+		isWeakMap(value) {
+			return Object.prototype.toString.call(value) === '[object WeakMap]'
+		},
+		isWeakSet(value) {
+			return Object.prototype.toString.call(value) === '[object WeakSet]'
+		},
+		isArrayBuffer(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object ArrayBuffer]'
+			)
+		},
+		isDataView(value) {
+			return Object.prototype.toString.call(value) === '[object DataView]'
+		},
+		isSharedArrayBuffer(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object SharedArrayBuffer]'
+			)
+		},
+		isTypedArray(value) {
+			return ArrayBuffer.isView(value) && !(value instanceof DataView)
+		},
+		isUint8Array(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Uint8Array]'
+			)
+		},
+		isUint8ClampedArray(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object Uint8ClampedArray]'
+			)
+		},
+		isUint16Array(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Uint16Array]'
+			)
+		},
+		isUint32Array(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Uint32Array]'
+			)
+		},
+		isInt8Array(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Int8Array]'
+			)
+		},
+		isInt16Array(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Int16Array]'
+			)
+		},
+		isInt32Array(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Int32Array]'
+			)
+		},
+		isFloat32Array(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object Float32Array]'
+			)
+		},
+		isFloat64Array(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object Float64Array]'
+			)
+		},
+		isBigInt64Array(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object BigInt64Array]'
+			)
+		},
+		isBigUint64Array(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object BigUint64Array]'
+			)
+		},
+		isGeneratorObject(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Generator]'
+			)
+		},
+		isGeneratorFunction(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object GeneratorFunction]'
+			)
+		},
+		isAsyncFunction(value) {
+			return (
+				Object.prototype.toString.call(value) ===
+				'[object AsyncFunction]'
+			)
+		},
+		isArrayBufferView(value) {
+			return ArrayBuffer.isView(value)
+		},
+		isBoxedPrimitive(value) {
+			return (
+				value instanceof Boolean ||
+				value instanceof Number ||
+				value instanceof String ||
+				value instanceof Symbol ||
+				value instanceof BigInt
+			)
+		},
+		isAnyArrayBuffer(value) {
+			const tag = Object.prototype.toString.call(value)
+			return (
+				tag === '[object ArrayBuffer]' ||
+				tag === '[object SharedArrayBuffer]'
+			)
+		},
+		isArgumentsObject(value) {
+			return (
+				Object.prototype.toString.call(value) === '[object Arguments]'
+			)
+		},
+		isBooleanObject(value) {
+			return Object.prototype.toString.call(value) === '[object Boolean]'
+		},
+		isNumberObject(value) {
+			return Object.prototype.toString.call(value) === '[object Number]'
+		},
+		isStringObject(value) {
+			return Object.prototype.toString.call(value) === '[object String]'
+		},
+		isSymbolObject(value) {
+			return Object.prototype.toString.call(value) === '[object Symbol]'
+		},
+		isBigIntObject(value) {
+			return Object.prototype.toString.call(value) === '[object BigInt]'
+		},
+		isModuleNamespaceObject(value) {
+			return Object.prototype.toString.call(value) === '[object Module]'
+		},
 	}),
-types: createDebugProxy('types', {
-	isRegExp(value) {
-		return Object.prototype.toString.call(value) === '[object RegExp]';
-	},
-	isDate(value) {
-		return Object.prototype.toString.call(value) === '[object Date]';
-	},
-	isNativeError(value) {
-		if (value === null || value === undefined) {
-			return false;
-		}
-		// Check if it's an instance of Error or one of the native error types
-		return value instanceof Error ||
-			value instanceof EvalError ||
-			value instanceof RangeError ||
-			value instanceof ReferenceError ||
-			value instanceof SyntaxError ||
-			value instanceof TypeError ||
-			value instanceof URIError ||
-			(typeof AggregateError !== 'undefined' && value instanceof AggregateError);
-	},
-	isPromise(value) {
-		return value instanceof Promise;
-	},
-	isProxy(value) {
-		// JavaScript doesn't provide a way to detect proxies reliably
-		// This is a limitation of the language
-		return false;
-	},
-	isMap(value) {
-		return Object.prototype.toString.call(value) === '[object Map]';
-	},
-	isSet(value) {
-		return Object.prototype.toString.call(value) === '[object Set]';
-	},
-	isMapIterator(value) {
-		return Object.prototype.toString.call(value) === '[object Map Iterator]';
-	},
-	isSetIterator(value) {
-		return Object.prototype.toString.call(value) === '[object Set Iterator]';
-	},
-	isWeakMap(value) {
-		return Object.prototype.toString.call(value) === '[object WeakMap]';
-	},
-	isWeakSet(value) {
-		return Object.prototype.toString.call(value) === '[object WeakSet]';
-	},
-	isArrayBuffer(value) {
-		return Object.prototype.toString.call(value) === '[object ArrayBuffer]';
-	},
-	isDataView(value) {
-		return Object.prototype.toString.call(value) === '[object DataView]';
-	},
-	isSharedArrayBuffer(value) {
-		return Object.prototype.toString.call(value) === '[object SharedArrayBuffer]';
-	},
-	isTypedArray(value) {
-		return ArrayBuffer.isView(value) && !(value instanceof DataView);
-	},
-	isUint8Array(value) {
-		return Object.prototype.toString.call(value) === '[object Uint8Array]';
-	},
-	isUint8ClampedArray(value) {
-		return Object.prototype.toString.call(value) === '[object Uint8ClampedArray]';
-	},
-	isUint16Array(value) {
-		return Object.prototype.toString.call(value) === '[object Uint16Array]';
-	},
-	isUint32Array(value) {
-		return Object.prototype.toString.call(value) === '[object Uint32Array]';
-	},
-	isInt8Array(value) {
-		return Object.prototype.toString.call(value) === '[object Int8Array]';
-	},
-	isInt16Array(value) {
-		return Object.prototype.toString.call(value) === '[object Int16Array]';
-	},
-	isInt32Array(value) {
-		return Object.prototype.toString.call(value) === '[object Int32Array]';
-	},
-	isFloat32Array(value) {
-		return Object.prototype.toString.call(value) === '[object Float32Array]';
-	},
-	isFloat64Array(value) {
-		return Object.prototype.toString.call(value) === '[object Float64Array]';
-	},
-	isBigInt64Array(value) {
-		return Object.prototype.toString.call(value) === '[object BigInt64Array]';
-	},
-	isBigUint64Array(value) {
-		return Object.prototype.toString.call(value) === '[object BigUint64Array]';
-	},
-	isGeneratorObject(value) {
-		return Object.prototype.toString.call(value) === '[object Generator]';
-	},
-	isGeneratorFunction(value) {
-		return Object.prototype.toString.call(value) === '[object GeneratorFunction]';
-	},
-	isAsyncFunction(value) {
-		return Object.prototype.toString.call(value) === '[object AsyncFunction]';
-	},
-	isArrayBufferView(value) {
-		return ArrayBuffer.isView(value);
-	},
-	isBoxedPrimitive(value) {
-		return value instanceof Boolean ||
-			value instanceof Number ||
-			value instanceof String ||
-			value instanceof Symbol ||
-			value instanceof BigInt;
-	},
-	isAnyArrayBuffer(value) {
-		const tag = Object.prototype.toString.call(value);
-		return tag === '[object ArrayBuffer]' || tag === '[object SharedArrayBuffer]';
-	},
-	isArgumentsObject(value) {
-		return Object.prototype.toString.call(value) === '[object Arguments]';
-	},
-	isBooleanObject(value) {
-		return Object.prototype.toString.call(value) === '[object Boolean]';
-	},
-	isNumberObject(value) {
-		return Object.prototype.toString.call(value) === '[object Number]';
-	},
-	isStringObject(value) {
-		return Object.prototype.toString.call(value) === '[object String]';
-	},
-	isSymbolObject(value) {
-		return Object.prototype.toString.call(value) === '[object Symbol]';
-	},
-	isBigIntObject(value) {
-		return Object.prototype.toString.call(value) === '[object BigInt]';
-	},
-	isModuleNamespaceObject(value) {
-		return Object.prototype.toString.call(value) === '[object Module]';
-	},
-}),
 	timers: createDebugProxy('timers', {
 		timeoutInfo: [],
 		immediateInfo: [],
 	}),
 	trace_events: {
 		getCategoryEnabledBuffer() {
-			return [9];
+			return [9]
 		},
 		trace() {
 			// Do nothing
-		}
+		},
 	},
 	credentials: {
 		// ENV Variables
 		safeGetenv(key) {
-			return '';
-		}
+			return ''
+		},
 	},
 	performance: {
 		constants: {},
-		setupObservers() {} 
+		setupObservers() {},
 	},
 	js_stream: createDebugProxy('js_stream', {
 		JSStream: class JSStream {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
-		}
+		},
 	}),
 	blob: createDebugProxy('blob', {
-		createBlob() { throw new Error('Not implemented'); },
-		createBlobFromFilePath() { throw new Error('Not implemented'); },
-		concat() { throw new Error('Not implemented'); },
-		getDataObject() { throw new Error('Not implemented'); },
+		createBlob() {
+			throw new Error('Not implemented')
+		},
+		createBlobFromFilePath() {
+			throw new Error('Not implemented')
+		},
+		concat() {
+			throw new Error('Not implemented')
+		},
+		getDataObject() {
+			throw new Error('Not implemented')
+		},
 	}),
 	encoding_binding: createDebugProxy('encoding_binding', {
-		encodeIntoResults() { throw new Error('Not implemented'); },
-		encodeInto() { throw new Error('Not implemented'); },
-		encodeUtf8String() { throw new Error('Not implemented'); },
-		decodeUTF8() { throw new Error('Not implemented'); },
-		decodeLatin1() { throw new Error('Not implemented'); },
-		toASCII() { throw new Error('Not implemented'); },
-		toUnicode() { throw new Error('Not implemented'); },
+		encodeIntoResults() {
+			throw new Error('Not implemented')
+		},
+		encodeInto() {
+			throw new Error('Not implemented')
+		},
+		encodeUtf8String() {
+			throw new Error('Not implemented')
+		},
+		decodeUTF8() {
+			throw new Error('Not implemented')
+		},
+		decodeLatin1() {
+			throw new Error('Not implemented')
+		},
+		toASCII() {
+			throw new Error('Not implemented')
+		},
+		toUnicode() {
+			throw new Error('Not implemented')
+		},
 	}),
 	process_methods: createDebugProxy('process_methods', { hrtimeBuffer: {} }),
 	url_pattern: createDebugProxy('url_pattern', {
 		URLPattern: class URLPattern {
 			constructor(pattern) {
-				this.pattern = pattern;
+				this.pattern = pattern
 			}
 			test(input) {
-				throw new Error('URLPattern.test not implemented');
+				throw new Error('URLPattern.test not implemented')
 			}
 			exec(input) {
-				throw new Error('URLPattern.exec not implemented');
+				throw new Error('URLPattern.exec not implemented')
 			}
-		}
+		},
 	}),
 	url: createDebugProxy('url', {
 		pathToFileURL(filepath) {
 			if (typeof filepath !== 'string') {
-				throw new TypeError('Path must be a string');
+				throw new TypeError('Path must be a string')
 			}
 
 			// Handle trailing slashes - add back trailing slash if original had one
-			let resolved = filepath;
-			const hadTrailingSlash = filepath.endsWith('/');
+			let resolved = filepath
+			const hadTrailingSlash = filepath.endsWith('/')
 
 			// Encode the path for file URL
-			const encodedPath = this._encodePathForFileURL(resolved);
+			const encodedPath = this._encodePathForFileURL(resolved)
 
 			// Create and return the URL
-			return new URL(`file://${encodedPath}`);
+			return new URL(`file://${encodedPath}`)
 		},
 
 		fileURLToPath(input, options) {
-			const errorCodes = globalThis.internalModules?.errors?.codes ?? {};
+			const errorCodes = globalThis.internalModules?.errors?.codes ?? {}
 			const {
 				ERR_INVALID_ARG_TYPE,
 				ERR_INVALID_URL_SCHEME,
 				ERR_INVALID_FILE_URL_HOST,
 				ERR_INVALID_FILE_URL_PATH,
-			} = errorCodes;
+			} = errorCodes
 
 			const throwInvalidArgType = (value) => {
 				if (typeof ERR_INVALID_ARG_TYPE === 'function') {
-					throw new ERR_INVALID_ARG_TYPE('path', ['string', 'URL'], value);
+					throw new ERR_INVALID_ARG_TYPE(
+						'path',
+						['string', 'URL'],
+						value
+					)
 				}
-				const err = new TypeError('The "path" argument must be of type string or an instance of URL.');
-				err.code = 'ERR_INVALID_ARG_TYPE';
-				throw err;
-			};
+				const err = new TypeError(
+					'The "path" argument must be of type string or an instance of URL.'
+				)
+				err.code = 'ERR_INVALID_ARG_TYPE'
+				throw err
+			}
 
 			const throwInvalidScheme = () => {
 				if (typeof ERR_INVALID_URL_SCHEME === 'function') {
-					throw new ERR_INVALID_URL_SCHEME('file');
+					throw new ERR_INVALID_URL_SCHEME('file')
 				}
-				const err = new TypeError('The URL must be of scheme file:');
-				err.code = 'ERR_INVALID_URL_SCHEME';
-				throw err;
-			};
+				const err = new TypeError('The URL must be of scheme file:')
+				err.code = 'ERR_INVALID_URL_SCHEME'
+				throw err
+			}
 
 			const throwInvalidHost = (platform) => {
 				if (typeof ERR_INVALID_FILE_URL_HOST === 'function') {
-					throw new ERR_INVALID_FILE_URL_HOST(platform);
+					throw new ERR_INVALID_FILE_URL_HOST(platform)
 				}
-				const err = new TypeError('File URL host must be empty on POSIX.');
-				err.code = 'ERR_INVALID_FILE_URL_HOST';
-				throw err;
-			};
+				const err = new TypeError(
+					'File URL host must be empty on POSIX.'
+				)
+				err.code = 'ERR_INVALID_FILE_URL_HOST'
+				throw err
+			}
 
 			const throwInvalidPath = (reason, urlObj) => {
 				if (typeof ERR_INVALID_FILE_URL_PATH === 'function') {
-					throw new ERR_INVALID_FILE_URL_PATH(reason, urlObj);
+					throw new ERR_INVALID_FILE_URL_PATH(reason, urlObj)
 				}
-				const err = new TypeError(`Invalid file URL path: ${reason}`);
-				err.code = 'ERR_INVALID_FILE_URL_PATH';
-				throw err;
-			};
+				const err = new TypeError(`Invalid file URL path: ${reason}`)
+				err.code = 'ERR_INVALID_FILE_URL_PATH'
+				throw err
+			}
 
-			let urlObj;
+			let urlObj
 			if (typeof input === 'string') {
-				urlObj = new URL(input);
+				urlObj = new URL(input)
 			} else if (input instanceof URL) {
-				urlObj = input;
+				urlObj = input
 			} else {
-				throwInvalidArgType(input);
+				throwInvalidArgType(input)
 			}
 
 			if (urlObj.protocol !== 'file:') {
-				throwInvalidScheme();
+				throwInvalidScheme()
 			}
 
-			const windowsOption = options?.windows;
-			const isWindows = windowsOption !== undefined ? windowsOption : globalThis.process?.platform === 'win32';
+			const windowsOption = options?.windows
+			const isWindows =
+				windowsOption !== undefined
+					? windowsOption
+					: globalThis.process?.platform === 'win32'
 
 			const decodeHostname = (hostname) => {
-				const domainToUnicode = globalThis.coreModules?.url?.domainToUnicode ?? globalThis.internalModules?.url?.domainToUnicode;
+				const domainToUnicode =
+					globalThis.coreModules?.url?.domainToUnicode ??
+					globalThis.internalModules?.url?.domainToUnicode
 				if (typeof domainToUnicode === 'function') {
 					try {
-						return domainToUnicode(hostname);
+						return domainToUnicode(hostname)
 					} catch {
 						// Fall back to the raw hostname if conversion fails.
 					}
 				}
-				return hostname;
-			};
+				return hostname
+			}
 
 			const ensureNoEncodedSeparators = (pathname, sequences) => {
 				for (let i = 0; i < pathname.length; i++) {
-					if (pathname[i] !== '%' || i + 2 >= pathname.length) continue;
-					const second = pathname[i + 1];
-					const third = pathname[i + 2].toLowerCase();
+					if (pathname[i] !== '%' || i + 2 >= pathname.length)
+						continue
+					const second = pathname[i + 1]
+					const third = pathname[i + 2].toLowerCase()
 					for (const seq of sequences) {
 						if (second === seq[0] && third === seq[1]) {
-							return false;
+							return false
 						}
 					}
 				}
-				return true;
-			};
+				return true
+			}
 
 			if (isWindows) {
 				const winPathFromURL = (urlInstance) => {
-					let pathname = urlInstance.pathname;
-					if (!ensureNoEncodedSeparators(pathname, [['2', 'f'], ['5', 'c']])) {
-						throwInvalidPath('must not include encoded \\ or / characters', urlInstance);
+					let pathname = urlInstance.pathname
+					if (
+						!ensureNoEncodedSeparators(pathname, [
+							['2', 'f'],
+							['5', 'c'],
+						])
+					) {
+						throwInvalidPath(
+							'must not include encoded \\ or / characters',
+							urlInstance
+						)
 					}
-					pathname = pathname.replace(/\//g, '\\');
-					pathname = decodeURIComponent(pathname);
+					pathname = pathname.replace(/\//g, '\\')
+					pathname = decodeURIComponent(pathname)
 					if (urlInstance.hostname) {
-						const host = decodeHostname(urlInstance.hostname);
-						return `\\\\${host}${pathname}`;
+						const host = decodeHostname(urlInstance.hostname)
+						return `\\\\${host}${pathname}`
 					}
-					const letter = pathname.charCodeAt(1);
-					const sep = pathname[2];
-					if (!letter || (letter | 0x20) < 97 || (letter | 0x20) > 122 || sep !== ':') {
-						throwInvalidPath('must be absolute', urlInstance);
+					const letter = pathname.charCodeAt(1)
+					const sep = pathname[2]
+					if (
+						!letter ||
+						(letter | 0x20) < 97 ||
+						(letter | 0x20) > 122 ||
+						sep !== ':'
+					) {
+						throwInvalidPath('must be absolute', urlInstance)
 					}
-					return pathname.slice(1);
-				};
+					return pathname.slice(1)
+				}
 
-				return winPathFromURL(urlObj);
+				return winPathFromURL(urlObj)
 			}
 
 			const posixPathFromURL = (urlInstance) => {
 				if (urlInstance.hostname) {
-					const platform = globalThis.process?.platform ?? 'posix';
-					throwInvalidHost(platform);
+					const platform = globalThis.process?.platform ?? 'posix'
+					throwInvalidHost(platform)
 				}
-				const { pathname } = urlInstance;
+				const { pathname } = urlInstance
 				if (!ensureNoEncodedSeparators(pathname, [['2', 'f']])) {
-					throwInvalidPath('must not include encoded / characters', urlInstance);
+					throwInvalidPath(
+						'must not include encoded / characters',
+						urlInstance
+					)
 				}
-				return decodeURIComponent(pathname);
-			};
+				return decodeURIComponent(pathname)
+			}
 
-			return posixPathFromURL(urlObj);
+			return posixPathFromURL(urlObj)
 		},
 
 		_encodePathForFileURL(path) {
 			// Encode the path for use in a file:// URL
-			let encoded = '';
+			let encoded = ''
 
 			for (let i = 0; i < path.length; i++) {
-				const char = path[i];
-				const code = path.charCodeAt(i);
+				const char = path[i]
+				const code = path.charCodeAt(i)
 
 				// Percent-encode characters that are not safe in file URLs
-				if (char === '%' || char === '#' || char === '?' || char === '\n' || char === '\r' || char === '\t') {
-					encoded += encodeURIComponent(char);
+				if (
+					char === '%' ||
+					char === '#' ||
+					char === '?' ||
+					char === '\n' ||
+					char === '\r' ||
+					char === '\t'
+				) {
+					encoded += encodeURIComponent(char)
 				} else if (code < 32 || code > 126) {
 					// Control characters and non-ASCII characters
-					encoded += encodeURIComponent(char);
+					encoded += encodeURIComponent(char)
 				} else {
-					encoded += char;
+					encoded += char
 				}
 			}
 
-			return encoded;
-		}
+			return encoded
+		},
 	}),
 	permission: createDebugProxy('permission', {}),
-	fs_dir: createDebugProxy('fs_dir', (function() {
-		// Implement Dir class with async iterator support
-		class Dir {
-			constructor(handle, path, options) {
-				this.handle = handle;
-				this.path = path;
-				this.options = options || { encoding: 'utf8' };
-				this.closed = false;
-			}
-
-			read(encodingOrCallback, bufferSize, kUsePromises) {
-				// Full binding signature with kUsePromises or FSReqCallback
-				console.trace('read', { encodingOrCallback, bufferSize, kUsePromises });
-				return maybePromiseFromSync(() => this.readSync(encodingOrCallback, bufferSize), kUsePromises);
-			}
-
-			readSync(encodingOrCallback=this.options.encoding, bufferSize=32) {
-				if (this.closed) {
-					const err = new Error('Dir is closed');
-					err.code = 'ERR_DIR_CLOSED';
-					throw err;
+	fs_dir: createDebugProxy(
+		'fs_dir',
+		(function () {
+			// Implement Dir class with async iterator support
+			class Dir {
+				constructor(handle, path, options) {
+					this.handle = handle
+					this.path = path
+					this.options = options || { encoding: 'utf8' }
+					this.closed = false
 				}
-				const entry = this.handle.read(encodingOrCallback, bufferSize);
-				if (entry === null) {
-					return null;
+
+				read(encodingOrCallback, bufferSize, kUsePromises) {
+					// Full binding signature with kUsePromises or FSReqCallback
+					console.trace('read', {
+						encodingOrCallback,
+						bufferSize,
+						kUsePromises,
+					})
+					return maybePromiseFromSync(
+						() => this.readSync(encodingOrCallback, bufferSize),
+						kUsePromises
+					)
 				}
-				// entry is { name, type } from the handle
-				const { name, type } = entry;
-				// Return a Dirent-like object
-				return {
-					name,
-					isFile: () => type === 'file',
-					isDirectory: () => type === 'dir',
-					isBlockDevice: () => false,
-					isCharacterDevice: () => false,
-					isSymbolicLink: () => type === 'symlink',
-					isFIFO: () => false,
-					isSocket: () => false
-				};
-			}
 
-			close(kUsePromises) {
-				return maybePromiseFromSync(() => this.closeSync(), kUsePromises);
-			}
-
-			closeSync() {
-				if (this.closed) {
-					const err = new Error('Dir is already closed');
-					err.code = 'ERR_DIR_CLOSED';
-					throw err;
-				}
-				this.handle.close();
-				this.closed = true;
-			}
-
-			// Async iterator support
-			async *entries() {
-				try {
-					while (true) {
-						const entry = await this.read();
-						if (entry == null) {
-							break;
-						}
-						yield entry;
+				readSync(
+					encodingOrCallback = this.options.encoding,
+					bufferSize = 32
+				) {
+					if (this.closed) {
+						const err = new Error('Dir is closed')
+						err.code = 'ERR_DIR_CLOSED'
+						throw err
 					}
-				} finally {
-					await this.close();
+					const entry = this.handle.read(
+						encodingOrCallback,
+						bufferSize
+					)
+					if (entry === null) {
+						return null
+					}
+					// entry is { name, type } from the handle
+					const { name, type } = entry
+					// Return a Dirent-like object
+					return {
+						name,
+						isFile: () => type === 'file',
+						isDirectory: () => type === 'dir',
+						isBlockDevice: () => false,
+						isCharacterDevice: () => false,
+						isSymbolicLink: () => type === 'symlink',
+						isFIFO: () => false,
+						isSocket: () => false,
+					}
+				}
+
+				close(kUsePromises) {
+					return maybePromiseFromSync(
+						() => this.closeSync(),
+						kUsePromises
+					)
+				}
+
+				closeSync() {
+					if (this.closed) {
+						const err = new Error('Dir is already closed')
+						err.code = 'ERR_DIR_CLOSED'
+						throw err
+					}
+					this.handle.close()
+					this.closed = true
+				}
+
+				// Async iterator support
+				async *entries() {
+					try {
+						while (true) {
+							const entry = await this.read()
+							if (entry == null) {
+								break
+							}
+							yield entry
+						}
+					} finally {
+						await this.close()
+					}
+				}
+
+				// Make this async iterable
+				[Symbol.asyncIterator]() {
+					return this.entries()
 				}
 			}
 
-			// Make this async iterable
-			[Symbol.asyncIterator]() {
-				return this.entries();
+			return {
+				Dir,
+				opendirSync(path, options) {
+					const handle = globalFs.opendirSync(path)
+					return new Dir(handle, path, options)
+				},
+				opendir(path, encoding, kUsePromises) {
+					return maybePromiseFromSync(() => {
+						const handle = globalFs.opendirSync(path)
+						return new Dir(handle, path, { encoding })
+					}, kUsePromises)
+				},
 			}
-		}
-
-		
-		return {
-			Dir,
-			opendirSync(path, options) {
-				const handle = globalFs.opendirSync(path);
-				return new Dir(handle, path, options);
-			},
-			opendir(path, encoding, kUsePromises) {
-				return maybePromiseFromSync(() => {
-					const handle = globalFs.opendirSync(path);
-					return new Dir(handle, path, { encoding });
-				}, kUsePromises);
-			}
-		};
-	})(), 'fs_dir'),
+		})(),
+		'fs_dir'
+	),
 	cares_wrap: {
 		ChannelWrap: class ChannelWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
-		}
+		},
 	},
 	stream_wrap: createDebugProxy('stream_wrap', {
 		StreamWrap: class StreamWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		ShutdownWrap: class ShutdownWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		WriteWrap: class WriteWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		kReadBytesOrError: 0,
@@ -1447,12 +1830,12 @@ types: createDebugProxy('types', {
 	pipe_wrap: createDebugProxy('pipe_wrap', {
 		Pipe: class Pipe {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		PipeConnectWrap: class PipeConnectWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		constants: {
@@ -1479,11 +1862,12 @@ types: createDebugProxy('types', {
 				name
 			) {
 				// @TODO: Support env, argv, name...
-				
+
 				const fs = globalThis.coreModules.fs
 
 				// Extract the file path from the URL
-				const filePath = globalThis.internalModules.url.fileURLToPath(url)
+				const filePath =
+					globalThis.internalModules.url.fileURLToPath(url)
 
 				// Read the file content
 				const fileContent = fs.readFileSync(filePath, 'utf8')
@@ -1498,7 +1882,7 @@ types: createDebugProxy('types', {
 				console.log('Base64 URL:', base64Url)
 				super(base64Url, {
 					name: name,
-				});
+				})
 			}
 		},
 		kMaxYoungGenerationSizeMb: 1024,
@@ -1506,26 +1890,28 @@ types: createDebugProxy('types', {
 		kCodeRangeSizeMb: 1024,
 		kStackSizeMb: 1024,
 		kTotalResourceLimitCount: 1024,
-		getEnvMessagePort() { throw new Error('Not implemented') },
+		getEnvMessagePort() {
+			throw new Error('Not implemented')
+		},
 	}),
 	locks: createDebugProxy('locks', {}),
 	worker_threads: createDebugProxy('worker_threads', {}),
 	tls_wrap: createDebugProxy('tls_wrap', {
 		TLSWrap: class TLSWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
-		}
+		},
 	}),
 	http_parser: createDebugProxy('http_parser', {
 		HTTPParser: class HTTPParser {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		ConnectionsList: class ConnectionsList {
 			constructor() {
-				this.connections = [];
+				this.connections = []
 			}
 		},
 		methods: [],
@@ -1534,12 +1920,12 @@ types: createDebugProxy('types', {
 	tcp_wrap: createDebugProxy('tcp_wrap', {
 		TCP: class TCP {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		TCPConnectWrap: class TCPConnectWrap {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		constants: {
@@ -1552,30 +1938,30 @@ types: createDebugProxy('types', {
 		constants: {
 			// @TODO: verify these
 			UV_UDP_IPV6ONLY: 1,
-			UV_UDP_REUSEPORT: 2
+			UV_UDP_REUSEPORT: 2,
 		},
 		UDP: class UDP {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
-		}
+		},
 	},
 	tty_wrap: {
 		isTTY() {
-			return false;
+			return false
 		},
 		Tty: class Tty {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
-		}
+		},
 	},
 	fs_event_wrap: {
 		FSEvent: class FSEvent {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
-		}
+		},
 	},
 	uv: {},
 	os: createDebugProxy('os', {
@@ -1597,10 +1983,10 @@ types: createDebugProxy('types', {
 						user: 252020,
 					},
 				},
-			];
+			]
 		},
 		arch() {
-			return 'x64';
+			return 'x64'
 		},
 		cpus() {
 			return [
@@ -1615,13 +2001,13 @@ types: createDebugProxy('types', {
 						irq: 0,
 					},
 				},
-			];
+			]
 		},
 		hostname() {
-			return 'localhost';
+			return 'localhost'
 		},
 		machine() {
-			return 'x86_64';
+			return 'x86_64'
 		},
 		networkInterfaces() {
 			return {
@@ -1635,101 +2021,101 @@ types: createDebugProxy('types', {
 						cidr: '127.0.0.1/8',
 					},
 				],
-			};
+			}
 		},
 		platform() {
-			return 'linux';
+			return 'linux'
 		},
 		release() {
-			return '5.4.0';
+			return '5.4.0'
 		},
 		setPriority(pidOrPriority, priority) {
 			// No-op in browser environment
 		},
 		tmpdir() {
-			return '/tmp';
+			return '/tmp'
 		},
 		totalmem() {
-			return 8589934592; // 8GB
+			return 8589934592 // 8GB
 		},
 		type() {
-			return 'Linux';
+			return 'Linux'
 		},
 		uptime() {
-			return Math.floor(performance.now() / 1000);
+			return Math.floor(performance.now() / 1000)
 		},
 		version() {
-			return '#1 SMP Thu Oct 6 16:21:56 UTC 2022';
+			return '#1 SMP Thu Oct 6 16:21:56 UTC 2022'
 		},
 		getOSInformation() {
-			return ['Linux', '5.4.0', '5.4.0'];
+			return ['Linux', '5.4.0', '5.4.0']
 		},
 		isBigEndian() {
-			return false;
+			return false
 		},
 		getAvailableParallelism() {
-			return navigator.hardwareConcurrency || 10;
+			return navigator.hardwareConcurrency || 10
 		},
 		getFreeMem() {
 			// Estimate 2GB free memory (browser environments don't expose this)
-			return 2147483648;
+			return 2147483648
 		},
 		getHostname() {
-			return 'localhost';
+			return 'localhost'
 		},
 		getOSVersion() {
-			return '#1 SMP Thu Oct 6 16:21:56 UTC 2022';
+			return '#1 SMP Thu Oct 6 16:21:56 UTC 2022'
 		},
 		getOSType() {
-			return 'Linux';
+			return 'Linux'
 		},
 		getOSRelease() {
-			return '5.4.0';
+			return '5.4.0'
 		},
 		getMachine() {
-			return 'x86_64';
+			return 'x86_64'
 		},
 		getHomeDirectory() {
-			return '/home/user';
+			return '/home/user'
 		},
 		getTotalMem() {
-			return 8589934592; // 8GB
+			return 8589934592 // 8GB
 		},
 		getUptime() {
-			return Math.floor(performance.now() / 1000);
+			return Math.floor(performance.now() / 1000)
 		},
 		homedir() {
-			return '/home/user';
+			return '/home/user'
 		},
 		getPriority(pid) {
-			return 0;
+			return 0
 		},
 		getInterfaceAddresses() {
-			return [];
+			return []
 		},
 		getLoadAvg() {
-			return [0, 0, 0];
+			return [0, 0, 0]
 		},
 		getOSVersion() {
-			return '5.4.0';
+			return '5.4.0'
 		},
 		getOSType() {
-			return 'Linux';
+			return 'Linux'
 		},
 		getOSRelease() {
-			return '5.4.0';
+			return '5.4.0'
 		},
 		getMachine() {
-			return 'x86_64';
+			return 'x86_64'
 		},
 		getHomeDirectory() {
-			return '/home/user';
+			return '/home/user'
 		},
 		getTotalMem() {
-			return 8589934592; // 8GB
+			return 8589934592 // 8GB
 		},
 		getUptime() {
-			return Math.floor(performance.now() / 1000);
+			return Math.floor(performance.now() / 1000)
 		},
 		getUserInfo(options) {
 			return {
@@ -1738,7 +2124,7 @@ types: createDebugProxy('types', {
 				username: 'user',
 				homedir: '/home/user',
 				shell: '/bin/bash',
-			};
+			}
 		},
 		setPriority(pidOrPriority, priority) {
 			// No-op in browser environment
@@ -1747,56 +2133,59 @@ types: createDebugProxy('types', {
 	zlib: createDebugProxy('zlib', {
 		Zlib: class Zlib {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		crc32() {
-			console.trace('zlib crc32');
-			return 0;
+			console.trace('zlib crc32')
+			return 0
 		},
 	}),
 	messaging: {
 		MessagePort: class MessagePort {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		MessageChannel: class MessageChannel {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		broadcastChannel: class broadcastChannel {
 			constructor() {
-				this.persistent = false;
+				this.persistent = false
 			}
 		},
 		DOMException: class DOMException {
 			constructor(message) {
-				console.trace('DOMException', {arguments});
-				this.message = message;
+				console.trace('DOMException', { arguments })
+				this.message = message
 			}
-		}
+		},
 	},
 	async_wrap: {
-		constants: {}
+		constants: {},
 	},
 	async_context_frame: {},
 	task_queue: {
-		promiseRejectEvents: {}
+		promiseRejectEvents: {},
 	},
-	stream_pipe: new Proxy({
-		StreamPipe: class StreamPipe {
-			constructor() {
-				this.persistent = false;
-			}
+	stream_pipe: new Proxy(
+		{
+			StreamPipe: class StreamPipe {
+				constructor() {
+					this.persistent = false
+				}
+			},
+		},
+		{
+			get(target, prop) {
+				console.log('stream get', prop)
+				return target[prop]
+			},
 		}
-	}, {
-		get(target, prop) {
-			console.log('stream get', prop);
-			return target[prop];
-		}
-	}),
+	),
 	symbols: {
 		fs_use_promises: Symbol('fs_use_promises_symbol'),
 		async_id: Symbol('async_id_symbol'),
@@ -1813,15 +2202,23 @@ types: createDebugProxy('types', {
 		onpskexchange: Symbol('onpskexchange'),
 		resource: Symbol('resource_symbol'),
 		trigger_async_id: Symbol('trigger_async_id_symbol'),
-		source_text_module_default_hdo: Symbol('source_text_module_default_hdo'),
+		source_text_module_default_hdo: Symbol(
+			'source_text_module_default_hdo'
+		),
 		vm_context_no_contextify: Symbol('vm_context_no_contextify'),
-		vm_dynamic_import_default_internal: Symbol('vm_dynamic_import_default_internal'),
-		vm_dynamic_import_main_context_default: Symbol('vm_dynamic_import_main_context_default'),
-		vm_dynamic_import_missing_flag: Symbol('vm_dynamic_import_missing_flag'),
+		vm_dynamic_import_default_internal: Symbol(
+			'vm_dynamic_import_default_internal'
+		),
+		vm_dynamic_import_main_context_default: Symbol(
+			'vm_dynamic_import_main_context_default'
+		),
+		vm_dynamic_import_missing_flag: Symbol(
+			'vm_dynamic_import_missing_flag'
+		),
 		vm_dynamic_import_no_callback: Symbol('vm_dynamic_import_no_callback'),
 	},
 	// http2: createDebugProxy('http2', {
-	http2: ({
+	http2: {
 		setCallbackFunctions() {},
 		constants: {
 			HTTP2_HEADER_STATUS: ':status',
@@ -1836,14 +2233,21 @@ types: createDebugProxy('types', {
 			HTTP2_HEADER_ACCEPT_LANGUAGE: 'accept-language',
 			HTTP2_HEADER_ACCEPT_RANGES: 'accept-ranges',
 			HTTP2_HEADER_ACCEPT: 'accept',
-			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS: 'access-control-allow-credentials',
-			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_HEADERS: 'access-control-allow-headers',
-			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_METHODS: 'access-control-allow-methods',
-			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN: 'access-control-allow-origin',
-			HTTP2_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS: 'access-control-expose-headers',
+			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS:
+				'access-control-allow-credentials',
+			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_HEADERS:
+				'access-control-allow-headers',
+			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_METHODS:
+				'access-control-allow-methods',
+			HTTP2_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN:
+				'access-control-allow-origin',
+			HTTP2_HEADER_ACCESS_CONTROL_EXPOSE_HEADERS:
+				'access-control-expose-headers',
 			HTTP2_HEADER_ACCESS_CONTROL_MAX_AGE: 'access-control-max-age',
-			HTTP2_HEADER_ACCESS_CONTROL_REQUEST_HEADERS: 'access-control-request-headers',
-			HTTP2_HEADER_ACCESS_CONTROL_REQUEST_METHOD: 'access-control-request-method',
+			HTTP2_HEADER_ACCESS_CONTROL_REQUEST_HEADERS:
+				'access-control-request-headers',
+			HTTP2_HEADER_ACCESS_CONTROL_REQUEST_METHOD:
+				'access-control-request-method',
 			HTTP2_HEADER_AGE: 'age',
 			HTTP2_HEADER_ALLOW: 'allow',
 			HTTP2_HEADER_AUTHORIZATION: 'authorization',
@@ -1910,138 +2314,138 @@ types: createDebugProxy('types', {
 			HTTP2_HEADER_TIMING_ALLOW_ORIGIN: 'timing-allow-origin',
 			HTTP2_HEADER_X_FORWARDED_FOR: 'x-forwarded-for',
 			HTTP2_HEADER_PRIORITY: 'priority',
-		}
-	}),
+		},
+	},
 	constants: {
 		os: {
 			UV_UDP_REUSEADDR: 4,
 			dlopen: {
-			RTLD_LAZY: 1,
-			RTLD_NOW: 2,
-			RTLD_GLOBAL: 8,
-			RTLD_LOCAL: 4,
+				RTLD_LAZY: 1,
+				RTLD_NOW: 2,
+				RTLD_GLOBAL: 8,
+				RTLD_LOCAL: 4,
 			},
 			errno: {
-			E2BIG: 7,
-			EACCES: 13,
-			EADDRINUSE: 48,
-			EADDRNOTAVAIL: 49,
-			EAFNOSUPPORT: 47,
-			EAGAIN: 35,
-			EALREADY: 37,
-			EBADF: 9,
-			EBADMSG: 94,
-			EBUSY: 16,
-			ECANCELED: 89,
-			ECHILD: 10,
-			ECONNABORTED: 53,
-			ECONNREFUSED: 61,
-			ECONNRESET: 54,
-			EDEADLK: 11,
-			EDESTADDRREQ: 39,
-			EDOM: 33,
-			EDQUOT: 69,
-			EEXIST: 17,
-			EFAULT: 14,
-			EFBIG: 27,
-			EHOSTUNREACH: 65,
-			EIDRM: 90,
-			EILSEQ: 92,
-			EINPROGRESS: 36,
-			EINTR: 4,
-			EINVAL: 22,
-			EIO: 5,
-			EISCONN: 56,
-			EISDIR: 21,
-			ELOOP: 62,
-			EMFILE: 24,
-			EMLINK: 31,
-			EMSGSIZE: 40,
-			EMULTIHOP: 95,
-			ENAMETOOLONG: 63,
-			ENETDOWN: 50,
-			ENETRESET: 52,
-			ENETUNREACH: 51,
-			ENFILE: 23,
-			ENOBUFS: 55,
-			ENODATA: 96,
-			ENODEV: 19,
-			ENOENT: 2,
-			ENOEXEC: 8,
-			ENOLCK: 77,
-			ENOLINK: 97,
-			ENOMEM: 12,
-			ENOMSG: 91,
-			ENOPROTOOPT: 42,
-			ENOSPC: 28,
-			ENOSR: 98,
-			ENOSTR: 99,
-			ENOSYS: 78,
-			ENOTCONN: 57,
-			ENOTDIR: 20,
-			ENOTEMPTY: 66,
-			ENOTSOCK: 38,
-			ENOTSUP: 45,
-			ENOTTY: 25,
-			ENXIO: 6,
-			EOPNOTSUPP: 102,
-			EOVERFLOW: 84,
-			EPERM: 1,
-			EPIPE: 32,
-			EPROTO: 100,
-			EPROTONOSUPPORT: 43,
-			EPROTOTYPE: 41,
-			ERANGE: 34,
-			EROFS: 30,
-			ESPIPE: 29,
-			ESRCH: 3,
-			ESTALE: 70,
-			ETIME: 101,
-			ETIMEDOUT: 60,
-			ETXTBSY: 26,
-			EWOULDBLOCK: 35,
-			EXDEV: 18,
+				E2BIG: 7,
+				EACCES: 13,
+				EADDRINUSE: 48,
+				EADDRNOTAVAIL: 49,
+				EAFNOSUPPORT: 47,
+				EAGAIN: 35,
+				EALREADY: 37,
+				EBADF: 9,
+				EBADMSG: 94,
+				EBUSY: 16,
+				ECANCELED: 89,
+				ECHILD: 10,
+				ECONNABORTED: 53,
+				ECONNREFUSED: 61,
+				ECONNRESET: 54,
+				EDEADLK: 11,
+				EDESTADDRREQ: 39,
+				EDOM: 33,
+				EDQUOT: 69,
+				EEXIST: 17,
+				EFAULT: 14,
+				EFBIG: 27,
+				EHOSTUNREACH: 65,
+				EIDRM: 90,
+				EILSEQ: 92,
+				EINPROGRESS: 36,
+				EINTR: 4,
+				EINVAL: 22,
+				EIO: 5,
+				EISCONN: 56,
+				EISDIR: 21,
+				ELOOP: 62,
+				EMFILE: 24,
+				EMLINK: 31,
+				EMSGSIZE: 40,
+				EMULTIHOP: 95,
+				ENAMETOOLONG: 63,
+				ENETDOWN: 50,
+				ENETRESET: 52,
+				ENETUNREACH: 51,
+				ENFILE: 23,
+				ENOBUFS: 55,
+				ENODATA: 96,
+				ENODEV: 19,
+				ENOENT: 2,
+				ENOEXEC: 8,
+				ENOLCK: 77,
+				ENOLINK: 97,
+				ENOMEM: 12,
+				ENOMSG: 91,
+				ENOPROTOOPT: 42,
+				ENOSPC: 28,
+				ENOSR: 98,
+				ENOSTR: 99,
+				ENOSYS: 78,
+				ENOTCONN: 57,
+				ENOTDIR: 20,
+				ENOTEMPTY: 66,
+				ENOTSOCK: 38,
+				ENOTSUP: 45,
+				ENOTTY: 25,
+				ENXIO: 6,
+				EOPNOTSUPP: 102,
+				EOVERFLOW: 84,
+				EPERM: 1,
+				EPIPE: 32,
+				EPROTO: 100,
+				EPROTONOSUPPORT: 43,
+				EPROTOTYPE: 41,
+				ERANGE: 34,
+				EROFS: 30,
+				ESPIPE: 29,
+				ESRCH: 3,
+				ESTALE: 70,
+				ETIME: 101,
+				ETIMEDOUT: 60,
+				ETXTBSY: 26,
+				EWOULDBLOCK: 35,
+				EXDEV: 18,
 			},
 			signals: {
-			SIGHUP: 1,
-			SIGINT: 2,
-			SIGQUIT: 3,
-			SIGILL: 4,
-			SIGTRAP: 5,
-			SIGABRT: 6,
-			SIGIOT: 6,
-			SIGBUS: 10,
-			SIGFPE: 8,
-			SIGKILL: 9,
-			SIGUSR1: 30,
-			SIGSEGV: 11,
-			SIGUSR2: 31,
-			SIGPIPE: 13,
-			SIGALRM: 14,
-			SIGTERM: 15,
-			SIGCHLD: 20,
-			SIGCONT: 19,
-			SIGSTOP: 17,
-			SIGTSTP: 18,
-			SIGTTIN: 21,
-			SIGTTOU: 22,
-			SIGURG: 16,
-			SIGXCPU: 24,
-			SIGXFSZ: 25,
-			SIGVTALRM: 26,
-			SIGPROF: 27,
-			SIGWINCH: 28,
-			SIGIO: 23,
-			SIGINFO: 29,
-			SIGSYS: 12,
+				SIGHUP: 1,
+				SIGINT: 2,
+				SIGQUIT: 3,
+				SIGILL: 4,
+				SIGTRAP: 5,
+				SIGABRT: 6,
+				SIGIOT: 6,
+				SIGBUS: 10,
+				SIGFPE: 8,
+				SIGKILL: 9,
+				SIGUSR1: 30,
+				SIGSEGV: 11,
+				SIGUSR2: 31,
+				SIGPIPE: 13,
+				SIGALRM: 14,
+				SIGTERM: 15,
+				SIGCHLD: 20,
+				SIGCONT: 19,
+				SIGSTOP: 17,
+				SIGTSTP: 18,
+				SIGTTIN: 21,
+				SIGTTOU: 22,
+				SIGURG: 16,
+				SIGXCPU: 24,
+				SIGXFSZ: 25,
+				SIGVTALRM: 26,
+				SIGPROF: 27,
+				SIGWINCH: 28,
+				SIGIO: 23,
+				SIGINFO: 29,
+				SIGSYS: 12,
 			},
 			priority: {
-			PRIORITY_LOW: 19,
-			PRIORITY_BELOW_NORMAL: 10,
-			PRIORITY_NORMAL: 0,
-			PRIORITY_ABOVE_NORMAL: -7,
-			PRIORITY_HIGH: -14,
-			PRIORITY_HIGHEST: -20,
+				PRIORITY_LOW: 19,
+				PRIORITY_BELOW_NORMAL: 10,
+				PRIORITY_NORMAL: 0,
+				PRIORITY_ABOVE_NORMAL: -7,
+				PRIORITY_HIGH: -14,
+				PRIORITY_HIGHEST: -20,
 			},
 		},
 		sqlite: {
@@ -2257,7 +2661,7 @@ types: createDebugProxy('types', {
 			HTTP_STATUS_SITE_IS_FROZEN: 530,
 			HTTP_STATUS_IDENTITY_PROVIDER_AUTHENTICATION_ERROR: 561,
 			HTTP_STATUS_NETWORK_READ_TIMEOUT: 598,
-			HTTP_STATUS_NETWORK_CONNECT_TIMEOUT: 599
+			HTTP_STATUS_NETWORK_CONNECT_TIMEOUT: 599,
 		},
 		fs: {
 			UV_FS_SYMLINK_DIR: 1,
@@ -2365,7 +2769,8 @@ types: createDebugProxy('types', {
 			RSA_PSS_SALTLEN_DIGEST: -1,
 			RSA_PSS_SALTLEN_MAX_SIGN: -2,
 			RSA_PSS_SALTLEN_AUTO: -2,
-			defaultCoreCipherList: 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
+			defaultCoreCipherList:
+				'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA256:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
 			TLS1_VERSION: 769,
 			TLS1_1_VERSION: 770,
 			TLS1_2_VERSION: 771,
@@ -2522,59 +2927,68 @@ types: createDebugProxy('types', {
 		},
 	},
 	// @TODO: Implement those modules
-	module_wrap: { ModuleWrap: class ModuleWrap {
-		constructor() {
-			this.exports = {};
-		}
-	}
+	module_wrap: {
+		ModuleWrap: class ModuleWrap {
+			constructor() {
+				this.exports = {}
+			}
+		},
 	},
 	block_list: {
 		schemelessBlockList: new Set([]),
 		BlockList: class BlockList {
 			constructor() {
-				this.schemelessBlockList = new Set([]);
+				this.schemelessBlockList = new Set([])
 			}
-		}
+		},
 	},
-};
+}
 
 Object.assign(
 	globalThis.internalModules.constants,
 	globalThis.internalModules.constants.fs
-);
+)
 
-globalThis.internalModules.os.constants = globalThis.internalModules.constants.os;
-globalThis.internalModules.os.default = globalThis.internalModules.os;
-console.log(globalThis.internalModules);
+globalThis.internalModules.os.constants =
+	globalThis.internalModules.constants.os
+globalThis.internalModules.os.default = globalThis.internalModules.os
+console.log(globalThis.internalModules)
 
-await import("../../dist/primordials.js");
+await import('../../dist/primordials.js')
 // import * as myPrimordials from "./src/this-is-imported-directly/primordials.js";
 // globalThis.primordials = { ...myPrimordials, ...globalThis.primordials };
 // console.log(globalThis.primordials);
 
-globalThis.getInternalBinding = 
-globalThis.internalBinding = function(moduleName) {
-	if(globalThis.internalModules[moduleName]) {
-		const module = globalThis.internalModules[moduleName];
-		if(moduleName === "errors") {
-			return { ...module, exitCodes: module.codes };
+globalThis.getInternalBinding = globalThis.internalBinding = function (
+	moduleName
+) {
+	if (globalThis.internalModules[moduleName]) {
+		const module = globalThis.internalModules[moduleName]
+		if (moduleName === 'errors') {
+			return { ...module, exitCodes: module.codes }
 		}
-		return module;
+		return module
 	}
 	throw new Error(`Unknown module "${moduleName}"`)
 }
-globalThis.coreModules = {};
+globalThis.coreModules = {}
 
-const process = (await import("../../dist/process.js")).default;
-globalThis.process = { ...process };
-globalThis.coreModules.process = globalThis.process;
+const process = (await import('../../dist/process.js')).default
+globalThis.process = { ...process }
+globalThis.coreModules.process = globalThis.process
 
-const types = await import("../../dist/internal/types.js");
-globalThis.internalModules.util = { types: {...types}, ...globalThis.internalModules.util };
-globalThis.internalModules.types = { ...globalThis.internalModules.types, ...types };
+const types = await import('../../dist/internal/types.js')
+globalThis.internalModules.util = {
+	types: { ...types },
+	...globalThis.internalModules.util,
+}
+globalThis.internalModules.types = {
+	...globalThis.internalModules.types,
+	...types,
+}
 
-const internalConstants = await import("../../dist/internal/constants.js");
-globalThis.internalModules.constants = { 
+const internalConstants = await import('../../dist/internal/constants.js')
+globalThis.internalModules.constants = {
 	...globalThis.internalModules.constants,
 	...internalConstants,
 	os: {
@@ -2593,104 +3007,119 @@ globalThis.internalModules.constants = {
 			ECONNABORTED: 53,
 			ECONNREFUSED: 61,
 			ECONNRESET: 54,
-		}
-	}
-};
-globalThis.coreModules.constants = globalThis.internalModules.constants;
-globalThis.internalModules.util = { 
-	constants: {...internalConstants},
-	...globalThis.internalModules.util
-};
+		},
+	},
+}
+globalThis.coreModules.constants = globalThis.internalModules.constants
+globalThis.internalModules.util = {
+	constants: { ...internalConstants },
+	...globalThis.internalModules.util,
+}
 
-const CryptoInternal = await import("../../dist/crypto.js");
+const CryptoInternal = await import('../../dist/crypto.js')
 globalThis.internalModules.crypto = {
-	startLoadingCertificatesOffThread() { return; }, // throw new Error('Not implemented')},
+	startLoadingCertificatesOffThread() {
+		return
+	}, // throw new Error('Not implemented')},
 	createNativeKeyObjectClass() {
-		return [null, null, null, null];
+		return [null, null, null, null]
 	},
 	...globalThis.internalModules.crypto,
-	...CryptoInternal.default
-};
-const buffer = await import("../../dist/buffer.js");
-globalThis.internalModules.buffer = { buffer: {...buffer}, ...globalThis.internalModules.buffer };
-globalThis.coreModules.buffer = buffer;
-globalThis.buffer = buffer.Buffer;
-globalThis.Buffer = buffer.Buffer;
+	...CryptoInternal.default,
+}
+const buffer = await import('../../dist/buffer.js')
+globalThis.internalModules.buffer = {
+	buffer: { ...buffer },
+	...globalThis.internalModules.buffer,
+}
+globalThis.coreModules.buffer = buffer
+globalThis.buffer = buffer.Buffer
+globalThis.Buffer = buffer.Buffer
 
-const stringDecoder = await import("../../dist/string_decoder.js");
-globalThis.internalModules.string_decoder = { stringDecoder: {...stringDecoder}, ...globalThis.internalModules.string_decoder };
-globalThis.coreModules.string_decoder = stringDecoder.default;
+const stringDecoder = await import('../../dist/string_decoder.js')
+globalThis.internalModules.string_decoder = {
+	stringDecoder: { ...stringDecoder },
+	...globalThis.internalModules.string_decoder,
+}
+globalThis.coreModules.string_decoder = stringDecoder.default
 
-const inspect = await import("../../dist/util/inspect.js");
-globalThis.internalModules.util = { inspect: {...inspect}, ...globalThis.internalModules.util };
+const inspect = await import('../../dist/util/inspect.js')
+globalThis.internalModules.util = {
+	inspect: { ...inspect },
+	...globalThis.internalModules.util,
+}
 
-const util = await import("../../dist/util.js");
-globalThis.internalModules.util = { 
+const util = await import('../../dist/util.js')
+globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 	...util,
-	encodingsMap: globalThis.internalModules.string_decoder.encodings
-};
-globalThis.coreModules.util = util.default;
-globalThis.coreModules.util.encodingsMap = globalThis.internalModules.string_decoder.encodings;
+	encodingsMap: globalThis.internalModules.string_decoder.encodings,
+}
+globalThis.coreModules.util = util.default
+globalThis.coreModules.util.encodingsMap =
+	globalThis.internalModules.string_decoder.encodings
 
-const errors = await import("../../dist/errors.js");
+const errors = await import('../../dist/errors.js')
 globalThis.internalModules.errors = {
 	...globalThis.internalModules.errors,
 	...errors.default,
-	codes: errors.default.codes
- };
-console.log(globalThis.internalModules.errors);
+	codes: errors.default.codes,
+}
+console.log(globalThis.internalModules.errors)
 
-const realm = await import("../../dist/realm.js");
-globalThis.realm = { ...realm };
+const realm = await import('../../dist/realm.js')
+globalThis.realm = { ...realm }
 
-const path = await import("../../dist/path.js");
-console.log(path.default.join("a", "b", "c"));
-globalThis.coreModules.path = path.default;
+const path = await import('../../dist/path.js')
+console.log(path.default.join('a', 'b', 'c'))
+globalThis.coreModules.path = path.default
 
-const stream = await import("../../dist/stream.js");
-globalThis.coreModules.stream = stream.default;
+const stream = await import('../../dist/stream.js')
+globalThis.coreModules.stream = stream.default
 
-const asyncHooks = await import("../../dist/async_hooks.js");
-globalThis.coreModules.async_hooks = asyncHooks.default;
-console.log('asyncHooks', asyncHooks);
+const asyncHooks = await import('../../dist/async_hooks.js')
+globalThis.coreModules.async_hooks = asyncHooks.default
+console.log('asyncHooks', asyncHooks)
 
-const debuglog = await import("../../dist/internal/util/debuglog.js");
-globalThis.internalModules.util = { ...globalThis.internalModules.util, debuglog: debuglog.default };
-console.log('debuglog', debuglog);
-debuglog.default.initializeDebugEnv("debug");
+const debuglog = await import('../../dist/internal/util/debuglog.js')
+globalThis.internalModules.util = {
+	...globalThis.internalModules.util,
+	debuglog: debuglog.default,
+}
+console.log('debuglog', debuglog)
+debuglog.default.initializeDebugEnv('debug')
 
-console.log("Setting stdout etc.")
-globalThis.coreModules.os = globalThis.internalModules.os;
-
+console.log('Setting stdout etc.')
+globalThis.coreModules.os = globalThis.internalModules.os
 
 // Node Response class has an abort method.
 // globalThis.Response.prototype.abort = () => {
 // 	// do nothing
 // };
 
-const blob = await import("../../dist/blob.js");
-globalThis.coreModules.blob = blob.default;
+const blob = await import('../../dist/blob.js')
+globalThis.coreModules.blob = blob.default
 
-const fs = await import("../../dist/fs.js");
-console.log('fs', fs);
+const fs = await import('../../dist/fs.js')
+console.log('fs', fs)
 
 // Register internal/fs/dir module for lazy loading
 // Use the Dir class we implemented in fs_dir binding
 globalThis.__moduleRegistry.set('internal/fs/dir', {
 	Dir: globalThis.internalModules.fs_dir.Dir,
 	opendir: fs.default.opendir,
-	opendirSync: fs.default.opendirSync
-});
+	opendirSync: fs.default.opendirSync,
+})
 
 // Also expose in internalModules for other code that might need it
-globalThis.internalModules.fs_dir_exports = globalThis.__moduleRegistry.get('internal/fs/dir');
+globalThis.internalModules.fs_dir_exports =
+	globalThis.__moduleRegistry.get('internal/fs/dir')
 
-globalThis.coreModules.fs = fs.default;
+globalThis.coreModules.fs = fs.default
 
-const fsPromises = await import("../../dist/fs/promises.js");
-globalThis.coreModules["fs/promises"] = fsPromises.default.exports;
-globalThis.coreModules["fs"].FileHandle = fsPromises.default.FileHandle;
+const fsPromises = await import('../../dist/fs/promises.js')
+globalThis.coreModules['fs/promises'] = fsPromises.default.exports
+globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle
 
 // Make fs.promises.opendir usable directly in for await...of by returning
 // a thenable that is also async-iterable
@@ -2699,117 +3128,120 @@ globalThis.coreModules["fs"].FileHandle = fsPromises.default.FileHandle;
 	const originalOpendir = fsp && fsp.opendir
 	if (typeof originalOpendir === 'function') {
 		fsp.opendir = function (...args) {
-			return globalThis.internalModules.fs_dir.opendir(...args);
+			return globalThis.internalModules.fs_dir.opendir(...args)
 		}
 	}
 }
 
-const events = await import("../../dist/events.js");
-globalThis.coreModules.events = events.default;
+const events = await import('../../dist/events.js')
+globalThis.coreModules.events = events.default
 
 // Mixin EventEmitter methods into FsWorker prototype
-Object.getOwnPropertyNames(events.default.EventEmitter.prototype).forEach(name => {
-	if (name !== 'constructor') {
-		globalThis.internalModules.worker.Worker.prototype[name] = events.default.EventEmitter.prototype[name];
+Object.getOwnPropertyNames(events.default.EventEmitter.prototype).forEach(
+	(name) => {
+		if (name !== 'constructor') {
+			globalThis.internalModules.worker.Worker.prototype[name] =
+				events.default.EventEmitter.prototype[name]
+		}
 	}
-});
+)
 
-const http = await import("../../dist/http.js");
-globalThis.coreModules.http = http.default;
+const http = await import('../../dist/http.js')
+globalThis.coreModules.http = http.default
 
 // Recycle http module for http2
-const http2 = await import("../../dist/http2.js");
+const http2 = await import('../../dist/http2.js')
 globalThis.coreModules.http2 = {
-	// For HTTP2 constants 
+	// For HTTP2 constants
 	// ...http2.default,
 	constants: http2.default.constants,
 	// For actual requests
 	...http2.default,
 }
 
-const crypto = await import("../../dist/crypto.js");
-globalThis.coreModules.crypto = crypto.default;
+const crypto = await import('../../dist/crypto.js')
+globalThis.coreModules.crypto = crypto.default
 console.log('globalThis.coreModules.crypto', crypto)
 
-const https = await import("../../dist/https.js");
-globalThis.coreModules.https = https.default;
+const https = await import('../../dist/https.js')
+globalThis.coreModules.https = https.default
 
-const tls = await import("../../dist/tls.js");
-globalThis.coreModules.tls = tls.default;
+const tls = await import('../../dist/tls.js')
+globalThis.coreModules.tls = tls.default
 
-const net = await import("../../dist/net.js");
-globalThis.coreModules.net = net.default;
+const net = await import('../../dist/net.js')
+globalThis.coreModules.net = net.default
 
-const url = await import("../../dist/url.js");
+const url = await import('../../dist/url.js')
 globalThis.coreModules.url = {
 	...url.default,
 	pathToFileURL: globalThis.internalModules.url.pathToFileURL,
 	fileURLToPath: globalThis.internalModules.url.fileURLToPath,
-};
-console.log('URL', globalThis.coreModules.url);
+}
+console.log('URL', globalThis.coreModules.url)
 
-const zlib = await import("../../dist/zlib.js");
-globalThis.coreModules.zlib = zlib.default;
+const zlib = await import('../../dist/zlib.js')
+globalThis.coreModules.zlib = zlib.default
 
-const dns = await import("../../dist/dns.js");
-globalThis.coreModules.dns = dns.default;
+const dns = await import('../../dist/dns.js')
+globalThis.coreModules.dns = dns.default
 
-const readline = await import("../../dist/readline.js");
-globalThis.coreModules.readline = readline.default;
+const readline = await import('../../dist/readline.js')
+globalThis.coreModules.readline = readline.default
 
-const querystring = await import("../../dist/querystring.js");
-globalThis.coreModules.querystring = querystring.default;
+const querystring = await import('../../dist/querystring.js')
+globalThis.coreModules.querystring = querystring.default
 
-const console2 = await import("../../dist/console.js");
-globalThis.coreModules.console = console2.default;
+const console2 = await import('../../dist/console.js')
+globalThis.coreModules.console = console2.default
 
-const tty = await import("../../dist/tty.js");
-globalThis.coreModules.tty = tty.default;
+const tty = await import('../../dist/tty.js')
+globalThis.coreModules.tty = tty.default
 
-const assert = await import("../../dist/assert.js");
-globalThis.coreModules.assert = assert.default;
+const assert = await import('../../dist/assert.js')
+globalThis.coreModules.assert = assert.default
 
-const assertStrict = await import("../../dist/assert/strict.js");
-globalThis.coreModules["assert/strict"] = assertStrict.default;
+const assertStrict = await import('../../dist/assert/strict.js')
+globalThis.coreModules['assert/strict'] = assertStrict.default
 
-const timers = await import("../../dist/timers.js");
-globalThis.coreModules.timers = timers.default;
+const timers = await import('../../dist/timers.js')
+globalThis.coreModules.timers = timers.default
 
-const timersPromises = await import("../../dist/timers/promises.js");
-globalThis.coreModules["timers/promises"] = timersPromises.default;
+const timersPromises = await import('../../dist/timers/promises.js')
+globalThis.coreModules['timers/promises'] = timersPromises.default
 
-const childProcess = await import("../../dist/child_process.js");
-globalThis.coreModules.child_process = childProcess.default;
+const childProcess = await import('../../dist/child_process.js')
+globalThis.coreModules.child_process = childProcess.default
 
-const vm = await import("../../dist/vm.js");
-globalThis.coreModules.vm = vm.default;
+const vm = await import('../../dist/vm.js')
+globalThis.coreModules.vm = vm.default
 
-const v8 = await import("../../dist/v8.js");
-globalThis.coreModules.v8 = { ...v8 };
+const v8 = await import('../../dist/v8.js')
+globalThis.coreModules.v8 = { ...v8 }
 
-const workerThreads = await import("../../dist/worker_threads.js");
-globalThis.coreModules.worker_threads = workerThreads.default;
+const workerThreads = await import('../../dist/worker_threads.js')
+globalThis.coreModules.worker_threads = workerThreads.default
 
-const Module = await import("./module.js");
+const Module = await import('./module.js')
 globalThis.coreModules.module = {
 	...Module,
 	runMain: (args) => Module.Module.runMain(args),
-};
+}
 
 // realm.BuiltinModule
-for(const key in globalThis.coreModules) {
-	realm.default.BuiltinModule.allowRequireByUsers(key);
+for (const key in globalThis.coreModules) {
+	realm.default.BuiltinModule.allowRequireByUsers(key)
 	realm.default.BuiltinModule.map.set(key, {
 		exports: globalThis.coreModules[key],
 		filename: key,
 		id: key,
 		loaded: true,
 		loading: false,
-		compileForPublicLoader() { }
-	});
+		compileForPublicLoader() {},
+	})
 }
 
-globalThis.internalModules.natives = Object.keys(globalThis.internalModules);
+globalThis.internalModules.natives = Object.keys(globalThis.internalModules)
 
 // const ModuleCJSLoader = await import("../../dist/internal/modules/cjs/loader.js");
 // console.log({ ModuleCJSLoader })
@@ -2821,27 +3253,34 @@ globalThis.internalModules.natives = Object.keys(globalThis.internalModules);
 // console.log({ resolveModule })
 
 export function runMain(options) {
-	let path = '';
+	let path = ''
 	if (options.code) {
-		globalFs.mkdirSync('/tmp', {recursive: true});
-		path = `/tmp/file-${Date.now()}.cjs`;
-		globalFs.writeFileSync(path, options.code);
-		options = path;
+		globalFs.mkdirSync('/tmp', { recursive: true })
+		path = `/tmp/file-${Date.now()}.cjs`
+		globalFs.writeFileSync(path, options.code)
+		options = path
 	}
-	
-	globalThis.coreModules.module.initializeCJS(options);
-	return globalThis.coreModules.module.Module.runMain(options);
+
+	globalThis.coreModules.module.initializeCJS(options)
+	return globalThis.coreModules.module.Module.runMain(options)
 }
 
-globalThis.setImmediate = setTimeout;
+globalThis.setImmediate = setTimeout
 
-globalThis.coreModules.fs.realpath.native = globalThis.coreModules.fs.realpath;  //globalThis.internalModules.fs.realpathSync;
-globalThis.coreModules.fs.lutimes = function (path, atime, mtime, kUsePromises) {
+globalThis.coreModules.fs.realpath.native = globalThis.coreModules.fs.realpath //globalThis.internalModules.fs.realpathSync;
+globalThis.coreModules.fs.lutimes = function (
+	path,
+	atime,
+	mtime,
+	kUsePromises
+) {
 	return maybePromiseFromSync(() => {
 		// Update timestamps on symlink itself if symlink; otherwise behave like utimes
-		const { node } = globalFs.walk(path);
+		const { node } = globalFs.walk(path)
 		if (!node) {
-			const error = new Error(`ENOENT: no such file or directory, lutimes '${path}'`)
+			const error = new Error(
+				`ENOENT: no such file or directory, lutimes '${path}'`
+			)
 			error.code = 'ENOENT'
 			throw error
 		}
@@ -2854,113 +3293,113 @@ globalThis.coreModules.fs.lutimes = function (path, atime, mtime, kUsePromises) 
 		node.mtime = mtime
 		node.ctime = Date.now()
 	}, kUsePromises)
-};
+}
 
-const { fetch: fetchPolyfill } = await import("../../dist/fetch-polyfill.js");
+const { fetch: fetchPolyfill } = await import('../../dist/fetch-polyfill.js')
 globalThis.nodeFetch = async (url, ...args) => {
 	if (typeof url === 'string' && url.startsWith('https://')) {
-		url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`;
+		url = `http://127.0.0.1:8043/php-cors-proxy/cors-proxy.php?${url}`
 	}
 
-	let result = await fetchPolyfill(url, ...args);
+	let result = await fetchPolyfill(url, ...args)
 
 	// Strip content-encoding header to prevent npm from trying
 	// to decompress the already-decompressed fetch() response.
 	if (result.headers.has('content-encoding')) {
-		const newHeaders = new Headers(result.headers);
-		newHeaders.delete('content-encoding');
-		
+		const newHeaders = new Headers(result.headers)
+		newHeaders.delete('content-encoding')
+
 		result = new Response(result.body, {
 			status: result.status,
 			statusText: result.statusText,
-			headers: newHeaders
-		});
+			headers: newHeaders,
+		})
 	}
-	return result;
-};
+	return result
+}
 
-const timeouts = new Map();
-const originalSetTimeout = globalThis.setTimeout;
-const originalClearTimeout = globalThis.clearTimeout;
+const timeouts = new Map()
+const originalSetTimeout = globalThis.setTimeout
+const originalClearTimeout = globalThis.clearTimeout
 
 globalThis.setTimeout = (callback, after, ...args) => {
 	// Start the timeout immediately
-	const timeoutId = originalSetTimeout(callback, after, ...args);
-	
+	const timeoutId = originalSetTimeout(callback, after, ...args)
+
 	// Create a timeout object that mimics Node.js behavior
 	const timeoutObj = {
 		_id: timeoutId,
 		_unrefd: false,
 		unref() {
-			this._unrefd = true;
-			return this;
+			this._unrefd = true
+			return this
 		},
 		ref() {
-			this._unrefd = false;
-			return this;
+			this._unrefd = false
+			return this
 		},
 		hasRef() {
-			return !this._unrefd;
-		}
-	};
-	
+			return !this._unrefd
+		},
+	}
+
 	// Store the mapping for clearTimeout
-	timeouts.set(timeoutObj, timeoutId);
-	
-	return timeoutObj;
-};
+	timeouts.set(timeoutObj, timeoutId)
+
+	return timeoutObj
+}
 
 globalThis.clearTimeout = (timeout) => {
 	if (timeout && typeof timeout === 'object' && timeouts.has(timeout)) {
 		// Handle our custom timeout objects
-		const timeoutId = timeouts.get(timeout);
-		timeouts.delete(timeout);
-		return originalClearTimeout(timeoutId);
+		const timeoutId = timeouts.get(timeout)
+		timeouts.delete(timeout)
+		return originalClearTimeout(timeoutId)
 	} else {
 		// Handle regular timeout IDs (for compatibility)
-		return originalClearTimeout(timeout);
+		return originalClearTimeout(timeout)
 	}
-};
+}
 
-const intervals = new Map();
-const originalSetInterval = globalThis.setInterval;
-const originalClearInterval = globalThis.clearInterval;
+const intervals = new Map()
+const originalSetInterval = globalThis.setInterval
+const originalClearInterval = globalThis.clearInterval
 
 globalThis.setInterval = (callback, interval, ...args) => {
 	// Start the interval immediately
-	const intervalId = originalSetInterval(callback, interval, ...args);
-	
+	const intervalId = originalSetInterval(callback, interval, ...args)
+
 	// Create an interval object that mimics Node.js behavior
 	const intervalObj = {
 		_id: intervalId,
 		_unrefd: false,
 		unref() {
-			this._unrefd = true;
-			return this;
+			this._unrefd = true
+			return this
 		},
 		ref() {
-			this._unrefd = false;
-			return this;
+			this._unrefd = false
+			return this
 		},
 		hasRef() {
-			return !this._unrefd;
-		}
-	};
-	
+			return !this._unrefd
+		},
+	}
+
 	// Store the mapping for clearInterval
-	intervals.set(intervalObj, intervalId);
-	
-	return intervalObj;
-};
+	intervals.set(intervalObj, intervalId)
+
+	return intervalObj
+}
 
 globalThis.clearInterval = (interval) => {
 	if (interval && typeof interval === 'object' && intervals.has(interval)) {
 		// Handle our custom interval objects
-		const intervalId = intervals.get(interval);
-		intervals.delete(interval);
-		return originalClearInterval(intervalId);
+		const intervalId = intervals.get(interval)
+		intervals.delete(interval)
+		return originalClearInterval(intervalId)
 	} else {
 		// Handle regular interval IDs (for compatibility)
-		return originalClearInterval(interval);
+		return originalClearInterval(interval)
 	}
-};
+}
