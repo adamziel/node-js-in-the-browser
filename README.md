@@ -34,6 +34,9 @@ Run these in the XTerm shell at http://127.0.0.1:8043/.
 stuck in your current `cwd`! This means you must refresh the page before going to another
 demo and running `npm install` there! This will be fixed in the future.
 
+Also! The terminal will not always show you the prompt once it's ready for interactions! If
+your command finished, just press enter again and you'll be back in the interactive shell!
+
 #### Hello world
 
 ```
