@@ -3,7 +3,7 @@ import {
   __export
 } from "./chunk-IWXS4Z3P.js";
 
-// src/base64-js.js
+// src/this-is-bundled/base64-js.js
 function getLens(b64) {
   var len = b64.length;
   if (len % 4 > 0) {
@@ -50,7 +50,7 @@ function fromByteArray(uint8) {
 }
 var lookup, revLookup, Arr, code, i, len, _byteLength, toByteArray;
 var init_base64_js = __esm({
-  "src/base64-js.js"() {
+  "src/this-is-bundled/base64-js.js"() {
     "use strict";
     lookup = [];
     revLookup = [];
@@ -94,7 +94,7 @@ var init_base64_js = __esm({
   }
 });
 
-// src/ieee754.js
+// src/this-is-bundled/ieee754.js
 function read(buffer, offset, isLE, mLen, nBytes) {
   var e, m;
   var eLen = nBytes * 8 - mLen - 1;
@@ -126,11 +126,11 @@ function read(buffer, offset, isLE, mLen, nBytes) {
   return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
 }
 var init_ieee754 = __esm({
-  "src/ieee754.js"() {
+  "src/this-is-bundled/ieee754.js"() {
   }
 });
 
-// src/buffer-polyfill.js
+// src/this-is-bundled/buffer-polyfill.js
 var buffer_polyfill_exports = {};
 __export(buffer_polyfill_exports, {
   Buffer: () => Buffer,
@@ -781,7 +781,7 @@ function numberIsNaN(obj) {
 }
 var INSPECT_MAX_BYTES, K_MAX_LENGTH, kMaxLength, MAX_ARGUMENTS_LENGTH, INVALID_BASE64_RE;
 var init_buffer_polyfill = __esm({
-  "src/buffer-polyfill.js"() {
+  "src/this-is-bundled/buffer-polyfill.js"() {
     init_base64_js();
     init_ieee754();
     INSPECT_MAX_BYTES = 50;

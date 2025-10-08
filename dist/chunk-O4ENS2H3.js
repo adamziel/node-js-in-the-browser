@@ -30,7 +30,7 @@ import {
 import {
   buffer_polyfill_exports,
   init_buffer_polyfill
-} from "./chunk-YC7P67L4.js";
+} from "./chunk-2CPQJHAN.js";
 import {
   __commonJS,
   __esm,
