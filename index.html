@@ -21,14 +21,37 @@
 			}
 
 			#terminal {
-				height: 100%;
+				height: 40%;
 				width: 100%;
+			}
+
+			#readme {
+				font-family: 'Georgia', serif;
+				line-height: 1.6;
+				color: #e0e0e0;
+				padding: 20px;
+				max-width: 800px;
+				margin: 0 auto;
+			}
+			#readme h2 {
+				font-size: 2em;
+				margin-bottom: 0.5em;
+				color: #ffffff;
+			}
+			#readme p {
+				font-size: 1.1em;
+				margin-bottom: 1em;
+			}
+			#readme a {
+				color: #1e90ff;
+				text-decoration: none;
+			}
+			#readme a:hover {
+				text-decoration: underline;
 			}
 		</style>
 	</head>
 	<body>
-		<div id="terminal"></div>
-
 		<script type="module">
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
 			import { runMain } from './src/this-is-imported-directly/client-boot.js'
@@ -153,12 +176,16 @@
 
 				fs.writeFileSync(
 					'/demos/package.json',
-					JSON.stringify({
-						name: 'demos',
-						version: '1.0.0',
-						private: true,
-						dependencies: {},
-					}, null, 2)
+					JSON.stringify(
+						{
+							name: 'demos',
+							version: '1.0.0',
+							private: true,
+							dependencies: {},
+						},
+						null,
+						2
+					)
 				)
 
 				fs.mkdirSync('/demos/demo-ts', { recursive: true })
@@ -893,7 +920,9 @@
 
 				start() {
 					this.writeStdout(
-						'Welcome to the Node.js Web Polyfills shell. Type "help" for available commands.\n'
+						'Welcome to the Node.js Web Shell!\n' +
+							'Type "help" for available commands.\n' +
+							'Visit https://github.com/adamziel/node-js-in-the-browser for more information.\n\n'
 					)
 					this.showPrompt()
 				}
@@ -1917,5 +1946,43 @@
 		 node node_modules/@wordpress/scripts/bin/wp-scripts.js build wp.js
 		 */
 		</script>
+
+		<div id="terminal"></div>
+		
+		<div id="readme">
+			<h2 id="node-js-runtime-in-the-browser">
+				Node.js Runtime in the browser
+			</h2>
+
+			<p>
+				Visit
+				<a
+					href="https://github.com/adamziel/node-js-in-the-browser"
+					target="_blank"
+					>https://github.com/adamziel/node-js-in-the-browser</a
+				>
+				for more information.
+			</p>
+
+			<p>
+				I wanted to support webpack in
+				<a href="http://w.org/playground">WordPress Playground</a>, but
+				it requires a Node.js runtime. All the existing libraries seem
+				to be polyfilling entire Node.js core modules such as
+				<code>fs</code>, <code>http</code>, <code>crypto</code>, etc.
+				This is useful for simple use-cases, but Node.js modules are
+				large and nuanced.
+			</p>
+			<p>
+				This project is different. It ships the actual Node.js core
+				library with browser-specific polyfills for system calls.
+				It&#39;s an exploratory project to see how far we can go. The
+				approach seems very viable! It still requires a lot more work to
+				correctly support all the internal syscalls, the initialization
+				flow, actual Worker with shared filesystem etc. but even without
+				those features, it can already run <code>npm</code>, build
+				TypeScript, etc.
+			</p>
+		</div>
 	</body>
 </html>
