@@ -1,4 +1,4 @@
-import { Module } from './modules/module.js';
+import { Module } from './dist/module.js';
 
 interface RunModuleOptions {
 	code: string;

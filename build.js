@@ -2,8 +2,8 @@ import esbuild from 'esbuild';
 import fs from 'fs';
 import path from 'path';
 
-fs.rmSync('modules', { recursive: true, force: true });
-fs.mkdirSync('modules');
+fs.rmSync('dist', { recursive: true, force: true });
+fs.mkdirSync('dist');
 
 const entryPoints = {
 	child_process: './to-modularize/child_process.js',
@@ -105,7 +105,7 @@ esbuild
 	.build({
 		entryPoints,
 		bundle: true,
-		outdir: './modules',
+		outdir: './dist',
 		format: 'esm',
 		platform: 'browser',
 		splitting: true,
