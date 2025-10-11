@@ -40,9 +40,10 @@ const fsPort = createFilesystemPort()
 globalThis.globalFs = await RemoteInMemoryFileSystem.connect(fsPort)
 
 class ShellCommandExecutor {
-	constructor(fs) {
-		this.fs = fs
-	}
+	constructor(
+		private fs: RemoteInMemoryFileSystem,
+		private params: SpawnRemoteProcessParams
+	) {}
 
 	resolvePath(cwd, input) {
 		if (!input || input === '.') {
@@ -127,9 +128,7 @@ class ShellCommandExecutor {
 					out.push(`${name}\n`)
 				}
 			} catch (error) {
-				err.push(
-					`${this.formatFsError('ls', target, error)}\n`
-				)
+				err.push(`${this.formatFsError('ls', target, error)}\n`)
 			}
 		}
 		return { stdout: out.join(''), stderr: err.join('') }
@@ -174,9 +173,7 @@ class ShellCommandExecutor {
 				if (code === 'EEXIST') {
 					err.push(`mkdir: ${target}: File exists\n`)
 				} else if (code === 'ENOENT') {
-					err.push(
-						`mkdir: ${target}: No such file or directory\n`
-					)
+					err.push(`mkdir: ${target}: No such file or directory\n`)
 				} else if (code === 'ENOTDIR') {
 					err.push(`mkdir: ${target}: Not a directory\n`)
 				} else {
@@ -199,9 +196,7 @@ class ShellCommandExecutor {
 				const content = this.fs.readFileSync(resolved, 'utf-8')
 				out.push(content)
 			} catch (error) {
-				err.push(
-					`${this.formatFsError('cat', arg, error)}\n`
-				)
+				err.push(`${this.formatFsError('cat', arg, error)}\n`)
 			}
 		}
 		return { stdout: out.join(''), stderr: err.join('') }
@@ -241,11 +236,11 @@ class ShellCommandExecutor {
 				return result
 			case 'cd': {
 				const change = this.changeDirectory(cwd, args[0] ?? '/')
-					if (change.ok) {
-						result.cwd = change.cwd
-					} else {
-						result.stderr = `${change.message}\n`
-					}
+				if (change.ok) {
+					result.cwd = change.cwd
+				} else {
+					result.stderr = `${change.message}\n`
+				}
 				return result
 			}
 			case 'ls': {
@@ -339,8 +334,9 @@ function serializeProcessError(error: unknown): ProcessErrorDetail {
 }
 
 class MainWorker {
-	constructor() {
-		this.filesystem = globalThis.globalFs
+	private shell: ShellCommandExecutor
+
+	constructor(private filesystem: RemoteInMemoryFileSystem) {
 		this.shell = new ShellCommandExecutor(this.filesystem)
 	}
 
@@ -360,11 +356,14 @@ class MainWorker {
 		return result.cwd
 	}
 
-	async executeShellCommand(payload) {
-		const cwd = payload?.cwd ?? '/'
-		const command = payload?.command ?? ''
-		const args = Array.isArray(payload?.args) ? payload.args : []
-		return this.shell.execute(cwd, command, args)
+	async executeShellCommand(params: SpawnRemoteProcessParams) {
+		const cwd = params?.cwd ?? '/'
+		const command = params?.command ?? ''
+		const args = Array.isArray(params?.args) ? params.args : []
+		console.log('executeShellCommand', cwd, command, args)
+		const result = this.shell.execute(cwd, command, args)
+		console.log('executeShellCommand result', result)
+		return result
 	}
 
 	async spawnRemoteProcess(
@@ -402,8 +401,6 @@ class MainWorker {
 				rows,
 				name,
 				fsPort: createFilesystemPort(),
-			},
-			{
 				onStdout: (text) => emit('stdout', text),
 				onStderr: (text) => emit('stderr', text),
 				onExit: (info) => emit('exit', info),
@@ -412,7 +409,6 @@ class MainWorker {
 				onMessage: (data) => emit('message', data),
 			}
 		)
-
 		return Comlink.proxy({
 			addEventListener: (
 				type: string,
@@ -423,8 +419,7 @@ class MainWorker {
 				type: string,
 				listener: EventListenerOrEventListenerObject,
 				options?: boolean | EventListenerOptions
-			) =>
-				events.removeEventListener(type, listener as any, options),
+			) => events.removeEventListener(type, listener as any, options),
 			waitForExit: () => handle.waitForExit(),
 			write: (data: string) => handle.write?.(data),
 			end: () => handle.end?.(),
@@ -436,4 +431,4 @@ class MainWorker {
 	}
 }
 
-exposeAPI(new MainWorker(), self)
+exposeAPI(new MainWorker(globalThis.globalFs as any), self)

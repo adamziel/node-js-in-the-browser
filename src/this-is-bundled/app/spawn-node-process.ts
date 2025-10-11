@@ -2,7 +2,7 @@ const workerScriptUrl = new URL('./node-process.worker.js', import.meta.url)
 
 let processCounter = 0
 
-function sanitizeArgv(argv) {
+function sanitizeArgv(argv: string[]) {
 	if (!Array.isArray(argv)) {
 		throw new TypeError('spawnNodeProcess: argv must be an array.')
 	}
@@ -14,8 +14,8 @@ function sanitizeArgv(argv) {
 	})
 }
 
-function sanitizeEnv(env) {
-	const result = {}
+function sanitizeEnv(env: Record<string, string>) {
+	const result: Record<string, string> = {}
 	if (!env || typeof env !== 'object') {
 		return result
 	}
@@ -28,29 +28,44 @@ function sanitizeEnv(env) {
 	return result
 }
 
-function toInteger(value, fallback) {
+function toInteger(value: string, fallback: number) {
 	const number = Number.parseInt(value, 10)
 	return Number.isInteger(number) && number > 0 ? number : fallback
 }
 
 export type NodeProcessExitInfo = {
-    code: number
-    signal: string | null
+	code: number
+	signal: string | null
 }
 
 export type SpawnedNodeProcessHandle = {
-    waitForExit(): Promise<NodeProcessExitInfo>
-    write(data: string): void
-    end(): void
-    resize(cols: number, rows: number): void
-    signal(signal?: string): void
-    terminate(): void
+	waitForExit(): Promise<NodeProcessExitInfo>
+	write(data: string): void
+	end(): void
+	resize(cols: number, rows: number): void
+	signal(signal?: string): void
+	terminate(): void
+}
+
+export type SpawnNodeProcessOptions = {
+	entry: string
+	env?: Record<string, string>
+	cwd?: string
+	columns?: number
+	rows?: number
+	name?: string
+	fsPort: MessagePort
+	onStdout?: (text: string) => void
+	onStderr?: (text: string) => void
+	onExit?: (info: NodeProcessExitInfo) => void
+	onError?: (error: Error) => void
+	onReady?: () => void
+	onMessage?: (data: unknown) => void
 }
 
 export async function spawnNodeProcess(
-    argv = [],
-    options = {},
-    callbacks = {}
+	argv = [],
+	options = {} as SpawnNodeProcessOptions
 ): Promise<SpawnedNodeProcessHandle> {
 	const normalizedArgv = sanitizeArgv(argv)
 	const entry = options.entry
@@ -86,8 +101,8 @@ export async function spawnNodeProcess(
 		worker.onerror = null
 	}
 
-	let exitResolve
-	let exitReject
+	let exitResolve: (value: NodeProcessExitInfo) => void
+	let exitReject: (reason?: any) => void
 	const exitPromise = new Promise((resolve, reject) => {
 		exitResolve = resolve
 		exitReject = reject
@@ -97,13 +112,13 @@ export async function spawnNodeProcess(
 		const data = event.data || {}
 		switch (data.type) {
 			case 'stdout':
-				if (typeof callbacks.onStdout === 'function') {
-					callbacks.onStdout(String(data.data ?? ''))
+				if (typeof options.onStdout === 'function') {
+					options.onStdout(String(data.data ?? ''))
 				}
 				break
 			case 'stderr':
-				if (typeof callbacks.onStderr === 'function') {
-					callbacks.onStderr(String(data.data ?? ''))
+				if (typeof options.onStderr === 'function') {
+					options.onStderr(String(data.data ?? ''))
 				}
 				break
 			case 'exit': {
@@ -119,8 +134,8 @@ export async function spawnNodeProcess(
 							? data.signal
 							: null,
 				}
-				if (typeof callbacks.onExit === 'function') {
-					callbacks.onExit(exitInfo)
+				if (typeof options.onExit === 'function') {
+					options.onExit(exitInfo)
 				}
 				exitResolve(exitInfo)
 				break
@@ -135,20 +150,20 @@ export async function spawnNodeProcess(
 									? data.message
 									: 'Unknown node process error'
 						  )
-				if (typeof callbacks.onError === 'function') {
-					callbacks.onError(error)
+				if (typeof options.onError === 'function') {
+					options.onError(error)
 				}
 				exitReject(error)
 				break
 			}
 			case 'ready':
-				if (typeof callbacks.onReady === 'function') {
-					callbacks.onReady()
+				if (typeof options.onReady === 'function') {
+					options.onReady()
 				}
 				break
 			default:
-				if (typeof callbacks.onMessage === 'function') {
-					callbacks.onMessage(data)
+				if (typeof options.onMessage === 'function') {
+					options.onMessage(data)
 				}
 				break
 		}
@@ -166,15 +181,19 @@ export async function spawnNodeProcess(
 							colno: event.colno,
 							error: event.error,
 					  }
-					: { message: String(event?.message ?? 'Unknown worker error') }
+					: ({
+							message: String(
+								event?.message ?? 'Unknown worker error'
+							),
+					  } as any)
 			console.error('Node process worker error:', details)
 		}
 		const error =
 			event instanceof ErrorEvent && event.error instanceof Error
 				? event.error
 				: new Error('Node worker execution failed')
-		if (typeof callbacks.onError === 'function') {
-			callbacks.onError(error)
+		if (typeof options.onError === 'function') {
+			options.onError(error)
 		}
 		exitReject(error)
 	}
@@ -206,16 +225,16 @@ export async function spawnNodeProcess(
 			error instanceof Error
 				? error
 				: new Error(String(error ?? 'Unknown error'))
-		if (typeof callbacks.onError === 'function') {
-			callbacks.onError(err)
+		if (typeof options.onError === 'function') {
+			options.onError(err)
 		}
 		exitReject(err)
 	})
 
-    return {
-        waitForExit() {
-            return exitPromise
-        },
+	return {
+		waitForExit() {
+			return exitPromise
+		},
 		write(data) {
 			if (settled) return
 			worker.postMessage({
