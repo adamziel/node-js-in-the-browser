@@ -198,7 +198,11 @@ self.onmessage = async function (e) {
 		const worker = await spawnPumpWorker()
 		const connectionState = await connectToWorker(worker, port, 1 << 20)
 		console.log('[sync-receive.ts] ===> spawned pump worker')
+
 		// Try to receive a message synchronously
+		console.log('[sync-receive.ts] ===> before posting message to worker')
+		worker.postMessage({ type: 'will this message come across before receiveMessageOnPort?' })
+		console.log('[sync-receive.ts] ===> posted message to worker')
 		const result = receiveMessageOnPort(port, connectionState, { timeoutMs: 5000 })
 
 		console.log('[sync-receive.ts] after call to receiveMessageOnPort')

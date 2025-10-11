@@ -16,8 +16,17 @@ export default defineConfig({
     target: 'esnext',
     lib: false,
     rollupOptions: {
-      input: 'index.html'
+      output: {
+        format: 'esm',
+      },
+      input: {
+        index: 'index.html',
+        'comlink-sync': 'comlink-sync.html'
+      }      
     }
+  },
+  worker: {
+    format: 'es'
   },
   esbuild: {
     target: 'esnext'

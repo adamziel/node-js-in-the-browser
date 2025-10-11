@@ -2,7 +2,7 @@ import { STATE_FULL, FLAG_MORE } from './constants'
 console.log('[PUMP] booted')
 self.onmessage = function (e) {
 	const data = e.data
-	console.log('[PUMP] received message', {data})
+	console.log('[PUMP GLOBAL] received message', data)
 	if (!data || data.type !== 'init') return
 	const control = new Int32Array(data.ctrl)
 	const payload = new Uint8Array(data.buf)
@@ -18,6 +18,7 @@ self.onmessage = function (e) {
 	}
 
 	port.onmessage = (ev) => {
+		console.log("[PUMP PORT] port message received", ev.data);
 		const json = JSON.stringify(ev.data)
 		const bytes = te.encode(json)
 
