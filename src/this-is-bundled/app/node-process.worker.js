@@ -53,6 +53,12 @@ if (!('window' in globalThis)) {
 }
 globalThis.spawnNodeProcess = spawnNodeProcess
 
+if (typeof SharedArrayBuffer === 'undefined') {
+	throw new Error(
+		'SharedArrayBuffer is required to run Node processes. Ensure the app is served with COOP/COEP headers.'
+	)
+}
+
 const previousFetch = globalThis.fetch
 globalThis.fetch = async (url, ...args) => {
 	const parsed = new URL(url, window.location.href)
@@ -501,6 +507,10 @@ function reportError(error) {
 	})
 }
 
+const originalConsole = {
+	...globalThis.console,
+}
+
 async function runNodeProcess(config) {
 	if (!config.entry || typeof config.entry !== 'string') {
 		throw new Error('Node process worker requires an entry script path.')
@@ -526,6 +536,7 @@ async function runNodeProcess(config) {
 		await runMainRef(config.entry)
 		sendExit(0, null)
 	} catch (error) {
+		originalConsole.error('Error in runNodeProcess', error)
 		if (error instanceof ProcessExitError) {
 			sendExit(error.code ?? 0, null)
 		} else {

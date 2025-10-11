@@ -1,4 +1,3 @@
-globalThis.SharedArrayBuffer = ArrayBuffer
 globalThis.primordials = {}
 globalThis.global = globalThis
 import * as builtins from './builtins.js'
