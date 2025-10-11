@@ -510,12 +510,69 @@
 				return text.replace(/\r?\n/g, '\r\n')
 			}
 
+			
+			class StoredHistory {
+				constructor(options={}) {
+					this.maxLength = options.maxLength || 1000
+					this.items = options.items || JSON.parse(window.localStorage.getItem('history') || '[]');
+				}
+				
+				push(item) {
+					this.items.push(item)
+					if (this.items.length > this.maxLength) {
+						this.items.shift()
+					}
+					this.persist()
+				}
+
+				get length() {
+					return this.items.length
+				}
+
+				get(index) {
+					return this.items[index]
+				}
+
+				set(index, item) {
+					this.items[index] = item
+				}
+				
+				shift() {
+					const item = this.items.shift()
+					this.persist()
+					return item
+				}
+
+				unshift(item) {
+					this.items.unshift(item)
+					this.persist()
+				}
+
+				pop() {
+					const item = this.items.pop()
+					this.persist()
+					return item
+				}
+				
+				slice(start, end) {
+					return this.items.slice(start, end)
+				}
+
+				clear() {
+					this.items = []
+				}
+
+				persist() {
+					window.localStorage.setItem('history', JSON.stringify(this.items))
+				}
+			}
+
 			class XTermShell {
 				constructor(term) {
 					this.term = term
 					this.buffer = ''
 					this.cursor = 0
-					this.history = []
+					this.history = new StoredHistory()
 					this.historyIndex = 0
 					this.stashedLine = ''
 					this.isRunning = false
@@ -778,7 +835,7 @@
 					if (!line.trim()) {
 						return
 					}
-					if (this.history[this.history.length - 1] !== line) {
+					if (this.history.get(this.history.length - 1) !== line) {
 						this.history.push(line)
 					}
 					this.historyIndex = this.history.length
@@ -796,7 +853,7 @@
 						}
 						if (this.historyIndex > 0) {
 							this.historyIndex -= 1
-							this.buffer = this.history[this.historyIndex]
+							this.buffer = this.history.get(this.historyIndex)
 							this.cursor = this.buffer.length
 							this.renderLine()
 						}
@@ -811,7 +868,7 @@
 						if (this.historyIndex === this.history.length) {
 							this.buffer = this.stashedLine
 						} else {
-							this.buffer = this.history[this.historyIndex]
+							this.buffer = this.history.get(this.historyIndex)
 						}
 						this.cursor = this.buffer.length
 						this.renderLine()
