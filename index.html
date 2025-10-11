@@ -127,23 +127,21 @@
 			window.corsProxyUrl = new URL(
 				'./php-cors-proxy/cors-proxy.php',
 				window.location.href
-			);
+			)
 
 			const previousFetch = globalThis.fetch
 			globalThis.fetch = async (url, ...args) => {
-				const parsed = new URL(url, window.location.href);
-				if(parsed.hostname === window.location.hostname) {
-					return previousFetch(url, ...args);
+				const parsed = new URL(url, window.location.href)
+				if (parsed.hostname === window.location.hostname) {
+					return previousFetch(url, ...args)
 				}
 
 				if (typeof url === 'string' && url.startsWith('https://')) {
 					url = `${window.corsProxyUrl}?${url}`
 				}
 
-				let result = await previousFetch(url, ...args);
+				let result = await previousFetch(url, ...args)
 
-				// Strip content-encoding header to prevent npm from trying
-				// to decompress the already-decompressed fetch() response.
 				if (result.headers.has('content-encoding')) {
 					const newHeaders = new Headers(result.headers)
 					newHeaders.delete('content-encoding')
@@ -154,13 +152,21 @@
 						headers: newHeaders,
 					})
 				}
-				
+
 				return result
 			}
-			
+
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
-			import { runMain } from './src/this-is-imported-directly/client-boot.js'
 			import { FitAddon } from 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/+esm'
+			import { RemoteInMemoryFileSystem } from './src/this-is-imported-directly/in-memory-fs.client.js'
+
+			window.stableConsole = {
+				log: console.log.bind(console),
+				info: console.info.bind(console),
+				warn: console.warn.bind(console),
+				error: console.error.bind(console),
+				trace: console.trace.bind(console),
+			}
 
 			function createProgressTracker() {
 				const overlay = document.getElementById('loading-overlay')
@@ -214,320 +220,250 @@
 				}
 			}
 
-			const globalFs = window.globalFs
 			const progress = createProgressTracker()
 			progress.show('Preparing the runtime…')
-			const textDecoder = new TextDecoder()
 			const PROMPT_SUFFIX = '$ '
 
-			function normalizeNewlines(text) {
-				return text.replace(/\r?\n/g, '\r\n')
-			}
+			function createWorkerRpc(worker) {
+				let requestId = 0
+				const pending = new Map()
 
-			function coerceToString(chunk, encoding) {
-				if (typeof chunk === 'string') {
-					return chunk
-				}
-				if (chunk instanceof ArrayBuffer) {
-					return textDecoder.decode(new Uint8Array(chunk))
-				}
-				if (ArrayBuffer.isView(chunk)) {
-					return textDecoder.decode(chunk)
-				}
-				if (chunk === undefined || chunk === null) {
-					return ''
-				}
-				if (typeof chunk === 'object' && 'toString' in chunk) {
-					return String(chunk)
-				}
-				return String(chunk ?? '')
-			}
-
-			class ProcessExitError extends Error {
-				constructor(code = 0) {
-					super(`Process exited with code ${code}`)
-					this.name = 'ProcessExitError'
-					this.code = code ?? 0
-				}
-			}
-
-			const CACHE_NAME = 'node-polyfill-fetch-cache-v1'
-
-			async function setupFilesystemAndFetch() {
-				const fs = globalFs
-				progress.update({
-					message: 'Initializing virtual filesystem…',
-					progress: 5,
-				})
-				fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true })
-				if (!fs.existsSync('/.npm')) {
-					fs.mkdirSync('/.npm')
-				}
-				fs.mkdirSync('/bin', { recursive: true })
-				fs.mkdirSync('/tmp', { recursive: true })
-				if (!fs.existsSync('/bin/node')) {
-					fs.writeFileSync('/bin/node', '', { mode: 0o755 })
+				const rejectAll = (reason) => {
+					const error =
+						reason instanceof Error
+							? reason
+							: new Error(String(reason ?? 'Worker error'))
+					for (const { reject } of pending.values()) {
+						reject(error)
+					}
+					pending.clear()
 				}
 
-				progress.update({
-					message: 'Preparing npm runtime…',
-					progress: 15,
-				})
-
-				// Set up NPM
-				if (!fs.existsSync('/bin/npm')) {
-					const npmCodeResponse = await fetch('./npm/npm-single.js')
-					const npmCode = await npmCodeResponse.text()
-					fs.writeFileSync('/bin/npm', npmCode, { mode: 0o755 })
-				}
-				if (!fs.existsSync('/bin/default-input.js')) {
-					const defaultInputResponse = await fetch(
-						'./npm/default-input.js'
-					)
-					const defaultInputCode = await defaultInputResponse.text()
-					fs.writeFileSync('/bin/default-input.js', defaultInputCode)
-				}
-
-				progress.update({
-					message: 'Seeding demo workspace…',
-					progress: 30,
-				})
-
-				// Set up demo projects
-				fs.mkdirSync('/demos', { recursive: true })
-				if (!fs.existsSync('/demos/hello.js')) {
-					fs.writeFileSync(
-						'/demos/hello.js',
-						"console.log('Hello, world!');\n"
-					)
-				}
-
-				fs.writeFileSync(
-					'/demos/package.json',
-					JSON.stringify(
-						{
-							name: 'demos',
-							version: '1.0.0',
-							private: true,
-							dependencies: {},
-						},
-						null,
-						2
-					)
-				)
-
-				progress.update({
-					message: 'Configuring TypeScript demo…',
-					progress: 45,
-				})
-
-				fs.mkdirSync('/demos/demo-ts', { recursive: true })
-				const packageJsonPath = '/demos/demo-ts/package.json'
-				const requiredDependencies = {
-					webpack: '*',
-					'webpack-cli': '*',
-					'function-bind': '*',
-					'ts-loader': '*',
-					typescript: '*',
-					react: '*',
-					'react-dom': '*',
-					'@types/react': '*',
-					'@types/react-dom': '*',
-					'@types/node': '*',
-				}
-				let packageJson = {
-					name: 'web-polyfills-app',
-					version: '1.0.0',
-					private: true,
-					dependencies: {},
-				}
-				if (fs.existsSync(packageJsonPath)) {
-					try {
-						const existing = JSON.parse(
-							fs.readFileSync(packageJsonPath, 'utf8')
-						)
-						if (existing && typeof existing === 'object') {
-							packageJson = {
-								...packageJson,
-								...existing,
-								dependencies: { ...existing.dependencies },
-							}
+				worker.addEventListener('message', (event) => {
+					const data = event.data || {}
+					const { id, ok, result, error } = data
+					if (!Number.isInteger(id)) {
+						return
+					}
+					const entry = pending.get(id)
+					if (!entry) {
+						return
+					}
+					pending.delete(id)
+					if (ok) {
+						entry.resolve(result)
+					} else {
+						const message =
+							error && error.message
+								? error.message
+								: 'Worker request failed'
+						const workerError = new Error(message)
+						if (error && error.stack) {
+							workerError.stack = error.stack
 						}
-					} catch (error) {
-						console.warn(
-							'Failed to parse existing package.json, recreating it.',
-							error
-						)
+						entry.reject(workerError)
 					}
-				}
-				if (
-					!packageJson.dependencies ||
-					typeof packageJson.dependencies !== 'object'
-				) {
-					packageJson.dependencies = {}
-				}
-				for (const [dep, version] of Object.entries(
-					requiredDependencies
-				)) {
-					if (!(dep in packageJson.dependencies)) {
-						packageJson.dependencies[dep] = version
-					}
-				}
-				fs.writeFileSync(
-					packageJsonPath,
-					`${JSON.stringify(packageJson, null, 2)}\n`
-				)
-
-				progress.update({
-					message: 'Writing webpack configuration…',
-					progress: 55,
 				})
 
-				const webpackConfigPath = '/demos/demo-ts/webpack.config.js'
-				const webpackConfigContent = `module.exports = {
-	entry: '/demos/demo-ts/typescript-react.tsx',
-	output: {
-		filename: 'bundle.js',
-	},
-	module: {
-		rules: [
-			{
-				test: /\\.tsx?$/,
-				use: 'ts-loader',
-				exclude: /node_modules/,
-			},
-		],
-	},
-	resolve: {
-		extensions: ['.tsx', '.ts', '.js'],
-	}
-};
-`
-				let existingWebpackConfig = null
-				if (fs.existsSync(webpackConfigPath)) {
-					existingWebpackConfig = fs.readFileSync(
-						webpackConfigPath,
-						'utf8'
+				worker.addEventListener('error', (event) => {
+					rejectAll(
+						event?.error ??
+							new Error(event?.message ?? 'Worker error')
 					)
-				}
-				if (existingWebpackConfig !== webpackConfigContent) {
-					fs.writeFileSync(webpackConfigPath, webpackConfigContent)
-				}
-				const tsconfigPath = '/demos/demo-ts/tsconfig.json'
-				const tsconfigObject = {
-					compilerOptions: {
-						target: 'ES2018',
-						module: 'ESNext',
-						moduleResolution: 'Node',
-						jsx: 'react',
-						esModuleInterop: true,
-						allowSyntheticDefaultImports: true,
-						skipLibCheck: true,
-						forceConsistentCasingInFileNames: true,
-						isolatedModules: true,
-						lib: ['DOM', 'DOM.Iterable', 'ESNext'],
-						types: ['node', 'react', 'react-dom'],
+				})
+
+				worker.addEventListener('messageerror', () => {
+					rejectAll(new Error('Worker message serialization error'))
+				})
+
+				return {
+					call(type, payload = {}, transfer = []) {
+						const id = ++requestId
+						return new Promise((resolve, reject) => {
+							pending.set(id, { resolve, reject })
+							const message = { id, type, payload }
+							try {
+								if (transfer.length > 0) {
+									worker.postMessage(message, transfer)
+								} else {
+									worker.postMessage(message)
+								}
+							} catch (error) {
+								pending.delete(id)
+								reject(error)
+							}
+						})
 					},
-					include: ['./**/*.ts', './**/*.tsx'],
 				}
-				const tsconfigContent = `${JSON.stringify(
-					tsconfigObject,
-					null,
-					2
-				)}\n`
-				if (
-					!fs.existsSync(tsconfigPath) ||
-					fs.readFileSync(tsconfigPath, 'utf8') !== tsconfigContent
-				) {
-					fs.writeFileSync(tsconfigPath, tsconfigContent)
-				}
+			}
 
-				progress.update({
-					message: 'Generating sample React entrypoint…',
-					progress: 65,
+			function createProcessHandle(commandPort, eventPort, callbacks = {}) {
+				const {
+					onStdout,
+					onStderr,
+					onError,
+					onExit,
+					onReady,
+				} = callbacks
+
+				commandPort.start?.()
+				eventPort.start?.()
+
+				let settled = false
+				let resolveExit
+				let rejectExit
+				const exitPromise = new Promise((resolve, reject) => {
+					resolveExit = resolve
+					rejectExit = reject
 				})
 
-				if (!fs.existsSync('/demos/demo-ts/typescript-react.tsx')) {
-					fs.writeFileSync(
-						'/demos/demo-ts/typescript-react.tsx',
-						`
-				const React = require('react');
-				const ReactDOM = require('react-dom');
-				ReactDOM.render(<h1>Hello, world!</h1>, document.getElementById('root'));
-				`
+				const cleanup = () => {
+					if (settled) {
+						return
+					}
+					settled = true
+					eventPort.onmessage = null
+					try {
+						commandPort.close()
+					} catch (_error) {}
+					try {
+						eventPort.close()
+					} catch (_error) {}
+				}
+
+				eventPort.onmessage = (event) => {
+					const data = event.data || {}
+					switch (data.type) {
+						case 'stdout':
+							if (typeof onStdout === 'function') {
+								onStdout(String(data.data ?? ''))
+							}
+							break
+						case 'stderr':
+							if (typeof onStderr === 'function') {
+								onStderr(String(data.data ?? ''))
+							}
+							break
+						case 'ready':
+							if (typeof onReady === 'function') {
+								onReady()
+							}
+							break
+						case 'error':
+						case 'worker-error': {
+							const error =
+								data.error instanceof Error
+									? data.error
+									: new Error(
+											typeof data.message === 'string'
+												? data.message
+												: 'Worker process error'
+									  )
+							if (data.stack) {
+								error.stack = data.stack
+							}
+							if (typeof onError === 'function') {
+								onError(error)
+							}
+							if (!settled) {
+								rejectExit(error)
+								cleanup()
+							}
+							break
+						}
+						case 'exit': {
+							const info =
+								data.info && typeof data.info === 'object'
+									? data.info
+									: { code: 0, signal: null }
+							if (typeof onExit === 'function') {
+								onExit(info)
+							}
+							if (!settled) {
+								resolveExit(info)
+								cleanup()
+							}
+							break
+						}
+						default:
+							break
+					}
+				}
+
+				const send = (type, payload) => {
+					const message = { type, ...payload }
+					commandPort.postMessage(message)
+				}
+
+				return {
+					write(data) {
+						send('write', { data })
+					},
+					end() {
+						send('end')
+					},
+					resize(columns, rows) {
+						send('resize', { columns, rows })
+					},
+					signal(signal) {
+						send('signal', { signal })
+					},
+					terminate() {
+						send('terminate')
+					},
+					waitForExit() {
+						return exitPromise
+					},
+				}
+			}
+
+			async function spawnRemoteProcess(workerClient, argv, options, callbacks) {
+				const eventChannel = new MessageChannel()
+				try {
+					const result = await workerClient.call(
+						'spawn-node-process',
+						{
+							argv,
+							options,
+							eventPort: eventChannel.port1,
+						},
+						[eventChannel.port1]
 					)
-				}
-
-				progress.update({
-					message: 'Adding additional demos…',
-					progress: 70,
-				})
-
-				globalFs.mkdirSync('/bin', { recursive: true })
-				globalFs.mkdirSync('/demos/demo-cowsay', { recursive: true })
-				if (!fs.existsSync('/demos/demo-cowsay/package.json')) {
-					fs.writeFileSync(
-						'/demos/demo-cowsay/package.json',
-						JSON.stringify(
-							{
-								name: 'cowsay',
-								version: '1.0.0',
-								private: true,
-								dependencies: {
-									cowsay: '*',
-								},
-							},
-							null,
-							2
+					const commandPort = result?.commandPort
+					if (!(commandPort instanceof MessagePort)) {
+						throw new Error(
+							'Worker did not return a valid command port'
 						)
+					}
+					return createProcessHandle(
+						commandPort,
+						eventChannel.port2,
+						callbacks
 					)
-					fs.writeFileSync(
-						'/demos/demo-cowsay/test.js',
-						`const cowsay = require('cowsay');
-					console.log(cowsay.say({
-						text : "I'm a moooodule",
-						e : "oO",
-						T : "U "
-					}));
-`
-					)
+				} catch (error) {
+					try {
+						eventChannel.port2.close()
+					} catch (_err) {}
+					throw error
 				}
-
-				progress.update({
-					message: 'Touching required npm shims…',
-					progress: 80,
-				})
-
-				// npm really wants to see a module called `node-gyp` in the filesystem,
-				// even if it doesn't actually run it.
-				globalFs.mkdirSync('/node_modules/node-gyp/bin', {
-					recursive: true,
-				})
-				globalFs.writeFileSync(
-					'/node_modules/node-gyp/package.json',
-					'{}'
-				)
-				globalFs.writeFileSync(
-					'/node_modules/node-gyp/bin/node-gyp.js',
-					''
-				)
-
-				progress.update({
-					message: 'Environment ready!',
-					progress: 90,
-				})
 			}
 
-			window.stableConsole = {
-				log: console.log.bind(console),
-				info: console.info.bind(console),
-				warn: console.warn.bind(console),
-				error: console.error.bind(console),
-				trace: console.trace.bind(console),
-			}
+			const mainWorker = new Worker(
+				'./src/this-is-imported-directly/main-worker.js',
+				{
+					type: 'module',
+				}
+			)
+			const workerClient = createWorkerRpc(mainWorker)
+
+			await workerClient.call('init-demo-filesystem')
+			const { port: fsPort } = await workerClient.call(
+				'create-filesystem-port'
+			)
+			const globalFs = await RemoteInMemoryFileSystem.connect(fsPort)
+			window.globalFs = globalFs
 
 			try {
-				await setupFilesystemAndFetch()
 				progress.update({
 					message: 'Launching terminal…',
 					progress: 98,
@@ -546,415 +482,130 @@
 					this.shell = shell
 					this.fs = globalFs
 					this.active = false
-					this.stdinStream = null
 					this.currentRunToken = null
+					this.currentProcess = null
+					this.abortCurrent = null
+					this.stdinWriter = null
+					this.unsubscribeResize = null
 				}
 
 				isNodeCommand(command) {
 					return command === 'node' || command === 'npm'
 				}
 
-				createTtyStreams(argv, runToken) {
-					const streamModule = globalThis.coreModules?.stream
-					if (!streamModule) {
-						throw new Error('stream module is not available')
-					}
-					const { Writable, Readable } = streamModule
-					const term = this.shell.term
-					const initialCols = term?.cols ?? 80
-					const initialRows = term?.rows ?? 24
-					const toString = (chunk, encoding) =>
-						coerceToString(chunk, encoding)
-
-					class TerminalWriteStream extends Writable {
-						constructor(fd, writer) {
-							super({ decodeStrings: false })
-							this.fd = fd
-							this.isTTY = true
-							this.columns = initialCols
-							this.rows = initialRows
-							this._writer = writer
-						}
-
-						_write(chunk, encoding, callback) {
-							try {
-								this._writer(toString(chunk, encoding))
-								callback()
-							} catch (error) {
-								callback(error)
-							}
-						}
-
-						_emit(sequence) {
-							if (sequence) {
-								this._writer(sequence)
-							}
-						}
-
-						cursorTo(x, y, callback) {
-							let sequence = ''
-							if (typeof y === 'number') {
-								const row = Math.max(0, y) + 1
-								const col =
-									typeof x === 'number'
-										? Math.max(0, x) + 1
-										: 1
-								sequence = `\u001b[${row};${col}H`
-							} else if (typeof x === 'number') {
-								const col = Math.max(0, x) + 1
-								sequence = `\u001b[${col}G`
-							}
-							this._emit(sequence)
-							if (typeof callback === 'function') {
-								callback()
-							}
-							return true
-						}
-
-						moveCursor(dx, dy, callback) {
-							if (dy) {
-								const vertical = Math.abs(dy)
-								const code = dy > 0 ? 'B' : 'A'
-								this._emit(`\u001b[${vertical}${code}`)
-							}
-							if (dx) {
-								const horizontal = Math.abs(dx)
-								const code = dx > 0 ? 'C' : 'D'
-								this._emit(`\u001b[${horizontal}${code}`)
-							}
-							if (typeof callback === 'function') {
-								callback()
-							}
-							return true
-						}
-
-						clearLine(dir, callback) {
-							const map = {
-								'-1': '\u001b[1K',
-								0: '\u001b[2K',
-								1: '\u001b[0K',
-							}
-							this._emit(map[dir] ?? '\u001b[2K')
-							if (typeof callback === 'function') {
-								callback()
-							}
-							return true
-						}
-
-						clearScreenDown(callback) {
-							this._emit('\u001b[0J')
-							if (typeof callback === 'function') {
-								callback()
-							}
-							return true
-						}
-
-						getColorDepth() {
-							return 24
-						}
-
-						hasColors() {
-							return true
-						}
-
-						getWindowSize() {
-							return [this.columns, this.rows]
-						}
-
-						updateWindowSize(cols, rows) {
-							if (typeof cols === 'number') {
-								this.columns = cols
-							}
-							if (typeof rows === 'number') {
-								this.rows = rows
-							}
-							this.emit('resize')
+				async disposeCurrentProcess({ terminate = false } = {}) {
+					if (typeof this.unsubscribeResize === 'function') {
+						try {
+							this.unsubscribeResize()
+						} catch {
+							// ignore cleanup errors
 						}
 					}
-
-					class TerminalReadStream extends Readable {
-						constructor() {
-							super({ read() {} })
-							this.fd = 0
-							this.isTTY = true
-							this.isRaw = false
-							this.columns = initialCols
-							this.rows = initialRows
-						}
-
-						setRawMode(flag) {
-							this.isRaw = !!flag
-							return this
-						}
-
-						updateWindowSize(cols, rows) {
-							if (typeof cols === 'number') {
-								this.columns = cols
-							}
-							if (typeof rows === 'number') {
-								this.rows = rows
-							}
-							this.emit('resize')
-						}
-
-						writeFromTerminal(data) {
-							if (!this.push(data)) {
-								// Drop data under backpressure; interactive input is best-effort.
-							}
-						}
-
-						endOfInput() {
-							this.push(null)
-						}
-
-						resume() {
-							super.resume()
-							return this
-						}
-
-						pause() {
-							super.pause()
-							return this
+					this.unsubscribeResize = null
+					this.abortCurrent = null
+					this.stdinWriter = null
+					const current = this.currentProcess
+					if (current && terminate) {
+						try {
+							current.waitForExit?.().catch(() => {})
+							current.terminate?.()
+						} catch {
+							// ignore termination errors
 						}
 					}
-
-					const stdout = new TerminalWriteStream(1, (text) =>
-						this.shell.writeStdoutForRun(runToken, text)
-					)
-					const stderr = new TerminalWriteStream(2, (text) =>
-						this.shell.writeStderrForRun(runToken, text)
-					)
-					const stdin = new TerminalReadStream()
-
-					const ttyModule = globalThis.coreModules?.tty
-					if (ttyModule && typeof ttyModule.isatty === 'function') {
-						if (!ttyModule.__webPolyfillsOriginalIsatty) {
-							ttyModule.__webPolyfillsOriginalIsatty =
-								ttyModule.isatty
-							ttyModule.__webPolyfillsTtyFds = new Set()
-							ttyModule.isatty = (fd) => {
-								return (
-									ttyModule.__webPolyfillsTtyFds.has(fd) ||
-									ttyModule.__webPolyfillsOriginalIsatty(fd)
-								)
-							}
-						}
-						const fdSet = ttyModule.__webPolyfillsTtyFds
-						fdSet.add(stdin.fd)
-						fdSet.add(stdout.fd)
-						fdSet.add(stderr.fd)
-					}
-
-					const unsubscribe =
-						typeof this.shell.onTerminalResize === 'function'
-							? this.shell.onTerminalResize((cols, rows) => {
-									stdout.updateWindowSize(cols, rows)
-									stderr.updateWindowSize(cols, rows)
-									stdin.updateWindowSize(cols, rows)
-							  })
-							: () => {}
-
-					globalThis.process.initProcess?.({
-						args: argv,
-						cwd: this.shell.cwd,
-						stdin,
-						stdout,
-						stderr,
-					})
-
-					return {
-						stdin,
-						stdout,
-						stderr,
-						dispose: () => {
-							unsubscribe()
-							stdin.endOfInput()
-							if (ttyModule?.__webPolyfillsTtyFds) {
-								const fdSet = ttyModule.__webPolyfillsTtyFds
-								fdSet.delete(stdin.fd)
-								fdSet.delete(stdout.fd)
-								fdSet.delete(stderr.fd)
-							}
-						},
-					}
+					this.currentProcess = null
 				}
 
-				prepareEnvironment(runToken) {
-					const processObj = globalThis.process
-					const utilModule = globalThis.coreModules?.util
-					const format =
-						typeof utilModule?.format === 'function'
-							? utilModule.format
-							: (...args) =>
-									args
-										.map((arg) =>
-											typeof arg === 'string'
-												? arg
-												: JSON.stringify(arg)
-										)
-										.join(' ')
-
-					const previous = {
-						argv: Array.isArray(processObj?.argv)
-							? [...processObj.argv]
-							: undefined,
-						argc: processObj?.argc,
-						env: processObj?.env
-							? { ...processObj.env }
-							: undefined,
-						cwd: processObj?.cwd,
-						chdir: processObj?.chdir,
-						console: {
-							log: console.log,
-							info: console.info,
-							warn: console.warn,
-							error: console.error,
-						},
-						exit: processObj?.exit,
-						abort: processObj?.abort,
-					}
-
-					const terminalAdapter = {
-						writeStdout: (message) =>
-							this.shell.writeStdoutForRun(runToken, message),
-						writeStderr: (message) =>
-							this.shell.writeStderrForRun(runToken, message),
-					}
-					processObj?.setTerminal?.(terminalAdapter)
-
-					console.log = (...args) => {
-						this.shell.writeStdoutForRun(
-							runToken,
-							`${format(...args)}\n`
-						)
-					}
-					console.info = console.log
-					console.warn = (...args) => {
-						this.shell.writeStderrForRun(
-							runToken,
-							`${format(...args)}\n`
-						)
-					}
-					console.error = console.warn
-
-					processObj.exit = (code = 0) => {
-						throw new ProcessExitError(code)
-					}
-					processObj.abort = () => {
-						throw new ProcessExitError(1)
-					}
-
-					return () => {
-						processObj?.setTerminal?.(null)
-						console.log = previous.console.log
-						console.info = previous.console.info
-						console.warn = previous.console.warn
-						console.error = previous.console.error
-						processObj.exit = previous.exit
-						processObj.abort = previous.abort
-						if (previous.argv) {
-							processObj.argv = [...previous.argv]
-						}
-						if (typeof previous.argc === 'number') {
-							processObj.argc = previous.argc
-						}
-						if (previous.env) {
-							const env = processObj.env ?? {}
-							for (const key of Object.keys(env)) {
-								delete env[key]
-							}
-							for (const [key, value] of Object.entries(
-								previous.env
-							)) {
-								env[key] = value
-							}
-						}
-						if (previous.cwd) {
-							processObj.cwd = previous.cwd
-						}
-						if (previous.chdir) {
-							processObj.chdir = previous.chdir
+				snapshotProcessEnv() {
+					const env = globalThis.process?.env
+					const result = {}
+					if (env && typeof env === 'object') {
+						for (const [key, value] of Object.entries(env)) {
+							result[key] = value
 						}
 					}
-				}
-
-				resetModuleState() {
-					const moduleRuntime = globalThis.coreModules?.module
-					if (!moduleRuntime) {
-						return
-					}
-					const Module = moduleRuntime.Module
-					if (Module) {
-						if (Module._cache) {
-							Module._cache = Object.create(null)
-						}
-						if (Module._pathCache) {
-							Module._pathCache = Object.create(null)
-						}
-					}
+					return result
 				}
 
 				async runMainWithEntry(entryPath, argv) {
-					/**
-					 * Sometimes onExit is not called even though the process finished running.
-					 * This is a quirk we need to live with until we run those Node.js processes in workers
-					 * that we can actually terminate. For now, we'll assume that a runMainWithEntry call
-					 * always means the previous one is functionally finished and it's time to clean up.
-					 */
-					if (typeof this._pendingOnExit === 'function') {
-						try {
-							this._pendingOnExit()
-						} catch (error) {
-							console.error(
-								'Error while running pending onExit handler:',
-								error
-							)
-						} finally {
-							this._pendingOnExit = null
-						}
+					if (!entryPath) {
+						throw new Error(
+							'Entry path is required to launch a Node process.'
+						)
 					}
+					await this.disposeCurrentProcess({ terminate: true })
 					const runToken = Symbol('node-run')
 					this.currentRunToken = runToken
 					this.shell.setActiveOutputToken(runToken)
-					const { stdin, dispose } = this.createTtyStreams(
+					const columns = this.shell.term?.cols ?? 80
+					const rows = this.shell.term?.rows ?? 24
+					const envSnapshot = this.snapshotProcessEnv()
+					const spawnOptions = {
+						entry: entryPath,
+						cwd: this.shell.cwd,
+						env: envSnapshot,
+						columns,
+						rows,
+					}
+					const spawnCallbacks = {
+						onStdout: (text) =>
+							this.shell.writeStdoutForRun(runToken, text),
+						onStderr: (text) =>
+							this.shell.writeStderrForRun(runToken, text),
+						onError: (error) => {
+							const message =
+								error instanceof Error
+									? error.message
+									: String(error ?? 'Unknown error')
+							this.shell.writeStderrForRun(
+								runToken,
+								`${message}\n`
+							)
+						},
+					}
+					const processHandle = await spawnRemoteProcess(
+						workerClient,
 						argv,
-						runToken
+						spawnOptions,
+						spawnCallbacks
 					)
-					this.stdinStream = stdin
-					const cleanupEnv = this.prepareEnvironment(runToken)
-					const processObj = globalThis.process
-					const onExit = () => {
-						if (this._pendingOnExit !== onExit) {
-							return
+					this.currentProcess = processHandle
+					this.stdinWriter = (data) => processHandle.write(data)
+					this.abortCurrent = () => processHandle.signal('SIGINT')
+					if (typeof this.shell.onTerminalResize === 'function') {
+						this.unsubscribeResize = this.shell.onTerminalResize(
+							(cols, rows) => {
+								processHandle.resize(cols, rows)
+							}
+						)
+					}
+					try {
+						const result =
+							typeof processHandle.waitForExit === 'function'
+								? await processHandle.waitForExit()
+								: await processHandle.exit
+						if (
+							result &&
+							typeof result.code === 'number' &&
+							result.code !== 0
+						) {
+							this.shell.writeStderrForRun(
+								runToken,
+								`Process exited with code ${result.code}\n`
+							)
 						}
-						if (this.currentRunToken === runToken) {
-							this.currentRunToken = null
-						}
+					} catch (error) {
+						const message =
+							error instanceof Error
+								? error.message
+								: String(error ?? 'Unknown error')
+						this.shell.writeStderrForRun(runToken, `${message}\n`)
+					} finally {
 						if (this.shell.getActiveOutputToken() === runToken) {
 							this.shell.setActiveOutputToken(null)
 						}
-						cleanupEnv()
-						dispose()
-						this.stdinStream = null
-						processObj.off('exit', onExit)
-						this._pendingOnExit = null
-					}
-					this._pendingOnExit = onExit
-					processObj.on('exit', onExit)
-					this.resetModuleState()
-					try {
-						await runMain(entryPath)
-					} catch (error) {
-						console.error(error)
-						if (error instanceof ProcessExitError) {
-							if (error.code !== 0) {
-								this.shell.writeStderr(
-									`Process exited with code ${error.code}\n`
-								)
-							}
-							return
-						}
-						throw error
+						await this.disposeCurrentProcess()
+						this.currentRunToken = null
 					}
 				}
 
@@ -1003,29 +654,33 @@
 				}
 
 				handleInput(data) {
-					if (!this.active || !this.stdinStream) {
+					if (!this.active || !this.stdinWriter) {
 						return false
 					}
-					this.stdinStream.writeFromTerminal(data)
+					this.stdinWriter(data)
 					return true
 				}
 
 				abort() {
-					if (!this.active) {
+					if (!this.active || !this.currentProcess) {
 						return
 					}
 					try {
-						const processObj = globalThis.process
-						if (typeof processObj?.emit === 'function') {
-							processObj.emit('SIGINT')
-						}
-						this.stdinStream?.writeFromTerminal('\u0003')
+						this.currentProcess.signal('SIGINT')
 					} catch (error) {
+						const message =
+							error instanceof Error
+								? error.message
+								: String(error)
 						this.shell.writeStderr(
-							`Failed to send SIGINT: ${error.message}\n`
+							`Failed to send SIGINT: ${message}\n`
 						)
 					}
 				}
+			}
+
+			function normalizeNewlines(text) {
+				return text.replace(/\r?\n/g, '\r\n')
 			}
 
 			class XTermShell {
@@ -1388,33 +1043,33 @@
 					return `/${base.join('/')}` || '/'
 				}
 
-				changeDirectory(target, { fromProcess = false } = {}) {
-					const resolved = this.resolvePath(target ?? '/')
+				async changeDirectory(target, { fromProcess = false } = {}) {
+					const desired = target ?? '/'
 					try {
-						const stats = globalFs.statSync(resolved)
-						if (!stats.isDirectory()) {
-							const error = new Error(
-								`ENOTDIR: not a directory, chdir '${resolved}'`
-							)
-							error.code = 'ENOTDIR'
-							throw error
-						}
-						this.cwd = resolved
-						return resolved
+						const response = await workerClient.call(
+							'change-directory',
+							{
+								cwd: this.cwd,
+								target: desired,
+							}
+						)
+						const nextCwd =
+							response && typeof response.cwd === 'string'
+								? response.cwd
+								: this.cwd
+						this.cwd = nextCwd
+						return nextCwd
 					} catch (error) {
 						if (fromProcess) {
 							throw error
 						}
-						const code = error && error.code ? error.code : 'ERROR'
-						if (code === 'ENOENT') {
-							this.writeStderr(
-								`cd: ${target}: No such file or directory\n`
-							)
-						} else if (code === 'ENOTDIR') {
-							this.writeStderr(`cd: ${target}: Not a directory\n`)
-						} else {
-							this.writeStderr(`cd: ${error.message}\n`)
-						}
+						const message =
+							error instanceof Error
+								? error.message
+								: String(error ?? 'Unknown error')
+						this.writeStderr(
+							message.endsWith('\n') ? message : `${message}\n`
+						)
 					}
 					return this.cwd
 				}
@@ -1444,52 +1099,40 @@
 						return
 					}
 
+					try {
+						const result = await workerClient.call(
+							'execute-shell-command',
+							{
+								cwd: this.cwd,
+								command,
+								args,
+							}
+						)
+						if (result && result.handled) {
+							if (
+								typeof result.cwd === 'string' &&
+								result.cwd !== this.cwd
+							) {
+								this.cwd = result.cwd
+							}
+							if (result.stdout) {
+								this.writeStdout(result.stdout)
+							}
+							if (result.stderr) {
+								this.writeStderr(result.stderr)
+							}
+							return
+						}
+					} catch (error) {
+						const message =
+							error instanceof Error
+								? error.message
+								: String(error ?? 'Unknown error')
+						this.writeStderr(`${message}\n`)
+						return
+					}
+
 					switch (command) {
-						case 'help':
-							this.writeStdout('Available commands:\n')
-							this.writeStdout(
-								'  help    Show this help message\n'
-							)
-							this.writeStdout(
-								'  ls      List files in the current directory\n'
-							)
-							this.writeStdout(
-								'  pwd     Print the current working directory\n'
-							)
-							this.writeStdout(
-								'  cd      Change the current working directory\n'
-							)
-							this.writeStdout(
-								'  mkdir   Create directories (use -p to create parents)\n'
-							)
-							this.writeStdout(
-								'  extract-targz <archive> [dest]  Extract a .tar.gz archive\n'
-							)
-							this.writeStdout(
-								'  node    Run a Node.js script (basic flags supported)\n'
-							)
-							this.writeStdout(
-								'  npm     Run the bundled npm executable\n'
-							)
-							break
-						case 'pwd':
-							this.writeStdout(`${this.cwd}\n`)
-							break
-						case 'cd':
-							this.changeDirectory(args[0] ?? '/')
-							break
-						case 'ls':
-							this.handleList(args)
-							break
-						case 'echo':
-							this.handleEcho(args)
-							break
-						case 'cat':
-							this.handleCat(args)
-							break
-						case 'mkdir':
-							this.handleMkdir(args)
-							break
 						case 'extract-targz':
 							this.handleExtractTarGz(args)
 							break
@@ -1498,117 +1141,6 @@
 								`shell: ${command}: command not found\n`
 							)
 					}
-				}
-
-				handleList(args) {
-					const targets = args.length ? args : ['.']
-					for (const target of targets) {
-						const resolved = this.resolvePath(target)
-						try {
-							const stats = globalFs.statSync(resolved)
-							if (stats.isDirectory()) {
-								const entries = globalFs
-									.readdirSync(resolved)
-									.sort((a, b) => a.localeCompare(b))
-								for (const entry of entries) {
-									this.writeStdout(`${entry}\n`)
-								}
-							} else {
-								this.writeStdout(
-									`${resolved.split('/').pop()}\n`
-								)
-							}
-						} catch (error) {
-							this.writeStderr(
-								`${this.formatFsError('ls', target, error)}\n`
-							)
-							if (targets.length > 1) {
-								continue
-							}
-						}
-					}
-				}
-
-				handleMkdir(args) {
-					if (!args.length) {
-						this.writeStderr('mkdir: missing operand\n')
-						return
-					}
-					let recursive = false
-					const targets = []
-					for (const arg of args) {
-						if (arg === '-p') {
-							recursive = true
-							continue
-						}
-						if (arg.startsWith('-')) {
-							this.writeStderr(`mkdir: invalid option '${arg}'\n`)
-							return
-						}
-						targets.push(arg)
-					}
-					if (!targets.length) {
-						this.writeStderr('mkdir: missing operand\n')
-						return
-					}
-					for (const target of targets) {
-						const resolved = this.resolvePath(target)
-						try {
-							if (recursive) {
-								globalFs.mkdirSync(resolved, {
-									recursive: true,
-								})
-							} else {
-								globalFs.mkdirSync(resolved)
-							}
-						} catch (error) {
-							const code =
-								error && error.code ? error.code : 'ERROR'
-							if (code === 'EEXIST' && recursive) {
-								continue
-							}
-							if (code === 'EEXIST') {
-								this.writeStderr(
-									`mkdir: ${target}: File exists\n`
-								)
-							} else if (code === 'ENOENT') {
-								this.writeStderr(
-									`mkdir: ${target}: No such file or directory\n`
-								)
-							} else if (code === 'ENOTDIR') {
-								this.writeStderr(
-									`mkdir: ${target}: Not a directory\n`
-								)
-							} else {
-								this.writeStderr(`mkdir: ${error.message}\n`)
-							}
-						}
-					}
-				}
-
-				handleCat(args) {
-					if (!args.length) {
-						this.writeStderr('cat: missing operand\n')
-						return
-					}
-					for (const arg of args) {
-						const resolved = this.resolvePath(arg)
-						try {
-							const content = globalFs.readFileSync(
-								resolved,
-								'utf-8'
-							)
-							this.writeStdout(content)
-						} catch (error) {
-							this.writeStderr(
-								`${this.formatFsError('cat', arg, error)}\n`
-							)
-						}
-					}
-				}
-
-				handleEcho(args) {
-					this.writeStdout(args.join(' '))
 				}
 
 				handleExtractTarGz(args) {
@@ -2097,7 +1629,7 @@
 			terminalElement.addEventListener('click', () => terminal.focus())
 			setTimeout(() => {
 				terminal.focus()
-			}, 50);
+			}, 50)
 			/*
 		I tried getting alrernative package managers to work, but they
 		rely on deep Node internals and will require more work:
@@ -2158,9 +1690,7 @@
 			</p>
 
 			<h3 id="examples">Examples</h3>
-			<p>
-				Run these in the XTerm shell above.
-			</p>
+			<p>Run these in the XTerm shell above.</p>
 			<p>
 				<strong>There&#39;s a big gotcha with CWD!</strong> Once you run
 				<code>npm</code> for the first time, node CWD will be stuck in

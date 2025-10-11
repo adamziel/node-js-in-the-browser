@@ -3,7 +3,28 @@ globalThis.primordials = {}
 globalThis.global = globalThis
 import * as builtins from './builtins.js'
 const { InMemoryFileSystem } = await import('./in-memory-fs.js')
-const globalFs = new InMemoryFileSystem()
+
+async function createGlobalFs() {
+	if (typeof globalThis.__IN_MEMORY_FS_FACTORY__ === 'function') {
+		try {
+			const instance = await globalThis.__IN_MEMORY_FS_FACTORY__()
+			if (instance) {
+				return instance
+			}
+		} catch (error) {
+			console.warn(
+				'Failed to create global filesystem from factory, falling back to default implementation.',
+				error
+			)
+		}
+	}
+	return new InMemoryFileSystem()
+}
+
+const globalFs = await createGlobalFs()
+if (!globalThis.window) {
+	globalThis.window = globalThis
+}
 window.globalFs = globalFs
 try {
 	// Somehow it messes up sha for npm

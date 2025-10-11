@@ -2,8 +2,13 @@ import esbuild from 'esbuild'
 import fs from 'fs'
 import path from 'path'
 
-fs.rmSync('dist', { recursive: true, force: true })
-fs.mkdirSync('dist')
+// Check if watch mode is enabled
+const isWatchMode = process.argv.includes('--watch') || process.argv.includes('-w')
+
+if (!isWatchMode) {
+	fs.rmSync('dist', { recursive: true, force: true })
+	fs.mkdirSync('dist')
+}
 
 const entryPoints = {
 	child_process: './src/this-is-bundled/node-lib/child_process.js',
@@ -102,21 +107,47 @@ const nodePolyfillPlugin = {
 	},
 }
 
-esbuild
-	.build({
-		entryPoints,
-		bundle: true,
-		outdir: './dist',
-		format: 'esm',
-		platform: 'browser',
-		splitting: true,
-		plugins: [nodePolyfillPlugin],
-		define: {
-			process: 'globalThis.process',
-		},
-	})
-	.catch(() => process.exit(1))
-	.finally(() => {
-		// Clean up temporary files
-		fs.rmSync('.build-tmp', { recursive: true, force: true })
-	})
+const buildOptions = {
+	entryPoints,
+	bundle: true,
+	outdir: './dist',
+	format: 'esm',
+	platform: 'browser',
+	splitting: true,
+	plugins: [nodePolyfillPlugin],
+	define: {
+		process: 'globalThis.process',
+	},
+}
+
+async function main() {
+	if (isWatchMode) {
+		console.log('🔍 Starting watch mode...')
+		const ctx = await esbuild.context(buildOptions)
+		await ctx.watch()
+		console.log('👀 Watching for changes...')
+		
+		// Keep the process alive
+		process.on('SIGINT', async () => {
+			console.log('\n🛑 Stopping watch mode...')
+			await ctx.dispose()
+			process.exit(0)
+		})
+	} else {
+		try {
+			await esbuild.build(buildOptions)
+			console.log('✅ Build completed successfully')
+		} catch (error) {
+			console.error('❌ Build failed:', error)
+			process.exit(1)
+		} finally {
+			// Clean up temporary files
+			fs.rmSync('.build-tmp', { recursive: true, force: true })
+		}
+	}
+}
+
+main().catch((error) => {
+	console.error('❌ Error:', error)
+	process.exit(1)
+})
