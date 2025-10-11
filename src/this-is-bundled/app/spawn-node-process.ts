@@ -33,7 +33,25 @@ function toInteger(value, fallback) {
 	return Number.isInteger(number) && number > 0 ? number : fallback
 }
 
-export async function spawnNodeProcess(argv = [], options = {}, callbacks = {}) {
+export type NodeProcessExitInfo = {
+    code: number
+    signal: string | null
+}
+
+export type SpawnedNodeProcessHandle = {
+    waitForExit(): Promise<NodeProcessExitInfo>
+    write(data: string): void
+    end(): void
+    resize(cols: number, rows: number): void
+    signal(signal?: string): void
+    terminate(): void
+}
+
+export async function spawnNodeProcess(
+    argv = [],
+    options = {},
+    callbacks = {}
+): Promise<SpawnedNodeProcessHandle> {
 	const normalizedArgv = sanitizeArgv(argv)
 	const entry = options.entry
 	if (!entry || typeof entry !== 'string') {
@@ -52,7 +70,7 @@ export async function spawnNodeProcess(argv = [], options = {}, callbacks = {}) 
 			? options.name
 			: `node-process-${++processCounter}`
 
-	const worker = new Worker('/src/this-is-imported-directly/node-process.worker.js', {
+	const worker = new Worker('/dist/app/node-process.worker.js', {
 		type: 'module',
 		name,
 	})
@@ -194,10 +212,10 @@ export async function spawnNodeProcess(argv = [], options = {}, callbacks = {}) 
 		exitReject(err)
 	})
 
-	return {
-		waitForExit() {
-			return exitPromise
-		},
+    return {
+        waitForExit() {
+            return exitPromise
+        },
 		write(data) {
 			if (settled) return
 			worker.postMessage({

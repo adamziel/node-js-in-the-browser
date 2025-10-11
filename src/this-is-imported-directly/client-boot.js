@@ -2,7 +2,7 @@ globalThis.SharedArrayBuffer = ArrayBuffer
 globalThis.primordials = {}
 globalThis.global = globalThis
 import * as builtins from './builtins.js'
-const { InMemoryFileSystem } = await import('./in-memory-fs.js')
+const { InMemoryFileSystem } = await import('/dist/app/in-memory-fs.js')
 
 async function createGlobalFs() {
 	if (typeof globalThis.__IN_MEMORY_FS_FACTORY__ === 'function') {

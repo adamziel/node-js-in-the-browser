@@ -231,20 +231,7 @@
 					type: 'module',
 				}
 			)
-			const mainWorkerClient = consumeAPI(mainWorker);
-
-			// Helper function to spawn a remote Node.js process via the main worker
-			async function spawnRemoteProcess(workerProxy, argv, options, callbacks) {
-				// Wrap callbacks with Comlink.proxy so they can be called from the worker
-				const proxiedCallbacks = {}
-				if (callbacks.onStdout) proxiedCallbacks.onStdout = Comlink.proxy(callbacks.onStdout)
-				if (callbacks.onStderr) proxiedCallbacks.onStderr = Comlink.proxy(callbacks.onStderr)
-				if (callbacks.onError) proxiedCallbacks.onError = Comlink.proxy(callbacks.onError)
-				if (callbacks.onExit) proxiedCallbacks.onExit = Comlink.proxy(callbacks.onExit)
-				
-				return await workerProxy.spawnNodeProcess(argv, options, proxiedCallbacks)
-			}
-
+			const mainWorkerClient = await consumeAPI(mainWorker)
 			await mainWorkerClient.initDemoFilesystem()
 			const fsPort = await mainWorkerClient.createFilesystemClientPort()
 			const globalFs = await RemoteInMemoryFileSystem.connect(fsPort)
@@ -265,6 +252,7 @@
 					this.abortCurrent = null
 					this.stdinWriter = null
 					this.unsubscribeResize = null
+					this.currentProcessEventListeners = []
 				}
 
 				isNodeCommand(command) {
@@ -283,6 +271,24 @@
 					this.abortCurrent = null
 					this.stdinWriter = null
 					const current = this.currentProcess
+					if (
+						current &&
+						Array.isArray(this.currentProcessEventListeners)
+					) {
+						for (const { type, listener, options } of this
+							.currentProcessEventListeners) {
+							try {
+								current.removeEventListener?.(
+									type,
+									listener,
+									options
+								)
+							} catch {
+								// ignore cleanup errors
+							}
+						}
+					}
+					this.currentProcessEventListeners = []
 					if (current && terminate) {
 						try {
 							current.waitForExit?.().catch(() => {})
@@ -318,34 +324,64 @@
 					const columns = this.shell.term?.cols ?? 80
 					const rows = this.shell.term?.rows ?? 24
 					const envSnapshot = this.snapshotProcessEnv()
-					const spawnOptions = {
+					const processHandle = await mainWorkerClient.spawnRemoteProcess({
+						argv,
 						entry: entryPath,
 						cwd: this.shell.cwd,
 						env: envSnapshot,
 						columns,
 						rows,
+					})
+					const listeners = []
+					const handleStdout = (event) => {
+						const detail = event?.detail
+						const text =
+							typeof detail === 'string'
+								? detail
+								: String(detail ?? '')
+						this.shell.writeStdoutForRun(runToken, text)
 					}
-					const spawnCallbacks = {
-						onStdout: (text) =>
-							this.shell.writeStdoutForRun(runToken, text),
-						onStderr: (text) =>
-							this.shell.writeStderrForRun(runToken, text),
-						onError: (error) => {
-							const message =
-								error instanceof Error
-									? error.message
-									: String(error ?? 'Unknown error')
-							this.shell.writeStderrForRun(
-								runToken,
-								`${message}\n`
-							)
-						},
+					processHandle.addEventListener('stdout', handleStdout)
+					listeners.push({ type: 'stdout', listener: handleStdout })
+
+					const handleStderr = (event) => {
+						const detail = event?.detail
+						const text =
+							typeof detail === 'string'
+								? detail
+								: String(detail ?? '')
+						this.shell.writeStderrForRun(runToken, text)
 					}
-					const processHandle = await mainWorkerClient.spawnRemoteProcess(
-						argv,
-						spawnOptions,
-						spawnCallbacks
-					)
+					processHandle.addEventListener('stderr', handleStderr)
+					listeners.push({ type: 'stderr', listener: handleStderr })
+
+					const handleError = (event) => {
+						const detail = event?.detail
+						let message
+						if (
+							detail &&
+							typeof detail === 'object' &&
+							'message' in detail
+						) {
+							const candidate = detail.message
+							message =
+								typeof candidate === 'string'
+									? candidate
+									: String(candidate ?? 'Unknown error')
+						} else if (typeof detail === 'string') {
+							message = detail
+						} else {
+							message = String(detail ?? 'Unknown error')
+						}
+						this.shell.writeStderrForRun(
+							runToken,
+							`${message}\n`
+						)
+					}
+					processHandle.addEventListener('error', handleError)
+					listeners.push({ type: 'error', listener: handleError })
+
+					this.currentProcessEventListeners = listeners
 					this.currentProcess = processHandle
 					this.stdinWriter = (data) => processHandle.write(data)
 					this.abortCurrent = () => processHandle.signal('SIGINT')
@@ -823,7 +859,7 @@
 				async changeDirectory(target, { fromProcess = false } = {}) {
 					const desired = target ?? '/'
 					try {
-						const response = await workerClient.call(
+						const response = await mainWorkerClient.call(
 							'change-directory',
 							{
 								cwd: this.cwd,
@@ -877,7 +913,7 @@
 					}
 
 					try {
-						const result = await workerClient.call(
+						const result = await mainWorkerClient.call(
 							'execute-shell-command',
 							{
 								cwd: this.cwd,

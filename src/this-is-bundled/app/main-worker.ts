@@ -1,6 +1,7 @@
 'use strict'
 import { initFiles } from './init-demo-fs.js'
-import { spawnNodeProcess } from './spawn-node-process.js'
+import { spawnNodeProcess } from './spawn-node-process.ts'
+import type { NodeProcessExitInfo } from './spawn-node-process.ts'
 import { RemoteInMemoryFileSystem } from './in-memory-fs.client.js'
 import { exposeAPI } from './api.ts'
 import * as Comlink from './comlink-sync.ts'
@@ -277,6 +278,66 @@ class ShellCommandExecutor {
 	}
 }
 
+type SpawnRemoteProcessParams = {
+	argv?: unknown[]
+	entry: string
+	env?: Record<string, string>
+	cwd?: string
+	columns?: number
+	rows?: number
+	name?: string
+}
+
+type ProcessErrorDetail = {
+	name: string
+	message: string
+	stack?: string
+	code?: string
+}
+
+type RemoteProcessHandle = {
+	addEventListener(
+		type: string,
+		listener: EventListenerOrEventListenerObject,
+		options?: boolean | AddEventListenerOptions
+	): void
+	removeEventListener(
+		type: string,
+		listener: EventListenerOrEventListenerObject,
+		options?: boolean | EventListenerOptions
+	): void
+	waitForExit(): Promise<NodeProcessExitInfo>
+	write(data: string): void
+	end(): void
+	resize(columns: number, rows: number): void
+	signal(signal?: string): void
+	terminate(): void
+}
+
+function serializeProcessError(error: unknown): ProcessErrorDetail {
+	if (error instanceof Error) {
+		const detail: ProcessErrorDetail = {
+			name: error.name || 'Error',
+			message: error.message || 'Unknown error',
+		}
+		if (typeof error.stack === 'string') {
+			detail.stack = error.stack
+		}
+		const code = (error as any)?.code
+		if (typeof code === 'string' && code.length > 0) {
+			detail.code = code
+		}
+		return detail
+	}
+	return {
+		name: 'Error',
+		message:
+			typeof error === 'string'
+				? error
+				: String(error ?? 'Unknown error'),
+	}
+}
+
 class MainWorker {
 	constructor() {
 		this.filesystem = globalThis.globalFs
@@ -306,41 +367,72 @@ class MainWorker {
 		return this.shell.execute(cwd, command, args)
 	}
 
-	spawnNodeProcess(argv = [], options = {}, callbacks = {}) {
-		const handle = spawnNodeProcess(
+	async spawnRemoteProcess(
+		params: SpawnRemoteProcessParams
+	): Promise<RemoteProcessHandle> {
+		const {
+			argv = [],
+			entry,
+			env,
+			cwd,
+			columns,
+			rows,
+			name,
+		} = params || ({} as SpawnRemoteProcessParams)
+
+		if (typeof entry !== 'string' || entry.length === 0) {
+			throw new Error(
+				'spawnRemoteProcess: entry must be a non-empty string'
+			)
+		}
+
+		const events = new EventTarget()
+		const emit = (type: string, detail?: unknown) => {
+			const event = new CustomEvent(type, { detail })
+			events.dispatchEvent(event)
+		}
+
+		const handle = await spawnNodeProcess(
 			argv,
 			{
-				...options,
+				entry,
+				env,
+				cwd,
+				columns,
+				rows,
+				name,
 				fsPort: createFilesystemPort(),
 			},
 			{
-				onStdout:
-					typeof callbacks.onStdout === 'function'
-						? callbacks.onStdout
-						: undefined,
-				onStderr:
-					typeof callbacks.onStderr === 'function'
-						? callbacks.onStderr
-						: undefined,
-				onError:
-					typeof callbacks.onError === 'function'
-						? callbacks.onError
-						: undefined,
-				onExit:
-					typeof callbacks.onExit === 'function'
-						? callbacks.onExit
-						: undefined,
+				onStdout: (text) => emit('stdout', text),
+				onStderr: (text) => emit('stderr', text),
+				onExit: (info) => emit('exit', info),
+				onError: (error) => emit('error', serializeProcessError(error)),
+				onReady: () => emit('ready'),
+				onMessage: (data) => emit('message', data),
 			}
 		)
 
 		return Comlink.proxy({
+			addEventListener: (
+				type: string,
+				listener: EventListenerOrEventListenerObject,
+				options?: boolean | AddEventListenerOptions
+			) => events.addEventListener(type, listener as any, options),
+			removeEventListener: (
+				type: string,
+				listener: EventListenerOrEventListenerObject,
+				options?: boolean | EventListenerOptions
+			) =>
+				events.removeEventListener(type, listener as any, options),
 			waitForExit: () => handle.waitForExit(),
-			write: (data) => handle.write?.(data),
+			write: (data: string) => handle.write?.(data),
 			end: () => handle.end?.(),
-			resize: (columns, rows) => handle.resize?.(columns, rows),
-			signal: (signal) => handle.signal?.(signal),
+			resize: (columns: number, rows: number) =>
+				handle.resize?.(columns, rows),
+			signal: (signal?: string) => handle.signal?.(signal),
 			terminate: () => handle.terminate?.(),
-		})
+		}) as RemoteProcessHandle
 	}
 }
 

@@ -15,6 +15,7 @@ const buildOptionsApp = {
 		comlink: './src/this-is-bundled/app/api.ts',
 		'main-worker': './src/this-is-bundled/app/main-worker.ts',
 		'in-memory-fs.client': './src/this-is-bundled/app/in-memory-fs.client.js',
+		'in-memory-fs': './src/this-is-bundled/app/in-memory-fs.js',
 		'in-memory-fs.worker': './src/this-is-bundled/app/in-memory-fs.worker.js',
 		'node-process.worker': './src/this-is-bundled/app/node-process.worker.js',
 	},
@@ -129,7 +130,7 @@ const nodePolyfillPlugin = {
 	},
 }
 
-const buildOptions = {
+const buildOptionsNode = {
 	entryPoints,
 	bundle: true,
 	outdir: './dist',
@@ -145,7 +146,7 @@ const buildOptions = {
 async function main() {
 	if (isWatchMode) {
 		console.log('🔍 Starting watch mode...')
-		const ctx1 = await esbuild.context(buildOptionsApp)
+		const ctx1 = await esbuild.context(buildOptionsNode)
 		await ctx1.watch();
 
 		const ctx2 = await esbuild.context(buildOptionsApp)
