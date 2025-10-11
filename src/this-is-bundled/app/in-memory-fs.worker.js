@@ -1,5 +1,5 @@
-import { InMemoryFileSystem } from '/src/this-is-imported-directly/in-memory-fs.js';
-import { serializeValue, deserializeValue } from '/src/this-is-imported-directly/serialization.js';
+import { InMemoryFileSystem } from './in-memory-fs.js';
+import { serializeValue, deserializeValue } from './serialization.js';
 const encoder = new TextEncoder();
 const fs = new InMemoryFileSystem();
 const handles = new Map();

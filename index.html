@@ -158,7 +158,8 @@
 
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
 			import { FitAddon } from 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/+esm'
-			import { RemoteInMemoryFileSystem } from './src/this-is-imported-directly/in-memory-fs.client.js'
+			import { RemoteInMemoryFileSystem } from './dist/app/in-memory-fs.client.js'
+			import { consumeAPI } from './dist/app/comlink.js'
 
 			window.stableConsole = {
 				log: console.log.bind(console),
@@ -224,258 +225,35 @@
 			progress.show('Preparing the runtime…')
 			const PROMPT_SUFFIX = '$ '
 
-			function createWorkerRpc(worker) {
-				let requestId = 0
-				const pending = new Map()
-
-				const rejectAll = (reason) => {
-					const error =
-						reason instanceof Error
-							? reason
-							: new Error(String(reason ?? 'Worker error'))
-					for (const { reject } of pending.values()) {
-						reject(error)
-					}
-					pending.clear()
-				}
-
-				worker.addEventListener('message', (event) => {
-					const data = event.data || {}
-					const { id, ok, result, error } = data
-					if (!Number.isInteger(id)) {
-						return
-					}
-					const entry = pending.get(id)
-					if (!entry) {
-						return
-					}
-					pending.delete(id)
-					if (ok) {
-						entry.resolve(result)
-					} else {
-						const message =
-							error && error.message
-								? error.message
-								: 'Worker request failed'
-						const workerError = new Error(message)
-						if (error && error.stack) {
-							workerError.stack = error.stack
-						}
-						entry.reject(workerError)
-					}
-				})
-
-				worker.addEventListener('error', (event) => {
-					rejectAll(
-						event?.error ??
-							new Error(event?.message ?? 'Worker error')
-					)
-				})
-
-				worker.addEventListener('messageerror', () => {
-					rejectAll(new Error('Worker message serialization error'))
-				})
-
-				return {
-					call(type, payload = {}, transfer = []) {
-						const id = ++requestId
-						return new Promise((resolve, reject) => {
-							pending.set(id, { resolve, reject })
-							const message = { id, type, payload }
-							try {
-								if (transfer.length > 0) {
-									worker.postMessage(message, transfer)
-								} else {
-									worker.postMessage(message)
-								}
-							} catch (error) {
-								pending.delete(id)
-								reject(error)
-							}
-						})
-					},
-				}
-			}
-
-			function createProcessHandle(commandPort, eventPort, callbacks = {}) {
-				const {
-					onStdout,
-					onStderr,
-					onError,
-					onExit,
-					onReady,
-				} = callbacks
-
-				commandPort.start?.()
-				eventPort.start?.()
-
-				let settled = false
-				let resolveExit
-				let rejectExit
-				const exitPromise = new Promise((resolve, reject) => {
-					resolveExit = resolve
-					rejectExit = reject
-				})
-
-				const cleanup = () => {
-					if (settled) {
-						return
-					}
-					settled = true
-					eventPort.onmessage = null
-					try {
-						commandPort.close()
-					} catch (_error) {}
-					try {
-						eventPort.close()
-					} catch (_error) {}
-				}
-
-				eventPort.onmessage = (event) => {
-					const data = event.data || {}
-					switch (data.type) {
-						case 'stdout':
-							if (typeof onStdout === 'function') {
-								onStdout(String(data.data ?? ''))
-							}
-							break
-						case 'stderr':
-							if (typeof onStderr === 'function') {
-								onStderr(String(data.data ?? ''))
-							}
-							break
-						case 'ready':
-							if (typeof onReady === 'function') {
-								onReady()
-							}
-							break
-						case 'error':
-						case 'worker-error': {
-							const error =
-								data.error instanceof Error
-									? data.error
-									: new Error(
-											typeof data.message === 'string'
-												? data.message
-												: 'Worker process error'
-									  )
-							if (data.stack) {
-								error.stack = data.stack
-							}
-							if (typeof onError === 'function') {
-								onError(error)
-							}
-							if (!settled) {
-								rejectExit(error)
-								cleanup()
-							}
-							break
-						}
-						case 'exit': {
-							const info =
-								data.info && typeof data.info === 'object'
-									? data.info
-									: { code: 0, signal: null }
-							if (typeof onExit === 'function') {
-								onExit(info)
-							}
-							if (!settled) {
-								resolveExit(info)
-								cleanup()
-							}
-							break
-						}
-						default:
-							break
-					}
-				}
-
-				const send = (type, payload) => {
-					const message = { type, ...payload }
-					commandPort.postMessage(message)
-				}
-
-				return {
-					write(data) {
-						send('write', { data })
-					},
-					end() {
-						send('end')
-					},
-					resize(columns, rows) {
-						send('resize', { columns, rows })
-					},
-					signal(signal) {
-						send('signal', { signal })
-					},
-					terminate() {
-						send('terminate')
-					},
-					waitForExit() {
-						return exitPromise
-					},
-				}
-			}
-
-			async function spawnRemoteProcess(workerClient, argv, options, callbacks) {
-				const eventChannel = new MessageChannel()
-				try {
-					const result = await workerClient.call(
-						'spawn-node-process',
-						{
-							argv,
-							options,
-							eventPort: eventChannel.port1,
-						},
-						[eventChannel.port1]
-					)
-					const commandPort = result?.commandPort
-					if (!(commandPort instanceof MessagePort)) {
-						throw new Error(
-							'Worker did not return a valid command port'
-						)
-					}
-					return createProcessHandle(
-						commandPort,
-						eventChannel.port2,
-						callbacks
-					)
-				} catch (error) {
-					try {
-						eventChannel.port2.close()
-					} catch (_err) {}
-					throw error
-				}
-			}
-
 			const mainWorker = new Worker(
-				'./src/this-is-imported-directly/main-worker.js',
+				'./dist/app/main-worker.js',
 				{
 					type: 'module',
 				}
 			)
-			const workerClient = createWorkerRpc(mainWorker)
+			const mainWorkerClient = consumeAPI(mainWorker);
 
-			await workerClient.call('init-demo-filesystem')
-			const { port: fsPort } = await workerClient.call(
-				'create-filesystem-port'
-			)
+			// Helper function to spawn a remote Node.js process via the main worker
+			async function spawnRemoteProcess(workerProxy, argv, options, callbacks) {
+				// Wrap callbacks with Comlink.proxy so they can be called from the worker
+				const proxiedCallbacks = {}
+				if (callbacks.onStdout) proxiedCallbacks.onStdout = Comlink.proxy(callbacks.onStdout)
+				if (callbacks.onStderr) proxiedCallbacks.onStderr = Comlink.proxy(callbacks.onStderr)
+				if (callbacks.onError) proxiedCallbacks.onError = Comlink.proxy(callbacks.onError)
+				if (callbacks.onExit) proxiedCallbacks.onExit = Comlink.proxy(callbacks.onExit)
+				
+				return await workerProxy.spawnNodeProcess(argv, options, proxiedCallbacks)
+			}
+
+			await mainWorkerClient.initDemoFilesystem()
+			const fsPort = await mainWorkerClient.createFilesystemClientPort()
 			const globalFs = await RemoteInMemoryFileSystem.connect(fsPort)
 			window.globalFs = globalFs
-
-			try {
-				progress.update({
-					message: 'Launching terminal…',
-					progress: 98,
-				})
-			} catch (error) {
-				progress.update({
-					message:
-						'Failed to prepare the runtime. Check console logs.',
-					progress: 100,
-				})
-				throw error
-			}
+			
+			progress.update({
+				message: 'Launching terminal…',
+				progress: 98,
+			})
 
 			class NodeRunner {
 				constructor(shell) {
@@ -563,8 +341,7 @@
 							)
 						},
 					}
-					const processHandle = await spawnRemoteProcess(
-						workerClient,
+					const processHandle = await mainWorkerClient.spawnRemoteProcess(
 						argv,
 						spawnOptions,
 						spawnCallbacks

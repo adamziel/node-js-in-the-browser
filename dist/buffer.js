@@ -4,7 +4,7 @@ import {
   SlowBuffer,
   init_buffer,
   kMaxLength
-} from "./chunk-N26B3L3P.js";
+} from "./chunk-UIYR237G.js";
 import "./chunk-IWXS4Z3P.js";
 init_buffer();
 export {

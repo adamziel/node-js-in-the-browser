@@ -15,7 +15,7 @@ import {
   require_util,
   require_worker_threads,
   require_zlib
-} from "./chunk-D6HYMGRQ.js";
+} from "./chunk-B6EGUR2W.js";
 import "./chunk-QSCI3CH7.js";
 import "./chunk-DO7UG2HU.js";
 import "./chunk-J3NVLLRQ.js";
@@ -24,7 +24,7 @@ import "./chunk-2ADPWB2N.js";
 import {
   buffer_exports,
   init_buffer
-} from "./chunk-N26B3L3P.js";
+} from "./chunk-UIYR237G.js";
 import {
   __commonJS,
   __toCommonJS,

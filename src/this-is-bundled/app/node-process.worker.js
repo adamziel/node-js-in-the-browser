@@ -1,5 +1,5 @@
-import { RemoteInMemoryFileSystem } from '/src/this-is-imported-directly/in-memory-fs.client.js'
-import { spawnNodeProcess } from '/src/this-is-imported-directly/spawn-node-process.js'
+import { RemoteInMemoryFileSystem } from './in-memory-fs.client.js'
+import { spawnNodeProcess } from './spawn-node-process.js'
 
 self.addEventListener('unhandledrejection', (event) => {
 	const reason = event?.reason
