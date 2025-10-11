@@ -160,6 +160,7 @@
 			import { FitAddon } from 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/+esm'
 			import { RemoteInMemoryFileSystem } from './dist/app/in-memory-fs.client.js'
 			import { consumeAPI } from './dist/app/comlink.js'
+			import { StoredHistory } from './dist/app/ui/StoredHistory.js'
 
 			window.stableConsole = {
 				log: console.log.bind(console),
@@ -508,63 +509,6 @@
 
 			function normalizeNewlines(text) {
 				return text.replace(/\r?\n/g, '\r\n')
-			}
-
-			
-			class StoredHistory {
-				constructor(options={}) {
-					this.maxLength = options.maxLength || 1000
-					this.items = options.items || JSON.parse(window.localStorage.getItem('history') || '[]');
-				}
-				
-				push(item) {
-					this.items.push(item)
-					if (this.items.length > this.maxLength) {
-						this.items.shift()
-					}
-					this.persist()
-				}
-
-				get length() {
-					return this.items.length
-				}
-
-				get(index) {
-					return this.items[index]
-				}
-
-				set(index, item) {
-					this.items[index] = item
-				}
-				
-				shift() {
-					const item = this.items.shift()
-					this.persist()
-					return item
-				}
-
-				unshift(item) {
-					this.items.unshift(item)
-					this.persist()
-				}
-
-				pop() {
-					const item = this.items.pop()
-					this.persist()
-					return item
-				}
-				
-				slice(start, end) {
-					return this.items.slice(start, end)
-				}
-
-				clear() {
-					this.items = []
-				}
-
-				persist() {
-					window.localStorage.setItem('history', JSON.stringify(this.items))
-				}
 			}
 
 			class XTermShell {

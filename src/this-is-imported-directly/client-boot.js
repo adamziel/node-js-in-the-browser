@@ -739,6 +739,7 @@ globalThis.internalModules = {
 					try {
 						const stats = globalFs.fstatSync(fd)
 						const size = stats.size
+						console.log({size, stats, flags, fd})
 
 						if (size === 0) {
 							// Empty file or special file

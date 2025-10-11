@@ -110,9 +110,13 @@ const createSymlinkNode = (target) => {
 }
 
 const parseOpenFlags = (flags) => {
-	const {
-		fs: { O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_EXCL, O_TRUNC, O_APPEND },
-	} = globalThis.internalBinding('constants')
+	const O_RDONLY = 0
+	const O_WRONLY = 1
+	const O_RDWR = 2
+	const O_CREAT = 512
+	const O_EXCL = 2048
+	const O_TRUNC = 1024
+	const O_APPEND = 8
 	let numeric = 0
 	let readable = false
 	let writable = false

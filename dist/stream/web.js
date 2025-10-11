@@ -12,7 +12,7 @@ import {
   require_webidl,
   require_writablestream,
   require_zlib
-} from "../chunk-B6EGUR2W.js";
+} from "../chunk-6V7B72WO.js";
 import "../chunk-QSCI3CH7.js";
 import "../chunk-DO7UG2HU.js";
 import "../chunk-J3NVLLRQ.js";
