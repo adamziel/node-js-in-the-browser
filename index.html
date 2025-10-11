@@ -243,9 +243,9 @@
 			})
 
 			class NodeRunner {
-				constructor(shell) {
+				constructor(shell, workerClient) {
 					this.shell = shell
-					this.fs = globalFs
+					this.workerClient = workerClient
 					this.active = false
 					this.currentRunToken = null
 					this.currentProcess = null
@@ -344,7 +344,16 @@
 						return
 					}
 					const scriptPath = this.shell.resolvePath(first)
-					if (!this.fs.existsSync(scriptPath)) {
+					const scriptExists = await this.workerClient
+						.pathExists(scriptPath)
+						.catch((error) => {
+							console.error(
+								'Failed to check script existence:',
+								error
+							)
+							return false
+						})
+					if (!scriptExists) {
 						this.shell.writeStderr(
 							`node: cannot open '${first}': No such file or directory\n`
 						)
@@ -361,6 +370,10 @@
 						)
 					}
 					console.log('runMainWithEntry', entryPath, argv)
+					// TODO: Proper PATH-based resolution
+					if(entryPath === 'npm') {
+						entryPath = '/bin/npm'
+					}
 					await this.disposeCurrentProcess({ terminate: true })
 					const runToken = Symbol('node-run')
 					this.currentRunToken = runToken
@@ -523,7 +536,7 @@
 						}
 					})
 
-					this.nodeRunner = new NodeRunner(this)
+					this.nodeRunner = new NodeRunner(this, mainWorkerClient)
 					this.syncProcessBindings()
 
 					this.term.onData((data) => this.onData(data))

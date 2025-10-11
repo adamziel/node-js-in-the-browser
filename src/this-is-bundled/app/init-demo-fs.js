@@ -11,12 +11,12 @@ export async function initFiles(fs) {
 
 	// Set up NPM
 	if (!fs.existsSync('/bin/npm')) {
-		const npmCodeResponse = await fetch('./npm/npm-single.js')
+		const npmCodeResponse = await fetch('/npm/npm-single.js')
 		const npmCode = await npmCodeResponse.text()
 		fs.writeFileSync('/bin/npm', npmCode, { mode: 0o755 })
 	}
 	if (!fs.existsSync('/bin/default-input.js')) {
-		const defaultInputResponse = await fetch('./npm/default-input.js')
+		const defaultInputResponse = await fetch('/npm/default-input.js')
 		const defaultInputCode = await defaultInputResponse.text()
 		fs.writeFileSync('/bin/default-input.js', defaultInputCode)
 	}

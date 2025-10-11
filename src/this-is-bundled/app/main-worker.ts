@@ -202,6 +202,36 @@ class ShellCommandExecutor {
 		return { stdout: out.join(''), stderr: err.join('') }
 	}
 
+	handleHead(cwd, args) {
+		if (!args.length) {
+			return { stdout: '', stderr: 'head: missing operand\n' }
+		}
+		const filenames = [];
+		let n = 10
+		for (let i = 0; i < args.length; i++) {
+			const arg = args[i]
+			if (arg === '-n') {
+				n = parseInt(args[i + 1])
+				i++
+				continue
+			}
+			filenames.push(arg)
+		}
+		const out = []
+		const err = []
+
+		for (const filename of filenames) {
+			const resolved = this.resolvePath(cwd, filename)
+			try {
+				const content = this.fs.readFileSync(resolved, 'utf-8').split('\n')
+				out.push(content.slice(0, n).join('\n'))
+			} catch (error) {
+				err.push(`${this.formatFsError('head', filename, error)}\n`)
+			}
+		}
+		return { stdout: out.join('') + "\n", stderr: err.join('') }
+	}
+
 	handleEcho(args) {
 		return { stdout: args.join(' '), stderr: '' }
 	}
@@ -257,6 +287,12 @@ class ShellCommandExecutor {
 			}
 			case 'cat': {
 				const { stdout, stderr } = this.handleCat(cwd, args)
+				result.stdout = stdout
+				result.stderr = stderr
+				return result
+			}
+			case 'head': {
+				const { stdout, stderr } = this.handleHead(cwd, args)
 				result.stdout = stdout
 				result.stderr = stderr
 				return result
@@ -364,6 +400,19 @@ class MainWorker {
 		const result = this.shell.execute(cwd, command, args)
 		console.log('executeShellCommand result', result)
 		return result
+	}
+
+	async pathExists(path: string): Promise<boolean> {
+		try {
+			this.filesystem.statSync(path)
+			return true
+		} catch (error) {
+			const code = (error as any)?.code
+			if (code === 'ENOENT' || code === 'ENOTDIR') {
+				return false
+			}
+			throw error
+		}
 	}
 
 	async spawnRemoteProcess(
