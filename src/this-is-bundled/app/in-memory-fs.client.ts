@@ -9,12 +9,20 @@ function createFilesystemPort(fsWorker) {
 }
 
 export class RemoteInMemoryFileSystem {
-	static async connectSync(fsWorker) {
-		return await wrapSync(createFilesystemPort(fsWorker))
+	static async connectSync(fsWorkerOrPort) {
+        let port: MessagePort;
+		if (fsWorkerOrPort instanceof Worker) {
+			port = createFilesystemPort(fsWorkerOrPort)
+		} else if (fsWorkerOrPort instanceof MessagePort) {
+			port = fsWorkerOrPort
+		} else {
+			throw new Error('Invalid filesystem worker or port')
+		}
+		return await wrapSync(port)
 	}
 
 	static async connectAsync(fsWorker) {
-        return await wrap(fsWorker); //createFilesystemPort(fsWorker))
+		return await wrap(fsWorker) //createFilesystemPort(fsWorker))
 	}
 
 	static async connectBoth(fsWorker) {

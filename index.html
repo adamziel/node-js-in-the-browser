@@ -321,8 +321,10 @@
 					try {
 						if (command === 'node') {
 							await this.runNodeCommand(args)
+						} else if(command === 'npm') {
+							await this.runNodeCommand(['/bin/npm', ...args])
 						} else {
-							await this.runMainWithEntry(command, args)
+							throw new Error(`Unsupported command: ${command}`)
 						}
 					} finally {
 						this.active = false
@@ -374,11 +376,7 @@
 							'Entry path is required to launch a Node process.'
 						)
 					}
-					console.log('runMainWithEntry', entryPath, argv)
-					// TODO: Proper PATH-based resolution
-					if (entryPath === 'npm') {
-						entryPath = '/bin/npm'
-					}
+
 					await this.disposeCurrentProcess({ terminate: true })
 					const runToken = Symbol('node-run')
 					this.currentRunToken = runToken

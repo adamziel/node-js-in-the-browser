@@ -1,6 +1,13 @@
 'use strict'
 
-import { Stats, Dirent } from './in-memory-fs-classes.js'
+import {
+	Stats,
+	Dirent,
+	type DirectoryNode,
+	FileNode,
+	SymlinkNode,
+	FSNode,
+} from './in-memory-fs-classes.js'
 
 // Helper function to create filesystem errors with proper code property
 function createFsError(code, message) {
@@ -11,7 +18,7 @@ function createFsError(code, message) {
 
 const DEFAULT_FILE_MODE = 0o666
 const DEFAULT_DIRECTORY_MODE = 0o777
-const createDirectoryNode = (mode = DEFAULT_DIRECTORY_MODE) => {
+const createDirectoryNode = (mode = DEFAULT_DIRECTORY_MODE): DirectoryNode => {
 	const timestamp = Date.now()
 	return {
 		type: 'dir',
@@ -23,7 +30,7 @@ const createDirectoryNode = (mode = DEFAULT_DIRECTORY_MODE) => {
 		birthtime: timestamp,
 	}
 }
-const createFileNode = (content, mode = DEFAULT_FILE_MODE) => {
+const createFileNode = (content, mode = DEFAULT_FILE_MODE): FileNode => {
 	const timestamp = Date.now()
 	return {
 		type: 'file',
@@ -35,7 +42,7 @@ const createFileNode = (content, mode = DEFAULT_FILE_MODE) => {
 		birthtime: timestamp,
 	}
 }
-const createSymlinkNode = (target) => {
+const createSymlinkNode = (target): SymlinkNode => {
 	const timestamp = Date.now()
 	return {
 		type: 'symlink',
@@ -193,71 +200,19 @@ export class InternalFileHandle {
 		})
 	}
 
-	read(buffer, offset, length, position) {
+	read(offset, length, position) {
 		if (this.fd === undefined) {
 			throw createFsError('EBADF', 'EBADF: bad file descriptor, read')
 		}
-		return this.fs.readSync(this.fd, buffer, offset, length, position)
+		return this.fs.readSync(this.fd, length, position)
 	}
 
 	write(buffer, offset, length, position) {
+		throw new Error('Not implemented')
 		if (this.fd === undefined) {
 			throw createFsError('EBADF', 'EBADF: bad file descriptor, write')
 		}
 		return this.fs.writeSync(this.fd, buffer, offset, length, position)
-	}
-
-	writev(buffers, position) {
-		if (this.fd === undefined) {
-			throw createFsError('EBADF', 'EBADF: bad file descriptor, writev')
-		}
-
-		let totalWritten = 0
-		let currentPosition = position
-
-		for (const buffer of buffers) {
-			const written = this.fs.writeSync(
-				this.fd,
-				buffer,
-				0,
-				buffer.length,
-				currentPosition
-			)
-			totalWritten += written
-			if (currentPosition !== null && currentPosition !== undefined) {
-				currentPosition += written
-			}
-		}
-
-		return totalWritten
-	}
-
-	readv(buffers, position) {
-		if (this.fd === undefined) {
-			throw createFsError('EBADF', 'EBADF: bad file descriptor, readv')
-		}
-
-		let totalRead = 0
-		let currentPosition = position
-
-		for (const buffer of buffers) {
-			const bytesRead = this.fs.readSync(
-				this.fd,
-				buffer,
-				0,
-				buffer.length,
-				currentPosition
-			)
-			totalRead += bytesRead
-			if (bytesRead < buffer.length) {
-				break // EOF reached
-			}
-			if (currentPosition !== null && currentPosition !== undefined) {
-				currentPosition += bytesRead
-			}
-		}
-
-		return totalRead
 	}
 
 	stat(bigint = false) {
@@ -329,6 +284,14 @@ export class InternalFileHandle {
 	}
 }
 
+interface WalkResult {
+	parent: DirectoryNode | null
+	node: FSNode | undefined
+	name: string
+	segments: string[]
+	blockedBy?: FSNode
+	missingParent?: boolean
+}
 export class InMemoryFileSystem {
 	constructor(initialFiles) {
 		this.root = createDirectoryNode()
@@ -340,7 +303,7 @@ export class InMemoryFileSystem {
 			}
 		}
 	}
-	walk(path) {
+	walk(path): WalkResult {
 		const segments = splitPath(path)
 		if (segments.length === 0) {
 			return { parent: null, node: this.root, name: '/', segments }
@@ -714,51 +677,7 @@ export class InMemoryFileSystem {
 		return arr
 	}
 
-	// Fill a provided stats array at a specific offset
-	// This is used by the native binding to populate the shared statValues arrays
-	// offset is in fields (18 fields per Stats instance)
-	fillStatsArray(arr, stats, useBigint, offset = 0) {
-		// Convert to appropriate type
-		const toType = useBigint ? BigInt : Number
 
-		// File type constants (from Node.js constants)
-		const S_IFREG = 32768 // Regular file
-		const S_IFDIR = 16384 // Directory
-		const S_IFLNK = 40960 // Symbolic link
-
-		// Combine file type bits with permission bits
-		let mode = stats.mode
-		if (stats.type === 'file') {
-			mode = S_IFREG | stats.mode
-		} else if (stats.type === 'dir') {
-			mode = S_IFDIR | stats.mode
-		} else if (stats.type === 'symlink') {
-			mode = S_IFLNK | stats.mode
-		}
-
-		// Fill array in the order expected by Node.js
-		// See FsStatsOffset in src/node_file.h
-		arr[offset + 0] = toType(0) // dev
-		arr[offset + 1] = toType(mode) // mode (with file type bits)
-		arr[offset + 2] = toType(1) // nlink
-		arr[offset + 3] = toType(0) // uid
-		arr[offset + 4] = toType(0) // gid
-		arr[offset + 5] = toType(0) // rdev
-		arr[offset + 6] = toType(4096) // blksize
-		arr[offset + 7] = toType(0) // ino
-		arr[offset + 8] = toType(stats.size) // size
-		arr[offset + 9] = toType(Math.ceil(stats.size / 512)) // blocks
-
-		// Time values - split into seconds and nanoseconds
-		arr[offset + 10] = toType(Math.floor(stats.atimeMs / 1000)) // atimeSec
-		arr[offset + 11] = toType((stats.atimeMs % 1000) * 1000000) // atimeNsec
-		arr[offset + 12] = toType(Math.floor(stats.mtimeMs / 1000)) // mtimeSec
-		arr[offset + 13] = toType((stats.mtimeMs % 1000) * 1000000) // mtimeNsec
-		arr[offset + 14] = toType(Math.floor(stats.ctimeMs / 1000)) // ctimeSec
-		arr[offset + 15] = toType((stats.ctimeMs % 1000) * 1000000) // ctimeNsec
-		arr[offset + 16] = toType(Math.floor(stats.birthtimeMs / 1000)) // birthtimeSec
-		arr[offset + 17] = toType((stats.birthtimeMs % 1000) * 1000000) // birthtimeNsec
-	}
 	unlinkSync(path) {
 		const result = this.walk(path)
 		const { parent, node, name, blockedBy, missingParent } = result
@@ -1108,7 +1027,7 @@ export class InMemoryFileSystem {
 		}
 		this.openFiles.delete(fd)
 	}
-	readSync(fd, buffer, offset, length, position) {
+	readSync(fd, length, position) {
 		const openFile = this.openFiles.get(fd)
 		if (!openFile) {
 			throw createFsError('EBADF', `EBADF: bad file descriptor, read`)
@@ -1124,13 +1043,11 @@ export class InMemoryFileSystem {
 			fileNode.content.length - readPosition
 		)
 		const bytesToRead = Math.min(length, availableBytes)
+		let buffer = new Uint8Array(bytesToRead)
 		if (bytesToRead > 0) {
-			buffer.set(
-				fileNode.content.subarray(
-					readPosition,
-					readPosition + bytesToRead
-				),
-				offset
+			buffer = fileNode.content.subarray(
+				readPosition,
+				readPosition + bytesToRead
 			)
 			// Only update position if using current position (not absolute position)
 			if (position === null || position === undefined || position < 0) {
@@ -1139,22 +1056,21 @@ export class InMemoryFileSystem {
 		}
 
 		updateTimestamps(fileNode, 'access')
-		return bytesToRead
+		// console.log('READ SYNC', buffer)
+		return buffer
 	}
-	read(fd, buffer, offset, length, position, callback) {
+	read(fd, length, position, callback) {
 		try {
-			const bytesRead = this.readSync(
+			const buffer = this.readSync(
 				fd,
-				buffer,
-				offset,
 				length,
 				position
 			)
 			if (callback) {
 				// Async-style callback with (error, bytesRead, buffer)
-				setImmediate(() => callback(null, bytesRead, buffer))
+				setImmediate(() => callback(null, buffer.length, buffer))
 			}
-			return bytesRead
+			return buffer
 		} catch (err) {
 			if (callback) {
 				setImmediate(() => callback(err))
@@ -2002,18 +1918,16 @@ export class InMemoryFileSystem {
 		})
 	}
 
-	readAsync(fd, buffer, offset, length, position, req) {
+	readAsync(fd, length, position, req) {
 		setImmediate(() => {
 			try {
-				const bytesRead = this.readSync(
+				const buffer = this.readSync(
 					fd,
-					buffer,
-					offset,
 					length,
 					position
 				)
 				if (req && req.oncomplete) {
-					req.oncomplete(null, bytesRead, buffer)
+					req.oncomplete(null, buffer.length, buffer)
 				}
 			} catch (err) {
 				if (req && req.oncomplete) {

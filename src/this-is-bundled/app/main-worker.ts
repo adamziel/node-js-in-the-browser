@@ -25,7 +25,15 @@ const fsWorker = await new Promise((resolve) => {
 			resolve(worker)
 		}
 	}
-})
+}) as Worker;
+
+function createFilesystemPort() {
+	const channel = new MessageChannel()
+	fsWorker.postMessage({ cmd: 'attach', port: channel.port1 }, [
+		channel.port1,
+	])
+	return channel.port2
+}
 
 globalThis.globalFs = await RemoteInMemoryFileSystem.connectSync(fsWorker)
 

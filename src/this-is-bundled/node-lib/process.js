@@ -18,6 +18,7 @@ const execPath = '/bin/node';
 
 // ESM exports for process methods
 const exit = (code) => {
+	console.log('exit', { code });
 	let message = '';
 	if (code instanceof Error) {
 		message = code.message;

@@ -59,15 +59,19 @@ if (typeof SharedArrayBuffer === 'undefined') {
 	)
 }
 
+globalThis.corsProxyUrl = new URL(
+	'./php-cors-proxy/cors-proxy.php',
+	import.meta.url
+)
 const previousFetch = globalThis.fetch
 globalThis.fetch = async (url, ...args) => {
-	const parsed = new URL(url, window.location.href)
-	if (parsed.hostname === window.location.hostname) {
+	const parsed = new URL(url, import.meta.url)
+	if (parsed.hostname === import.meta.url.hostname) {
 		return previousFetch(url, ...args)
 	}
 
 	if (typeof url === 'string' && url.startsWith('https://')) {
-		url = `${window.corsProxyUrl}?${url}`
+		url = `${globalThis.corsProxyUrl}?${url}`
 	}
 
 	let result = await previousFetch(url, ...args)
@@ -127,8 +131,6 @@ let exitDispatched = false
 let nextFsPortRequestId = 1
 const pendingFsRequests = new Map()
 
-
-
 function resolveFsPortRequest(data) {
 	const entry = pendingFsRequests.get(data.requestId)
 	if (!entry) {
@@ -154,7 +156,7 @@ async function ensureRuntimeInitialized(fsPort) {
 	}
 
 	if (!globalFsInstance) {
-		globalFsInstance = await RemoteInMemoryFileSystem.connect(fsPort)
+		globalFsInstance = await RemoteInMemoryFileSystem.connectSync(fsPort)
 	}
 
 	if (!runtimeReadyPromise) {
@@ -335,12 +337,14 @@ function createTtyStreams(columns, rows) {
 		}
 	}
 
-	const stdout = new WorkerWriteStream(1, (chunk) =>
-		postMessage({ type: 'stdout', data: chunk })
-	)
-	const stderr = new WorkerWriteStream(2, (chunk) =>
-		postMessage({ type: 'stderr', data: chunk })
-	)
+	const stdout = new WorkerWriteStream(1, (chunk) => {
+		console.log('STDOUT!', chunk),
+			postMessage({ type: 'stdout', data: chunk })
+	})
+	const stderr = new WorkerWriteStream(2, (chunk) => {
+		console.log('STDERR!', chunk),
+			postMessage({ type: 'stderr', data: chunk })
+	})
 	const stdin = new WorkerReadStream()
 
 	const ttyModule = globalThis.coreModules?.tty
@@ -373,7 +377,7 @@ function createTtyStreams(columns, rows) {
 	}
 }
 
-window.stableConsole = {
+globalThis.stableConsole = {
 	log: console.log.bind(console),
 	info: console.info.bind(console),
 	warn: console.warn.bind(console),
@@ -412,31 +416,33 @@ function prepareEnvironment({ argv, env, cwd }) {
 
 	const terminalAdapter = {
 		writeStdout(message) {
+			console.log('writeStdout', { message }),
 			postMessage({ type: 'stdout', data: String(message) })
 		},
 		writeStderr(message) {
+			console.log('writeStderr', { message }),
 			postMessage({ type: 'stderr', data: String(message) })
 		},
 	}
 
 	processObj?.setTerminal?.(terminalAdapter)
 
-	console.log = (...args) => {
-		window.stableConsole.log(...args)
-		postMessage({
-			type: 'stdout',
-			data: `${format(...args)}\n`,
-		})
-	}
-	console.info = console.log
-	console.warn = (...args) => {
-		window.stableConsole.warn(...args)
-		postMessage({
-			type: 'stderr',
-			data: `${format(...args)}\n`,
-		})
-	}
-	console.error = console.warn
+	// console.log = (...args) => {
+	// 	globalThis.stableConsole.log(...args)
+	// 	postMessage({
+	// 		type: 'stdout',
+	// 		data: `${format(...args)}\n`,
+	// 	})
+	// }
+	// console.info = console.log
+	// console.warn = (...args) => {
+	// 	globalThis.stableConsole.warn(...args)
+	// 	postMessage({
+	// 		type: 'stderr',
+	// 		data: `${format(...args)}\n`,
+	// 	})
+	// }
+	// console.error = console.warn
 
 	if (processObj) {
 		processObj.argv = Array.isArray(argv) ? [...argv] : []
@@ -466,10 +472,10 @@ function prepareEnvironment({ argv, env, cwd }) {
 
 	return () => {
 		processObj?.setTerminal?.(null)
-		console.log = previous.console.log
-		console.info = previous.console.info
-		console.warn = previous.console.warn
-		console.error = previous.console.error
+		// console.log = previous.console.log
+		// console.info = previous.console.info
+		// console.warn = previous.console.warn
+		// console.error = previous.console.error
 		if (processObj) {
 			processObj.exit = previous.exit
 			processObj.abort = previous.abort

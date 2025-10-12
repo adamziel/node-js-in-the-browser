@@ -206,6 +206,52 @@ function createDebugProxy(name, target) {
 	})
 }
 
+// Fill a provided stats array at a specific offset
+// This is used by the native binding to populate the shared statValues arrays
+// offset is in fields (18 fields per Stats instance)
+function fillStatsArray(arr, stats, useBigint, offset = 0) {
+	// Convert to appropriate type
+	const toType = useBigint ? BigInt : Number
+
+	// File type constants (from Node.js constants)
+	const S_IFREG = 32768 // Regular file
+	const S_IFDIR = 16384 // Directory
+	const S_IFLNK = 40960 // Symbolic link
+
+	// Combine file type bits with permission bits
+	let mode = stats.mode
+	if (stats.type === 'file') {
+		mode = S_IFREG | stats.mode
+	} else if (stats.type === 'dir') {
+		mode = S_IFDIR | stats.mode
+	} else if (stats.type === 'symlink') {
+		mode = S_IFLNK | stats.mode
+	}
+
+	// Fill array in the order expected by Node.js
+	// See FsStatsOffset in src/node_file.h
+	arr[offset + 0] = toType(0) // dev
+	arr[offset + 1] = toType(mode) // mode (with file type bits)
+	arr[offset + 2] = toType(1) // nlink
+	arr[offset + 3] = toType(0) // uid
+	arr[offset + 4] = toType(0) // gid
+	arr[offset + 5] = toType(0) // rdev
+	arr[offset + 6] = toType(4096) // blksize
+	arr[offset + 7] = toType(0) // ino
+	arr[offset + 8] = toType(stats.size) // size
+	arr[offset + 9] = toType(Math.ceil(stats.size / 512)) // blocks
+
+	// Time values - split into seconds and nanoseconds
+	arr[offset + 10] = toType(Math.floor(stats.atimeMs / 1000)) // atimeSec
+	arr[offset + 11] = toType((stats.atimeMs % 1000) * 1000000) // atimeNsec
+	arr[offset + 12] = toType(Math.floor(stats.mtimeMs / 1000)) // mtimeSec
+	arr[offset + 13] = toType((stats.mtimeMs % 1000) * 1000000) // mtimeNsec
+	arr[offset + 14] = toType(Math.floor(stats.ctimeMs / 1000)) // ctimeSec
+	arr[offset + 15] = toType((stats.ctimeMs % 1000) * 1000000) // ctimeNsec
+	arr[offset + 16] = toType(Math.floor(stats.birthtimeMs / 1000)) // birthtimeSec
+	arr[offset + 17] = toType((stats.birthtimeMs % 1000) * 1000000) // birthtimeNsec
+}
+
 globalThis.internalModules = {
 	builtins: {
 		...builtins,
@@ -616,8 +662,7 @@ globalThis.internalModules = {
 			},
 			read(fd, buffer, offset, length, position, reqOrPromise) {
 				return maybePromiseFromSync(
-					() =>
-						globalFs.readSync(fd, buffer, offset, length, position),
+					() => globalFs.readSync(fd, length, position),
 					reqOrPromise
 				)
 			},
@@ -684,107 +729,41 @@ globalThis.internalModules = {
 
 				// If path is a file descriptor (number), use it directly
 				// Otherwise, treat it as a path string
-				const isFileDescriptor = typeof path === 'number'
+				const receivedFileDescriptor = typeof path === 'number'
+				let fd = receivedFileDescriptor
+					? path
+					: globalFs.openSync(path, flags || 0)
 
-				if (isFileDescriptor) {
-					// Read from file descriptor
-					const stats = globalFs.fstatSync(path)
+				try {
+					const stats = globalFs.fstatSync(fd)
 					const size = stats.size
 
-					if (size === 0) {
-						// Empty file or special file (like /dev/null)
-						let result = ''
-						const buffer = Buffer.allocUnsafe(8192)
-						let bytesRead
+					// Empty file or special file
+					const chunks = []
+					let readBuffer
 
-						do {
-							bytesRead = globalFs.readSync(
-								path,
-								buffer,
-								0,
-								8192,
-								null
-							)
-							if (bytesRead > 0) {
-								result += buffer.toString('utf8', 0, bytesRead)
-							}
-						} while (bytesRead > 0)
-
-						return result
-					} else {
-						// Regular file with known size
-						const buffer = Buffer.allocUnsafe(size)
-						let pos = 0
-						let bytesRead
-
-						do {
-							bytesRead = globalFs.readSync(
-								path,
-								buffer,
-								pos,
-								size - pos,
-								pos
-							)
-							pos += bytesRead
-						} while (bytesRead > 0 && pos < size)
-
-						return buffer.toString('utf8', 0, pos)
-					}
-				} else {
-					// Read from path - open, read, close
-					// Note: flags parameter is used for opening the file
-					// In Node.js, this is typically O_RDONLY (0) for reading
-					const fd = globalFs.openSync(path, flags || 0)
-
-					try {
-						const stats = globalFs.fstatSync(fd)
-						const size = stats.size
-						console.log({size, stats, flags, fd})
-
-						if (size === 0) {
-							// Empty file or special file
-							let result = ''
-							const buffer = Buffer.allocUnsafe(8192)
-							let bytesRead
-
-							do {
-								bytesRead = globalFs.readSync(
-									fd,
-									buffer,
-									0,
-									8192,
-									null
-								)
-								if (bytesRead > 0) {
-									result += buffer.toString(
-										'utf8',
-										0,
-										bytesRead
-									)
-								}
-							} while (bytesRead > 0)
-
-							return result
-						} else {
-							// Regular file with known size
-							const buffer = Buffer.allocUnsafe(size)
-							let pos = 0
-							let bytesRead
-
-							do {
-								bytesRead = globalFs.readSync(
-									fd,
-									buffer,
-									pos,
-									size - pos,
-									pos
-								)
-								pos += bytesRead
-							} while (bytesRead > 0 && pos < size)
-
-							return buffer.toString('utf8', 0, pos)
+					do {
+						readBuffer = globalFs.readSync(fd, 64 * 1024, null)
+						if (readBuffer && readBuffer.byteLength > 0) {
+							chunks.push(readBuffer)
 						}
-					} finally {
+					} while (readBuffer && readBuffer.byteLength > 0)
+
+					// Concatenate all chunks into a single buffer
+					const totalLength = chunks.reduce(
+						(sum, chunk) => sum + chunk.byteLength,
+						0
+					)
+					const finalBuffer = new Uint8Array(totalLength)
+					let offset = 0
+					for (const chunk of chunks) {
+						finalBuffer.set(chunk, offset)
+						offset += chunk.byteLength
+					}
+
+					return new TextDecoder('utf-8').decode(finalBuffer)
+				} finally {
+					if (receivedFileDescriptor) {
 						globalFs.closeSync(fd)
 					}
 				}
@@ -902,12 +881,7 @@ globalThis.internalModules = {
 						const targetArray = useBigint
 							? globalThis.internalModules.fs.bigintStatValues
 							: globalThis.internalModules.fs.statValues
-						globalFs.fillStatsArray(
-							targetArray,
-							stats,
-							useBigint,
-							0
-						)
+						fillStatsArray(targetArray, stats, useBigint, 0)
 						return targetArray
 					} catch (err) {
 						// If throwIfNoEntry is false and error is ENOENT, return undefined
@@ -927,12 +901,7 @@ globalThis.internalModules = {
 						const targetArray = useBigint
 							? globalThis.internalModules.fs.bigintStatValues
 							: globalThis.internalModules.fs.statValues
-						globalFs.fillStatsArray(
-							targetArray,
-							stats,
-							useBigint,
-							0
-						)
+						fillStatsArray(targetArray, stats, useBigint, 0)
 						return targetArray
 					} catch (err) {
 						// If throwIfNoEntry is false and error is ENOENT, return undefined
@@ -953,12 +922,7 @@ globalThis.internalModules = {
 						const targetArray = useBigint
 							? globalThis.internalModules.fs.bigintStatValues
 							: globalThis.internalModules.fs.statValues
-						globalFs.fillStatsArray(
-							targetArray,
-							stats,
-							useBigint,
-							0
-						)
+						fillStatsArray(targetArray, stats, useBigint, 0)
 						return targetArray
 					} catch (err) {
 						// If throwIfNoEntry is false and error is EBADF, return undefined

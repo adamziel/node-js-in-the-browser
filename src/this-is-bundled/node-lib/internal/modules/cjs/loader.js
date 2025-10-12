@@ -8,5 +8,6 @@ cjsLoader.Module._load = function (request, parent, isMain) {
 	if(!request.startsWith("node:") && (requestWithoutNode in globalThis.coreModules)) {
 		request = `node:${request}`;
 	}
+
 	return originalModuleLoad(request, parent, isMain);
 };
