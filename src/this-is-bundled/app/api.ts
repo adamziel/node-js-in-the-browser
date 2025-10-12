@@ -1,6 +1,6 @@
 import * as Comlink from './comlink-sync';
 import {
-	NodeSABSyncReceiveMessageTransport,
+	createSyncTransport,
 	nodeEndpoint,
 	type NodeEndpoint,
 	type Remote,
@@ -27,7 +27,7 @@ export async function consumeAPISync<APIType>(
 	remote: IsomorphicMessagePort
 ): Promise<APIType> {
 	setupTransferHandlers();
-	const transport = await NodeSABSyncReceiveMessageTransport.create();
+	const transport = await createSyncTransport();
 	return Comlink.wrapSync<APIType>(remote, transport);
 }
 
@@ -126,7 +126,7 @@ export async function exposeSyncAPI<Methods>(
 	port: IsomorphicMessagePort
 ): Promise<[() => void, (e: Error) => void, Methods]> {
 	const { setReady, setFailed, exposedApi } = prepareForExpose(apiMethods);
-	const transport = await NodeSABSyncReceiveMessageTransport.create();
+	const transport = await createSyncTransport();
 	const endpoint = nodeEndpoint(port as any);
 	Comlink.exposeSync(exposedApi, endpoint, transport);
 	return [setReady, setFailed, exposedApi as Methods];

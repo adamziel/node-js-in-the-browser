@@ -1,4 +1,6 @@
-import { exposeSync, NodeSABSyncReceiveMessageTransport } from './comlink-sync'
+import { exposeSync, createSyncTransport } from './comlink-sync'
+
+const transport = await createSyncTransport()
 
 exposeSync(
 	{
@@ -8,5 +10,5 @@ exposeSync(
 		},
 	},
 	self,
-	NodeSABSyncReceiveMessageTransport.create()
+	transport
 )

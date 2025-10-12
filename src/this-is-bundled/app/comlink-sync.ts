@@ -142,18 +142,33 @@ export function wrapSync<T>(
 
 export type IsomorphicMessagePort = MessagePort | NodeMessagePort;
 
-export class NodeSABSyncReceiveMessageTransport {
+const STATE_EMPTY = 0;
+const STATE_FULL = 1;
+const STATE_CLOSED = -1;
+const FLAG_MORE = 1;
+
+type BrowserSyncConnection = {
+	worker: Worker;
+	commandPort: MessagePort;
+	control: Int32Array;
+	payload: Uint8Array;
+	ctrlSAB: SharedArrayBuffer;
+	bufSAB: SharedArrayBuffer;
+};
+
+export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 	private static receiveMessageOnPort: any;
 
-	static async create() {
+	static async create(): Promise<NodeSABSyncReceiveMessageTransport> {
 		if (!NodeSABSyncReceiveMessageTransport.receiveMessageOnPort) {
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-var-requires
 				NodeSABSyncReceiveMessageTransport.receiveMessageOnPort =
 					require('worker_threads').receiveMessageOnPort;
 			} catch {
 				NodeSABSyncReceiveMessageTransport.receiveMessageOnPort =
 					await import('worker_threads').then(
-						(m) => m.receiveMessageOnPort
+						(mod) => mod.receiveMessageOnPort
 					);
 			}
 		}
@@ -170,13 +185,12 @@ export class NodeSABSyncReceiveMessageTransport {
 			Atomics.notify(view, 0);
 		}
 	}
+
 	send(
 		ep: IsomorphicMessagePort,
 		msg: Omit<SyncMessage, 'id' | 'notifyBuffer'>,
-		transferables?: Transferable[]
+		transferables: Transferable[] = []
 	): WireValue {
-		// SharedArrayBuffer = one 32‑bit cell that starts at 0.
-		// The other worker will set this to 1 when it has sent the response.
 		const latch = new SharedArrayBuffer(4);
 		const view = new Int32Array(latch);
 		view[0] = 0;
@@ -187,7 +201,6 @@ export class NodeSABSyncReceiveMessageTransport {
 			transferables as any
 		);
 
-		// Synchronous pull; Node.js-only. Browsers don't support receiveMessageOnPort.
 		const timeoutMs = 5000;
 		const result = Atomics.wait(view, 0, 0, timeoutMs);
 		if (result === 'timed-out') {
@@ -196,13 +209,487 @@ export class NodeSABSyncReceiveMessageTransport {
 		while (true) {
 			const res =
 				NodeSABSyncReceiveMessageTransport.receiveMessageOnPort(ep);
-			if (res.message?.id === id) {
+			if (res?.message?.id === id) {
 				return res.message;
-			} else if (!res) {
+			}
+			if (!res) {
 				throw new Error('No response received');
 			}
 		}
 	}
+}
+
+export class SABAtomicsWaitTransport implements SyncTransport {
+	private static browserConnections = new WeakMap<
+		MessagePort,
+		BrowserSyncConnection
+	>();
+	private static browserPumpWorkerUrl?: string;
+	private static textDecoder: TextDecoder | undefined;
+	private static readonly browserBufferBytes = 1 << 20;
+	private static readonly handshakeTimeoutMs = 5000;
+	private static readonly pumpWorkerSource = `
+const scope = typeof self !== 'undefined' ? self : globalThis
+const parentPort = typeof require === 'function' ? (() => {
+	try {
+		return require('worker_threads').parentPort
+	} catch {
+		return null
+	}
+})() : null
+const STATE_EMPTY = 0
+const STATE_FULL = 1
+const STATE_CLOSED = -1
+const FLAG_MORE = 1
+const encoder = new TextEncoder()
+
+function waitUntilEmptyOrClosed(control) {
+	for (;;) {
+		const state = Atomics.load(control, 0)
+		if (state === STATE_EMPTY || state < 0) {
+			return state
+		}
+		Atomics.wait(control, 0, state)
+	}
+}
+
+function listen(target, handler) {
+	if (!target) return
+	if (typeof target.addEventListener === 'function') {
+		target.addEventListener('message', (event) => handler(event.data))
+	} else if ('onmessage' in target) {
+		target.onmessage = (event) => handler(event.data)
+	} else if (typeof target.on === 'function') {
+		target.on('message', (value) => handler(value))
+	}
+}
+
+function handleInitMessage(data) {
+	const port = data.port
+	const commandPort = data.commandPort
+	const control = new Int32Array(data.ctrl, 0, 3)
+	const payload = new Uint8Array(data.buf)
+	const signal = new Int32Array(data.handshake)
+
+	function closePump() {
+		Atomics.store(control, 0, STATE_CLOSED)
+		Atomics.notify(control, 0)
+		try {
+			if (typeof port.close === 'function') {
+				port.close()
+			}
+		} catch {}
+		try {
+			if (typeof commandPort.close === 'function') {
+				commandPort.close()
+			}
+		} catch {}
+	}
+
+	listen(commandPort, (messageData) => {
+		if (!messageData || typeof messageData !== 'object') {
+			return
+		}
+		switch (messageData.type) {
+			case 'postMessage': {
+				const message = messageData.message || {}
+				const transfers = message.__comlinkTransfers || []
+				if ('__comlinkTransfers' in message) {
+					delete message.__comlinkTransfers
+				}
+				port.postMessage(message, transfers)
+				break
+			}
+			case 'close': {
+				closePump()
+				break
+			}
+		}
+	})
+
+	listen(port, (payloadData) => {
+		const json = JSON.stringify(payloadData)
+		const bytes = encoder.encode(json)
+		let offset = 0
+		while (offset < bytes.length) {
+			const state = waitUntilEmptyOrClosed(control)
+			if (state === STATE_CLOSED) {
+				return
+			}
+
+			const chunkSize = Math.min(payload.byteLength, bytes.length - offset)
+			payload.set(bytes.subarray(offset, offset + chunkSize))
+			Atomics.store(control, 1, chunkSize)
+			Atomics.store(
+				control,
+				2,
+				offset + chunkSize < bytes.length ? FLAG_MORE : 0
+			)
+			Atomics.store(control, 0, STATE_FULL)
+			Atomics.notify(control, 0, 1)
+			offset += chunkSize
+		}
+	})
+
+	if (typeof port.start === 'function') {
+		port.start()
+	}
+	if (typeof commandPort.start === 'function') {
+		commandPort.start()
+	}
+
+	Atomics.store(signal, 0, 1)
+	Atomics.notify(signal, 0)
+}
+
+const topLevelTarget = parentPort || scope
+listen(topLevelTarget, (data) => {
+	if (!data || data.type !== 'init') {
+		return
+	}
+	try {
+		handleInitMessage(data)
+	} catch (error) {
+		const signal = new Int32Array(data.handshake)
+		Atomics.store(signal, 0, -1)
+		Atomics.notify(signal, 0)
+		throw error
+	}
+})
+`;
+
+	static async create(): Promise<SABAtomicsWaitTransport> {
+		SABAtomicsWaitTransport.assertSupport();
+		return new SABAtomicsWaitTransport();
+	}
+
+	private constructor() {}
+
+	afterResponseSent(ev: MessageEvent) {
+		const { notifyBuffer } = ev.data as SyncMessage;
+		if (notifyBuffer) {
+			const view = new Int32Array(notifyBuffer);
+			view[0] = 1;
+			Atomics.notify(view, 0);
+		}
+	}
+
+	send(
+		ep: IsomorphicMessagePort,
+		msg: Omit<SyncMessage, 'id' | 'notifyBuffer'>,
+		transferables: Transferable[] = []
+	): WireValue {
+		if (!SABAtomicsWaitTransport.isMessagePort(ep)) {
+			throw new TypeError(
+				'SABAtomicsWaitTransport expects a MessagePort endpoint'
+			);
+		}
+		const connection = SABAtomicsWaitTransport.ensureConnection(ep);
+		return SABAtomicsWaitTransport.sendThroughConnection(
+			connection,
+			msg,
+			transferables
+		);
+	}
+
+	private static isMessagePort(value: unknown): value is MessagePort {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			'postMessage' in value &&
+			typeof (value as MessagePort).postMessage === 'function'
+		);
+	}
+
+	private static sendThroughConnection(
+		connection: BrowserSyncConnection,
+		msg: Omit<SyncMessage, 'id' | 'notifyBuffer'>,
+		transferables: Transferable[]
+	): WireValue {
+		const latch = new SharedArrayBuffer(4);
+		const view = new Int32Array(latch);
+		view[0] = 0;
+
+		const id = generateUUID();
+		const message: SyncMessage & {
+			__comlinkTransfers?: Transferable[];
+		} = { ...msg, id, notifyBuffer: latch };
+
+		if (transferables.length) {
+			Object.defineProperty(message, '__comlinkTransfers', {
+				value: transferables,
+				configurable: true,
+			});
+		}
+
+		connection.commandPort.postMessage(
+			{ type: 'postMessage', message },
+			transferables as any
+		);
+
+		if ('__comlinkTransfers' in message) {
+			delete (message as Record<string, unknown>).__comlinkTransfers;
+		}
+
+		const timeoutMs = 5000;
+		const waitResult = Atomics.wait(view, 0, 0, timeoutMs);
+		if (waitResult === 'timed-out') {
+			throw new Error('Timeout waiting for response');
+		}
+
+		while (true) {
+			const res =
+				SABAtomicsWaitTransport.browserReceiveMessageOnPort(connection);
+			if (!res) {
+				throw new Error('No response received');
+			}
+			if (res.message?.id === id) {
+				return res.message;
+			}
+		}
+	}
+
+	private static assertSupport() {
+		if (typeof SharedArrayBuffer === 'undefined') {
+			throw new Error(
+				'SharedArrayBuffer is required for synchronous transport'
+			);
+		}
+		if (
+			typeof Atomics === 'undefined' ||
+			typeof Atomics.wait !== 'function'
+		) {
+			throw new Error(
+				'Atomics.wait is required for synchronous transport'
+			);
+		}
+		if (typeof MessageChannel === 'undefined') {
+			throw new Error('MessageChannel is required for synchronous transport');
+		}
+		if (
+			typeof Worker === 'undefined' &&
+			typeof require !== 'function'
+		) {
+			throw new Error('Worker API is required for synchronous transport');
+		}
+	}
+
+	private static ensureConnection(port: MessagePort): BrowserSyncConnection {
+		const existing = SABAtomicsWaitTransport.browserConnections.get(port);
+		if (existing) {
+			return existing;
+		}
+
+		const ctrlSAB = new SharedArrayBuffer(16);
+		const bufSAB = new SharedArrayBuffer(
+			SABAtomicsWaitTransport.browserBufferBytes
+		);
+		const control = new Int32Array(ctrlSAB, 0, 3);
+		const payload = new Uint8Array(bufSAB);
+		control[0] = STATE_EMPTY;
+		control[1] = 0;
+		control[2] = 0;
+
+		const handshakeSAB = new SharedArrayBuffer(4);
+		const handshake = new Int32Array(handshakeSAB);
+		handshake[0] = 0;
+
+		const { port1: commandPortForWorker, port2: commandPortForClient } =
+			new MessageChannel();
+
+		const worker = SABAtomicsWaitTransport.createPumpWorker();
+
+		worker.postMessage(
+			{
+				type: 'init',
+				port,
+				ctrl: ctrlSAB,
+				buf: bufSAB,
+				commandPort: commandPortForWorker,
+				handshake: handshakeSAB,
+			},
+			[port, commandPortForWorker]
+		);
+
+		const waitResult = Atomics.wait(
+			handshake,
+			0,
+			0,
+			SABAtomicsWaitTransport.handshakeTimeoutMs
+		);
+		if (waitResult === 'timed-out') {
+			worker.terminate();
+			throw new Error(
+				'Timed out waiting for synchronous transport pump worker'
+			);
+		}
+
+		const status = Atomics.load(handshake, 0);
+		if (status !== 1) {
+			worker.terminate();
+			throw new Error(
+				'Synchronous transport pump worker failed to initialize'
+			);
+		}
+
+		if (typeof commandPortForClient.start === 'function') {
+			commandPortForClient.start();
+		}
+
+		const connection: BrowserSyncConnection = {
+			worker,
+			commandPort: commandPortForClient,
+			control,
+			payload,
+			ctrlSAB,
+			bufSAB,
+		};
+		SABAtomicsWaitTransport.browserConnections.set(port, connection);
+		return connection;
+	}
+
+	private static createPumpWorker(): Worker {
+		const WorkerCtor =
+			typeof Worker !== 'undefined'
+				? Worker
+				: (globalThis as any)?.Worker;
+		if (WorkerCtor) {
+			try {
+				return new WorkerCtor(
+					SABAtomicsWaitTransport.getPumpWorkerUrl(),
+					{
+						name: 'comlink-sync-pump',
+					}
+				);
+			} catch {
+				try {
+					return new (WorkerCtor as any)(
+						SABAtomicsWaitTransport.pumpWorkerSource,
+						{ eval: true, name: 'comlink-sync-pump' }
+					);
+				} catch {
+					// fall through
+				}
+			}
+		}
+		if (typeof require === 'function') {
+			try {
+				// eslint-disable-next-line @typescript-eslint/no-var-requires
+				const { Worker: NodeWorker } = require('worker_threads');
+				return new NodeWorker(SABAtomicsWaitTransport.pumpWorkerSource, {
+					eval: true,
+					name: 'comlink-sync-pump',
+				});
+			} catch {
+				// ignore
+			}
+		}
+		throw new Error('Worker API is required for synchronous transport');
+	}
+
+	private static getPumpWorkerUrl(): string {
+		if (!SABAtomicsWaitTransport.browserPumpWorkerUrl) {
+			const supportsBlob =
+				typeof Blob !== 'undefined' &&
+				typeof URL !== 'undefined' &&
+				typeof URL.createObjectURL === 'function';
+			if (!supportsBlob) {
+				throw new Error('Blob and URL APIs are required for synchronous transport');
+			}
+			const blob = new Blob(
+				[SABAtomicsWaitTransport.pumpWorkerSource],
+				{ type: 'text/javascript' }
+			);
+			SABAtomicsWaitTransport.browserPumpWorkerUrl =
+				URL.createObjectURL(blob);
+		}
+		return SABAtomicsWaitTransport.browserPumpWorkerUrl;
+	}
+
+	private static browserReceiveMessageOnPort(
+		connection: BrowserSyncConnection,
+		options?: { timeoutMs?: number }
+	): { message: any } | undefined {
+		const pieces: Uint8Array[] = [];
+		let total = 0;
+
+		for (;;) {
+			const state = Atomics.load(connection.control, 0);
+			if (state === STATE_FULL) {
+				const len = Atomics.load(connection.control, 1);
+				const flags = Atomics.load(connection.control, 2);
+				const chunk = connection.payload.slice(0, len);
+
+				Atomics.store(connection.control, 0, STATE_EMPTY);
+				Atomics.notify(connection.control, 0, 1);
+
+				pieces.push(chunk);
+				total += len;
+
+				if ((flags & FLAG_MORE) === 0) {
+					const bytes = new Uint8Array(total);
+					let offset = 0;
+					for (const part of pieces) {
+						bytes.set(part, offset);
+						offset += part.length;
+					}
+					const decoder =
+						SABAtomicsWaitTransport.textDecoder || new TextDecoder();
+					SABAtomicsWaitTransport.textDecoder = decoder;
+					const json = decoder.decode(bytes);
+					return { message: JSON.parse(json) };
+				}
+				continue;
+			}
+
+			if (state === STATE_CLOSED) {
+				return undefined;
+			}
+
+			if (options?.timeoutMs !== undefined) {
+				const res = Atomics.wait(
+					connection.control,
+					0,
+					state,
+					options.timeoutMs
+				);
+				if (res === 'timed-out') {
+					return undefined;
+				}
+			} else {
+				Atomics.wait(connection.control, 0, state);
+			}
+		}
+	}
+}
+
+async function canAccessWorkerThreads(): Promise<boolean> {
+	if (typeof require === 'function') {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			require('worker_threads');
+			return true;
+		} catch {
+			// ignore
+		}
+	}
+	try {
+		await import('worker_threads');
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export async function createSyncTransport(): Promise<SyncTransport> {
+	if (await canAccessWorkerThreads()) {
+		try {
+			return await NodeSABSyncReceiveMessageTransport.create();
+		} catch {
+			// fall through to SharedArrayBuffer transport
+		}
+	}
+	return SABAtomicsWaitTransport.create();
 }
 
 /**

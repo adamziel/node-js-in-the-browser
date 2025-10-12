@@ -1,8 +1,4 @@
-import {
-	wrapSync,
-	NodeSABSyncReceiveMessageTransport,
-	createEndpoint,
-} from './comlink-sync'
+import { wrapSync, createSyncTransport } from './comlink-sync'
 
 const worker = new Worker(new URL('./comlink-expose.ts', import.meta.url), {
 	type: 'module',
@@ -10,7 +6,7 @@ const worker = new Worker(new URL('./comlink-expose.ts', import.meta.url), {
 	credentials: 'include',
 })
 
-const api = await wrapSync(worker)
+const api = await wrapSync(worker, await createSyncTransport())
 console.log('Api wrapped')
 
 console.log('before call')
