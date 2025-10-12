@@ -18,15 +18,10 @@ import type { MessagePort as NodeMessagePort } from 'worker_threads'
  * Downsides:
  *
  * * Fragmentation: Both synchronous and asynchronous handlers exist to get the best our of both
- * Asyncify and JSPI. * Node.js-only: This extension does not implement a Safari-friendly
- * transport. SharedArrayBuffer is an option, but
- *                 it requires more restrictive CORP+COEP headers which breaks, e.g., YouTube
- *                 embeds. Synchronous XHR might work if we really need Safari support for one of
- *                 the new asynchronous features, but other than that let's just skip adding new
- *                 asynchronous WASM features to Safari until WebKit supports stack switching.
+ *   Asyncify and JSPI.
+ * * Limited: It works either in Node.js or in browser environments with SharedArrayBuffer enabled.
  * * Message passing between workers is slow. Avoid using synchronous messaging for syscalls that
- * are invoked frequently and
- *   handled asynchronously in the same worker.
+ *   are invoked frequently and handled asynchronously in the same worker.
  *
  * @see https://github.com/adamziel/js-synchronous-messaging for additional ideas.
  * @see https://github.com/WordPress/wordpress-playground/blob/9a9262cc62cc161d220a9992706b9ed2817f2eb5/packages/docs/site/docs/developers/23-architecture/07-wasm-asyncify.md
@@ -48,7 +43,7 @@ interface SyncTransport {
 		msg: Omit<SyncMessage, 'id' | 'notifyBuffer'>,
 		transferables?: Transferable[]
 	): WireValue
-	prepareEndpoint?(port: IsomorphicMessagePort): Promise<void>
+	initiateSyncConnection?(port: IsomorphicMessagePort): Promise<void>
 }
 
 export function exposeSync(
@@ -133,90 +128,77 @@ function createSyncProxy<T>(
 }
 
 type SyncWrapEndpoint = IsomorphicMessagePort | Endpoint | Worker
-const endpointPortPromises = new WeakMap<Endpoint, Promise<MessagePort>>()
-const endpointHandshakeTimeoutMs = 5000
 
 export async function wrapSync<T>(
 	endpoint: SyncWrapEndpoint,
 	transport?: SyncTransport
 ): Promise<T> {
-	const port = await preparePortForWrapping(endpoint)
+	const port = await endpointToMessagePort(endpoint)
 
 	transport = transport ?? (await createSyncTransport())
-	await transport.prepareEndpoint?.(port)
+	await transport.initiateSyncConnection?.(port)
 
 	return createSyncProxy<T>(port, [], transport)
 }
 
-async function preparePortForWrapping(
-	endpoint: SyncWrapEndpoint
+async function endpointToMessagePort(
+	endpoint: any
 ): Promise<IsomorphicMessagePort> {
+	if (!endpoint) {
+		throw new TypeError(
+			'wrapSync expects a MessagePort, Worker, or Comlink Endpoint'
+		)
+	}
+
+	// If we already have a message port–like object, return it
 	const seemsLikeMessagePort =
-		!!endpoint &&
-		typeof (endpoint as any).postMessage === 'function' &&
-		typeof (endpoint as any).close === 'function'
+		typeof endpoint.postMessage === 'function' &&
+		typeof endpoint.close === 'function'
 	if (seemsLikeMessagePort) {
 		return endpoint as IsomorphicMessagePort
 	}
 
+	// Otherwise, only accept endpoint–like objects...
 	const seemsLikeEndpoint =
-		!!endpoint &&
-		typeof (endpoint as any).postMessage === 'function' &&
-		typeof (endpoint as any).addEventListener === 'function' &&
-		typeof (endpoint as any).removeEventListener === 'function'
-	if (seemsLikeEndpoint) {
-		const port = await endpointToPort(endpoint as Endpoint)
-		if (typeof port.start === 'function') {
-			port.start()
-		}
-		return port
+		typeof endpoint.postMessage === 'function' &&
+		typeof endpoint.addEventListener === 'function' &&
+		typeof endpoint.removeEventListener === 'function'
+	if (!seemsLikeEndpoint) {
+		throw new TypeError(
+			'wrapSync expects a MessagePort, Worker, or Comlink Endpoint'
+		)
 	}
 
-	throw new TypeError(
-		'wrapSync expects a MessagePort, Worker, or Comlink Endpoint'
-	)
-}
-
-function endpointToPort(endpoint: Endpoint): Promise<MessagePort> {
-	let promise = endpointPortPromises.get(endpoint)
-	if (promise) {
-		return promise
-	}
-
-	promise = new Promise<MessagePort>((resolve, reject) => {
-		const id = generateUUID()
-		const timer = setTimeout(() => {
-			cleanup()
-			reject(new Error('Timed out acquiring synchronous message port'))
-		}, endpointHandshakeTimeoutMs)
-
-		const handler = (event: Event) => {
+	// ...and convert it to a message port
+	return new Promise<MessagePort>((resolve, reject) => {
+		const messageId = generateUUID()
+		const responseHandler: EventListener = (event) => {
 			const { data } = event as MessageEvent<WireValue>
-			if (!data || (data as any).id !== id) {
+			if (!data || (data as any).id !== messageId) {
 				return
 			}
 			cleanup()
-			resolve(fromWireValue(data) as MessagePort)
+			const port = fromWireValue(data) as MessagePort
+			if (typeof port.start === 'function') {
+				port.start()
+			}
+			resolve(port)
 		}
 
-		const cleanup = () => {
-			clearTimeout(timer)
-			endpoint.removeEventListener('message', handler as any)
+		const timeout = setTimeout(() => {
+			cleanup()
+			reject(new Error('Timed out acquiring synchronous message port'))
+		}, 5000)
+
+		function cleanup() {
+			clearTimeout(timeout)
+			endpoint.removeEventListener('message', responseHandler)
 		}
 
-		endpoint.addEventListener('message', handler as any)
-		if (typeof endpoint.start === 'function') {
-			endpoint.start()
-		}
-		endpoint.postMessage({ id, type: MessageType.ENDPOINT })
+		endpoint.addEventListener('message', responseHandler)
+		endpoint.start?.()
+		endpoint.postMessage({ id: messageId, type: MessageType.ENDPOINT })
 	})
-
-	promise.catch(() => {
-		endpointPortPromises.delete(endpoint)
-	})
-
-	endpointPortPromises.set(endpoint, promise)
-	return promise
 }
 
 /// Transport ///
@@ -257,7 +239,7 @@ export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 		return new NodeSABSyncReceiveMessageTransport()
 	}
 
-	async prepareEndpoint(port: IsomorphicMessagePort): Promise<void> {}
+	async initiateSyncConnection(port: IsomorphicMessagePort): Promise<void> {}
 
 	private constructor() {}
 
@@ -486,7 +468,7 @@ listen(topLevelTarget, (data) => {
 
 	private constructor() {}
 
-	async prepareEndpoint(port: MessagePort): Promise<void> {
+	async initiateSyncConnection(port: MessagePort): Promise<void> {
 		await SABAtomicsWaitTransport.ensureConnection(port)
 	}
 
