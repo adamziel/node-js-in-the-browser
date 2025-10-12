@@ -1,8 +1,11 @@
 export async function initFiles(fs) {
+	console.log('1')
 	fs.mkdirSync('/home/user/.npm/_cacache', { recursive: true })
+	console.log('2')
 	if (!fs.existsSync('/.npm')) {
 		fs.mkdirSync('/.npm')
 	}
+	console.log('3')
 	fs.mkdirSync('/bin', { recursive: true })
 	fs.mkdirSync('/tmp', { recursive: true })
 	if (!fs.existsSync('/bin/node')) {

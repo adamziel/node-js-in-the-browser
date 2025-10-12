@@ -226,18 +226,22 @@
 			progress.show('Preparing the runtime…')
 			const PROMPT_SUFFIX = '$ '
 
-			const mainWorker = new Worker(
-				'./dist/app/main-worker.js',
-				{
-					type: 'module',
+			const mainWorker = new Worker('./dist/app/main-worker.js', {
+				type: 'module',
+			})
+			const mainWorkerClient = await consumeAPI(mainWorker)
+
+			// @TODO: If this is await-ed, it never gets resolved. If
+			// it's then-ed, it works as expected. Why?
+			mainWorkerClient.initDemoFilesystem().then(
+				() => {
+					console.log('initDemoFilesystem done')
+				},
+				(error) => {
+					console.error('initDemoFilesystem failed', error)
 				}
 			)
-			const mainWorkerClient = await consumeAPI(mainWorker)
-			await mainWorkerClient.initDemoFilesystem()
-			const fsPort = await mainWorkerClient.createFilesystemClientPort()
-			const globalFs = await RemoteInMemoryFileSystem.connect(fsPort)
-			window.globalFs = globalFs
-			
+
 			progress.update({
 				message: 'Launching terminal…',
 				progress: 98,
@@ -315,7 +319,7 @@
 				async run(command, args) {
 					this.active = true
 					try {
-						if(command === 'node') {
+						if (command === 'node') {
 							await this.runNodeCommand(args)
 						} else {
 							await this.runMainWithEntry(command, args)
@@ -372,7 +376,7 @@
 					}
 					console.log('runMainWithEntry', entryPath, argv)
 					// TODO: Proper PATH-based resolution
-					if(entryPath === 'npm') {
+					if (entryPath === 'npm') {
 						entryPath = '/bin/npm'
 					}
 					await this.disposeCurrentProcess({ terminate: true })
@@ -382,14 +386,15 @@
 					const columns = this.shell.term?.cols ?? 80
 					const rows = this.shell.term?.rows ?? 24
 					const envSnapshot = this.snapshotProcessEnv()
-					const processHandle = await mainWorkerClient.spawnRemoteProcess({
-						argv,
-						entry: entryPath,
-						cwd: this.shell.cwd,
-						env: envSnapshot,
-						columns,
-						rows,
-					})
+					const processHandle =
+						await mainWorkerClient.spawnRemoteProcess({
+							argv,
+							entry: entryPath,
+							cwd: this.shell.cwd,
+							env: envSnapshot,
+							columns,
+							rows,
+						})
 					console.log('processHandle', processHandle)
 					const listeners = []
 					const handleStdout = (event) => {
@@ -432,10 +437,7 @@
 						} else {
 							message = String(detail ?? 'Unknown error')
 						}
-						this.shell.writeStderrForRun(
-							runToken,
-							`${message}\n`
-						)
+						this.shell.writeStderrForRun(runToken, `${message}\n`)
 					}
 					processHandle.addEventListener('error', handleError)
 					listeners.push({ type: 'error', listener: handleError })
@@ -929,11 +931,12 @@
 
 					try {
 						console.log('executeCommand', command, args)
-						const result = await mainWorkerClient.executeShellCommand({
-							cwd: this.cwd,
-							command,
-							args,
-						})
+						const result =
+							await mainWorkerClient.executeShellCommand({
+								cwd: this.cwd,
+								command,
+								args,
+							})
 						console.log('result', result)
 						if (result && result.handled) {
 							if (

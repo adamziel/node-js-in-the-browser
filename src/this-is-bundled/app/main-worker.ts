@@ -27,23 +27,10 @@ const fsWorker = await new Promise((resolve) => {
 	}
 })
 
-function createFilesystemPort() {
-	const channel = new MessageChannel()
-	fsWorker.postMessage({ cmd: 'attach', port: channel.port1 }, [
-		channel.port1,
-	])
-	return channel.port2
-}
-
-// Attach the filesystem worker to the main worker
-const fsPort = createFilesystemPort()
-globalThis.globalFs = await RemoteInMemoryFileSystem.connect(fsPort)
+globalThis.globalFs = await RemoteInMemoryFileSystem.connectSync(fsWorker)
 
 class ShellCommandExecutor {
-	constructor(
-		private fs: RemoteInMemoryFileSystem,
-		private params: SpawnRemoteProcessParams
-	) {}
+	constructor(private fs: RemoteInMemoryFileSystem) {}
 
 	resolvePath(cwd, input) {
 		if (!input || input === '.') {
@@ -206,7 +193,7 @@ class ShellCommandExecutor {
 		if (!args.length) {
 			return { stdout: '', stderr: 'head: missing operand\n' }
 		}
-		const filenames = [];
+		const filenames = []
 		let n = 10
 		for (let i = 0; i < args.length; i++) {
 			const arg = args[i]
@@ -223,13 +210,15 @@ class ShellCommandExecutor {
 		for (const filename of filenames) {
 			const resolved = this.resolvePath(cwd, filename)
 			try {
-				const content = this.fs.readFileSync(resolved, 'utf-8').split('\n')
+				const content = this.fs
+					.readFileSync(resolved, 'utf-8')
+					.split('\n')
 				out.push(content.slice(0, n).join('\n'))
 			} catch (error) {
 				err.push(`${this.formatFsError('head', filename, error)}\n`)
 			}
 		}
-		return { stdout: out.join('') + "\n", stderr: err.join('') }
+		return { stdout: out.join('') + '\n', stderr: err.join('') }
 	}
 
 	handleEcho(args) {
@@ -380,11 +369,6 @@ class MainWorker {
 		await initFiles(this.filesystem)
 	}
 
-	createFilesystemClientPort() {
-		const port = createFilesystemPort()
-		return Comlink.transfer(port, [port])
-	}
-
 	async changeDirectory(cwd, target) {
 		const result = this.shell.changeDirectory(cwd, target, {
 			throwOnError: true,
@@ -396,9 +380,7 @@ class MainWorker {
 		const cwd = params?.cwd ?? '/'
 		const command = params?.command ?? ''
 		const args = Array.isArray(params?.args) ? params.args : []
-		console.log('executeShellCommand', cwd, command, args)
 		const result = this.shell.execute(cwd, command, args)
-		console.log('executeShellCommand result', result)
 		return result
 	}
 
@@ -440,24 +422,21 @@ class MainWorker {
 			events.dispatchEvent(event)
 		}
 
-		const handle = await spawnNodeProcess(
-			argv,
-			{
-				entry,
-				env,
-				cwd,
-				columns,
-				rows,
-				name,
-				fsPort: createFilesystemPort(),
-				onStdout: (text) => emit('stdout', text),
-				onStderr: (text) => emit('stderr', text),
-				onExit: (info) => emit('exit', info),
-				onError: (error) => emit('error', serializeProcessError(error)),
-				onReady: () => emit('ready'),
-				onMessage: (data) => emit('message', data),
-			}
-		)
+		const handle = await spawnNodeProcess(argv, {
+			entry,
+			env,
+			cwd,
+			columns,
+			rows,
+			name,
+			fsPort: createFilesystemPort(),
+			onStdout: (text) => emit('stdout', text),
+			onStderr: (text) => emit('stderr', text),
+			onExit: (info) => emit('exit', info),
+			onError: (error) => emit('error', serializeProcessError(error)),
+			onReady: () => emit('ready'),
+			onMessage: (data) => emit('message', data),
+		})
 		return Comlink.proxy({
 			addEventListener: (
 				type: string,
