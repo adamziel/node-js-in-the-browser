@@ -223,6 +223,20 @@ type BrowserSyncConnection = {
 export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 	private static receiveMessageOnPort: any
 
+	/**
+	 * Creates a new transport instance while also initializing the 
+	 * receiveMessageOnPort function. We're using this hack because we
+	 * don't have many other options:
+	 * 
+	 * * We can't initialize it in the constructor because it's async.
+	 * * We can't initialize it in a top-level code block – await won't work
+	 *   for CommonJS build target.
+	 * * We can't expose a static receiveMessageOnPort method runs these requires/imports
+	 *   upon the first call because, again, this logic is async and receiveMessageOnPort()
+	 *   must be synchronous.
+	 * 
+	 * @returns
+	 */
 	static async create(): Promise<NodeSABSyncReceiveMessageTransport> {
 		if (!NodeSABSyncReceiveMessageTransport.receiveMessageOnPort) {
 			try {
@@ -553,7 +567,7 @@ listen(topLevelTarget, (data) => {
 
 		while (true) {
 			const res =
-				SABAtomicsWaitTransport.browserReceiveMessageOnPort(connection)
+				SABAtomicsWaitTransport.receiveMessageOnPort(connection)
 			if (!res) {
 				throw new Error('No response received')
 			}
@@ -720,16 +734,6 @@ listen(topLevelTarget, (data) => {
 		throw new Error('Worker API is required for synchronous transport')
 	}
 
-	private static async yieldControl(): Promise<void> {
-		await new Promise((resolve) => {
-			if (typeof setImmediate === 'function') {
-				setImmediate(resolve)
-			} else {
-				setTimeout(resolve, 0)
-			}
-		})
-	}
-
 	private static getPumpWorkerUrl(): string {
 		if (!SABAtomicsWaitTransport.browserPumpWorkerUrl) {
 			const supportsBlob =
@@ -750,7 +754,7 @@ listen(topLevelTarget, (data) => {
 		return SABAtomicsWaitTransport.browserPumpWorkerUrl
 	}
 
-	private static browserReceiveMessageOnPort(
+	private static receiveMessageOnPort(
 		connection: BrowserSyncConnection,
 		options?: { timeoutMs?: number }
 	): { message: any } | undefined {
