@@ -1,3 +1,4 @@
+/// <reference lib="webworker" />
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
 /* eslint-disable @typescript-eslint/no-misused-new */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
@@ -33,8 +34,8 @@ interface SyncMessage {
 	/** existing Comlink fields …            */
 	[k: string]: any
 	/** new part that carries the latch      */
-	notifyBuffer?: SharedArrayBuffer;
-	__comlinkTransfers?: Transferable[];
+	notifyBuffer?: SharedArrayBuffer
+	__comlinkTransfers?: Transferable[]
 }
 
 interface SyncTransport {
@@ -239,8 +240,6 @@ export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 		return new NodeSABSyncReceiveMessageTransport()
 	}
 
-	async initiateSyncConnection(port: IsomorphicMessagePort): Promise<void> {}
-
 	private constructor() {}
 
 	afterResponseSent(ev: MessageEvent) {
@@ -309,172 +308,183 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 	private static textDecoder: TextDecoder | undefined
 	private static readonly browserBufferBytes = 1 << 20
 	private static readonly handshakeTimeoutMs = 5000
-	private static readonly pumpWorkerSource = `
-const scope = typeof self !== 'undefined' ? self : globalThis
-const parentPort = typeof require === 'function' ? (() => {
-	try {
-		return require('worker_threads').parentPort
-	} catch {
-		return null
-	}
-})() : null
-const STATE_EMPTY = 0
-const STATE_FULL = 1
-const STATE_CLOSED = -1
-const FLAG_MORE = 1
-const encoder = new TextEncoder()
-const pendingLatches = new Map()
+	private static readonly pumpWorkerSource =
+		'pumpWorker(); ' +
+		function pumpWorker() {
+			const STATE_EMPTY = 0
+			const STATE_FULL = 1
+			const STATE_CLOSED = -1
+			const FLAG_MORE = 1
+			const encoder = new TextEncoder()
+			const pendingLatches = new Map()
 
-function waitUntilEmptyOrClosed(control) {
-	for (;;) {
-		const state = Atomics.load(control, 0)
-		if (state === STATE_EMPTY || state < 0) {
-			return state
-		}
-		Atomics.wait(control, 0, state)
-	}
-}
+			function handleInitMessage(data) {
+				const port = data.port
+				const commandPort = data.commandPort
+				const control = new Int32Array(data.ctrl, 0, 3)
+				const payload = new Uint8Array(data.buf)
+				const signal = new Int32Array(data.handshake)
 
-function listen(target, handler) {
-	if (!target) return
-	if (typeof target.addEventListener === 'function') {
-		target.addEventListener('message', (event) => handler(event.data))
-	} else if ('onmessage' in target) {
-		target.onmessage = (event) => handler(event.data)
-	} else if (typeof target.on === 'function') {
-		target.on('message', (value) => handler(value))
-	}
-}
-
-function handleInitMessage(data) {
-	const port = data.port
-	const commandPort = data.commandPort
-	const control = new Int32Array(data.ctrl, 0, 3)
-	const payload = new Uint8Array(data.buf)
-	const signal = new Int32Array(data.handshake)
-
-	function closePump() {
-		Atomics.store(control, 0, STATE_CLOSED)
-		Atomics.notify(control, 0)
-		try {
-			if (typeof port.close === 'function') {
-				port.close()
-			}
-		} catch {}
-		try {
-			if (typeof commandPort.close === 'function') {
-				commandPort.close()
-			}
-		} catch {}
-	}
-
-	listen(commandPort, (messageData) => {
-		if (!messageData || typeof messageData !== 'object') {
-			return
-		}
-		switch (messageData.type) {
-			case 'request': {
-				const message = messageData.message || {}
-				const transfers = message.__comlinkTransfers || []
-				if ('__comlinkTransfers' in message) {
-					delete message.__comlinkTransfers
-				}
-				const id = message && message.id
-				if (
-					id !== undefined &&
-					messageData.notifyBuffer instanceof SharedArrayBuffer
-				) {
-					pendingLatches.set(
-						String(id),
-						messageData.notifyBuffer
-					)
-				}
-				port.postMessage(message, transfers)
-				break
-			}
-			case 'close': {
-				for (const buffer of pendingLatches.values()) {
+				function closePump() {
+					Atomics.store(control, 0, STATE_CLOSED)
+					Atomics.notify(control, 0)
 					try {
-						const view = new Int32Array(buffer)
-						view[0] = 1
-						Atomics.notify(view, 0)
+						if (typeof port.close === 'function') {
+							port.close()
+						}
+					} catch {}
+					try {
+						if (typeof commandPort.close === 'function') {
+							commandPort.close()
+						}
 					} catch {}
 				}
-				pendingLatches.clear()
-				closePump()
-				break
+
+				listen(commandPort, (messageData) => {
+					if (!messageData || typeof messageData !== 'object') {
+						return
+					}
+					switch (messageData.type) {
+						case 'request': {
+							const message = messageData.message || {}
+							const transfers = message.__comlinkTransfers || []
+							if ('__comlinkTransfers' in message) {
+								delete message.__comlinkTransfers
+							}
+							const id = message && message.id
+							if (
+								id !== undefined &&
+								messageData.notifyBuffer instanceof
+									SharedArrayBuffer
+							) {
+								pendingLatches.set(
+									String(id),
+									messageData.notifyBuffer
+								)
+							}
+							port.postMessage(message, transfers)
+							break
+						}
+						case 'close': {
+							for (const buffer of pendingLatches.values()) {
+								try {
+									const view = new Int32Array(buffer)
+									view[0] = 1
+									Atomics.notify(view, 0)
+								} catch {}
+							}
+							pendingLatches.clear()
+							closePump()
+							break
+						}
+					}
+				})
+
+				listen(port, (payloadData) => {
+					const json = JSON.stringify(payloadData)
+					const bytes = encoder.encode(json)
+					let offset = 0
+					while (offset < bytes.length) {
+						const state = waitUntilEmptyOrClosed(control)
+						if (state === STATE_CLOSED) {
+							return
+						}
+
+						const chunkSize = Math.min(
+							payload.byteLength,
+							bytes.length - offset
+						)
+						payload.set(bytes.subarray(offset, offset + chunkSize))
+						Atomics.store(control, 1, chunkSize)
+						Atomics.store(
+							control,
+							2,
+							offset + chunkSize < bytes.length ? FLAG_MORE : 0
+						)
+						Atomics.store(control, 0, STATE_FULL)
+						Atomics.notify(control, 0, 1)
+						offset += chunkSize
+					}
+
+					const responseId =
+						payloadData && typeof payloadData === 'object'
+							? payloadData.id
+							: undefined
+					if (responseId !== undefined) {
+						const buffer = pendingLatches.get(String(responseId))
+						if (buffer) {
+							pendingLatches.delete(String(responseId))
+							try {
+								const view = new Int32Array(buffer)
+								view[0] = 1
+								Atomics.notify(view, 0)
+							} catch {}
+						}
+					}
+				})
+
+				if (typeof port.start === 'function') {
+					port.start()
+				}
+				if (typeof commandPort.start === 'function') {
+					commandPort.start()
+				}
+
+				Atomics.store(signal, 0, 1)
+				Atomics.notify(signal, 0)
 			}
-		}
-	})
 
-	listen(port, (payloadData) => {
-		const json = JSON.stringify(payloadData)
-		const bytes = encoder.encode(json)
-		let offset = 0
-		while (offset < bytes.length) {
-			const state = waitUntilEmptyOrClosed(control)
-			if (state === STATE_CLOSED) {
-				return
+			function listen(target, handler) {
+				if (!target) return
+				if (typeof target.addEventListener === 'function') {
+					target.addEventListener('message', (event) =>
+						handler(event.data)
+					)
+				} else if ('onmessage' in target) {
+					target.onmessage = (event) => handler(event.data)
+				} else if (typeof target.on === 'function') {
+					target.on('message', (value) => handler(value))
+				}
 			}
 
-			const chunkSize = Math.min(payload.byteLength, bytes.length - offset)
-			payload.set(bytes.subarray(offset, offset + chunkSize))
-			Atomics.store(control, 1, chunkSize)
-			Atomics.store(
-				control,
-				2,
-				offset + chunkSize < bytes.length ? FLAG_MORE : 0
-			)
-			Atomics.store(control, 0, STATE_FULL)
-			Atomics.notify(control, 0, 1)
-			offset += chunkSize
-		}
+			function waitUntilEmptyOrClosed(control) {
+				for (;;) {
+					const state = Atomics.load(control, 0) as unknown as number
+					if (state === STATE_EMPTY || state < 0) {
+						return state
+					}
+					Atomics.wait(control, 0, state)
+				}
+			}
 
-		const responseId =
-			payloadData && typeof payloadData === 'object'
-				? payloadData.id
-				: undefined
-		if (responseId !== undefined) {
-			const buffer = pendingLatches.get(String(responseId))
-			if (buffer) {
-				pendingLatches.delete(String(responseId))
+			const parentPort =
+				typeof require === 'function'
+					? (() => {
+							try {
+								return require('worker_threads').parentPort
+							} catch {
+								return null
+							}
+					  })()
+					: null
+			const workerScope = typeof self !== 'undefined' ? (self as DedicatedWorkerGlobalScope) : globalThis
+			const parentEndpoint = parentPort || workerScope
+
+			listen(parentEndpoint, (data) => {
+				if (!data || data.type !== 'init') {
+					return
+				}
 				try {
-					const view = new Int32Array(buffer)
-					view[0] = 1
-					Atomics.notify(view, 0)
-				} catch {}
-			}
+					handleInitMessage(data)
+				} catch (error) {
+					const signal = new Int32Array(data.handshake)
+					Atomics.store(signal, 0, -1)
+					Atomics.notify(signal, 0)
+					throw error
+				}
+				parentEndpoint.postMessage({ type: 'init-done' })
+			})
 		}
-	})
-
-	if (typeof port.start === 'function') {
-		port.start()
-	}
-	if (typeof commandPort.start === 'function') {
-		commandPort.start()
-	}
-
-	Atomics.store(signal, 0, 1)
-	Atomics.notify(signal, 0)
-}
-
-const topLevelTarget = parentPort || scope
-listen(topLevelTarget, (data) => {
-	if (!data || data.type !== 'init') {
-		return
-	}
-	try {
-		handleInitMessage(data)
-	} catch (error) {
-		const signal = new Int32Array(data.handshake)
-		Atomics.store(signal, 0, -1)
-		Atomics.notify(signal, 0)
-		throw error
-	}
-	// @TODO: Will this crash on Node.js?
-	self.postMessage({ type: 'init-done' })
-})
-`
 
 	static async create(): Promise<SABAtomicsWaitTransport> {
 		SABAtomicsWaitTransport.assertSupport()
@@ -540,7 +550,7 @@ listen(topLevelTarget, (data) => {
 		view[0] = 0
 
 		const id = generateUUID()
-		const message = { ...msg, id, notifyBuffer: latch } as SyncMessage;
+		const message = { ...msg, id, notifyBuffer: latch } as SyncMessage
 
 		if (transferables.length) {
 			Object.defineProperty(message, '__comlinkTransfers', {
