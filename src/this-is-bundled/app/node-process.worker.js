@@ -1,7 +1,7 @@
 import { RemoteInMemoryFileSystem } from './in-memory-fs.client.js'
 import { spawnNodeProcess } from './spawn-node-process.ts'
 
-self.addEventListener('unhandledrejection', (event) => {
+globalThis.addEventListener('unhandledrejection', (event) => {
 	const reason = event?.reason
 	const stack =
 		reason instanceof Error && typeof reason.stack === 'string'
@@ -11,6 +11,13 @@ self.addEventListener('unhandledrejection', (event) => {
 		reason instanceof Error
 			? reason.message
 			: String(reason ?? 'Unhandled rejection')
+
+	// @TODO: multiple tiers of error reporting, e.g. 
+	//        "super verbose" where all nested workers print their own errors
+	//        "verbose" where errors bubble up and the top-level worker prints them
+	globalThis.console.error('unhandledrejection', reason)
+	globalThis.console.error(reason)
+
 	try {
 		self.postMessage({
 			type: 'worker-error',
@@ -60,7 +67,7 @@ if (typeof SharedArrayBuffer === 'undefined') {
 }
 
 globalThis.corsProxyUrl = new URL(
-	'./php-cors-proxy/cors-proxy.php',
+	'/php-cors-proxy/cors-proxy.php',
 	import.meta.url
 )
 const previousFetch = globalThis.fetch
@@ -526,9 +533,20 @@ const originalConsole = {
 	...globalThis.console,
 }
 
+function extractEntryFromArgv(argv) {
+	if (!Array.isArray(argv)) {
+		return ''
+	}
+	const candidate = argv[1]
+	return typeof candidate === 'string' && candidate.length ? candidate : ''
+}
+
 async function runNodeProcess(config) {
-	if (!config.entry || typeof config.entry !== 'string') {
-		throw new Error('Node process worker requires an entry script path.')
+	const entry = extractEntryFromArgv(config.argv)
+	if (!entry) {
+		throw new Error(
+			'Node process worker requires argv[1] to be a script path.'
+		)
 	}
 	try {
 		await ensureRuntimeInitialized(config.fsPort)
@@ -548,7 +566,7 @@ async function runNodeProcess(config) {
 			stderr,
 		})
 
-		await runMainRef(config.entry)
+		await runMainRef({ argv: config.argv })
 		sendExit(0, null)
 	} catch (error) {
 		originalConsole.error('Error in runNodeProcess', error)
@@ -615,7 +633,6 @@ self.onmessage = (event) => {
 				argv: Array.isArray(data.argv) ? data.argv : [],
 				env: data.env && typeof data.env === 'object' ? data.env : {},
 				cwd: typeof data.cwd === 'string' && data.cwd ? data.cwd : '/',
-				entry: data.entry,
 				columns:
 					typeof data.columns === 'number' &&
 					Number.isFinite(data.columns)

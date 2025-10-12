@@ -251,7 +251,120 @@ function fillStatsArray(arr, stats, useBigint, offset = 0) {
 	arr[offset + 16] = toType(Math.floor(stats.birthtimeMs / 1000)) // birthtimeSec
 	arr[offset + 17] = toType((stats.birthtimeMs % 1000) * 1000000) // birthtimeNsec
 }
+export class InternalFileHandle {
+	constructor(fd, fs) {
+		this.fd = fd
+		this.fs = fs
+	}
 
+	close() {
+		return new Promise((resolve, reject) => {
+			if (this.fd !== undefined) {
+				try {
+					this.fs.closeSync(this.fd)
+					this.fd = undefined
+					resolve()
+				} catch (error) {
+					reject(error)
+				}
+			} else {
+				resolve()
+			}
+		})
+	}
+
+	read(offset, length, position) {
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, read')
+		}
+		return this.fs.readSync(this.fd, length, position)
+	}
+
+	write(buffer, offset, length, position) {
+		throw new Error('Not implemented')
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, write')
+		}
+		return this.fs.writeSync(this.fd, buffer, offset, length, position)
+	}
+
+	stat(bigint = false) {
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fstat')
+		}
+		const openFile = this.fs.openFiles.get(this.fd)
+		if (!openFile) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fstat')
+		}
+		return new Stats(openFile.node)
+	}
+
+	truncate(len = 0) {
+		if (this.fd === undefined) {
+			throw createFsError(
+				'EBADF',
+				'EBADF: bad file descriptor, ftruncate'
+			)
+		}
+		return this.fs.ftruncateSync(this.fd, len)
+	}
+
+	ftruncate(len = 0) {
+		// Alias for truncate - both do the same thing
+		return this.truncate(len)
+	}
+
+	utimes(atime, mtime) {
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, futimes')
+		}
+		return this.fs.futimesSync(this.fd, atime, mtime)
+	}
+
+	chmod(mode) {
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fchmod')
+		}
+		const openFile = this.fs.openFiles.get(this.fd)
+		if (!openFile) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fchmod')
+		}
+		openFile.node.mode = mode
+	}
+
+	chown(uid, gid) {
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fchown')
+		}
+		// No-op in browser environment, but don't throw
+	}
+
+	datasync() {
+		if (this.fd === undefined) {
+			throw createFsError(
+				'EBADF',
+				'EBADF: bad file descriptor, fdatasync'
+			)
+		}
+		// No-op in memory filesystem (always synced)
+	}
+
+	sync() {
+		if (this.fd === undefined) {
+			throw createFsError('EBADF', 'EBADF: bad file descriptor, fsync')
+		}
+		// No-op in memory filesystem (always synced)
+	}
+}
+export function promiseFromSync(syncFn) {
+	return new Promise((resolve, reject) => {
+		try {
+			resolve(syncFn())
+		} catch (err) {
+			reject(err)
+		}
+	})
+}
 globalThis.internalModules = {
 	builtins: {
 		...builtins,
@@ -609,7 +722,23 @@ globalThis.internalModules = {
 				)
 			},
 			openFileHandle(path, flags, mode, usePromises) {
-				return globalFs.openFileHandle(path, flags, mode, usePromises)
+				if (usePromises !== undefined && typeof usePromises !== 'symbol') {
+					// @TODO: Remove this if everything is stable. I just wasn't sure if
+					//        that fourth argument is ever used in a different way.
+					throw new Error('openFileHandle fourt argument should be undefined or symbol');
+				}
+				if (usePromises) {
+					return promiseFromSync(() =>
+						this.openFileHandleSync(path, flags, mode)
+					)
+				}
+				return this.openFileHandleSync(path, flags, mode)
+			},
+			openFileHandleSync(path, flags, mode) {
+				const FileHandle = globalThis.coreModules['fs'].FileHandle
+				const fd = globalFs.openSync(path, flags, mode)
+				const internalHandle = new InternalFileHandle(fd, globalFs)
+				return new FileHandle(internalHandle)
 			},
 			// Used to speed up module loading.  Returns 0 if the path refers to
 			// a file, 1 when it's a directory or < 0 on error (usually -ENOENT.)
@@ -662,7 +791,19 @@ globalThis.internalModules = {
 			},
 			read(fd, buffer, offset, length, position, reqOrPromise) {
 				return maybePromiseFromSync(
-					() => globalFs.readSync(fd, length, position),
+					() => {
+						// Read data from the filesystem
+						const sourceBuffer = globalFs.readSync(fd, length, position)
+						
+						// Copy the data into the provided buffer at the specified offset
+						const bytesToCopy = Math.min(sourceBuffer.length, length)
+						if (bytesToCopy > 0) {
+							buffer.set(sourceBuffer.subarray(0, bytesToCopy), offset)
+						}
+						
+						// Return the number of bytes actually read
+						return bytesToCopy
+					},
 					reqOrPromise
 				)
 			},
@@ -953,14 +1094,15 @@ globalThis.internalModules = {
 				)
 			},
 			writeBuffer(fd, buffer, offset, length, position, reqOrPromise) {
-				return globalFs.writeBuffer(
-					fd,
-					buffer,
-					offset,
-					length,
-					position,
-					reqOrPromise
-				)
+				return maybePromiseFromSync(() => {
+					return globalFs.writeBuffer(
+						fd,
+						buffer,
+						offset,
+						length,
+						position
+					)
+				}, reqOrPromise)
 			},
 			writeString(fd, string, position, encoding, reqOrPromise) {
 				// Promise or sync pattern
@@ -3237,17 +3379,75 @@ globalThis.internalModules.natives = Object.keys(globalThis.internalModules)
 // const resolveModule = await import("../../dist/internal/resolve.js");
 // console.log({ resolveModule })
 
-export function runMain(options) {
-	let path = ''
-	if (options.code) {
+function normalizeArgv(argv) {
+	if (!Array.isArray(argv)) {
+		return null
+	}
+	return argv.map((value) => {
+		if (value == null) {
+			return ''
+		}
+		return String(value)
+	})
+}
+
+function ensureEntryFromArgv(argv) {
+	if (!Array.isArray(argv)) {
+		return ''
+	}
+	const candidate = argv.length > 1 ? argv[1] : argv[0]
+	return typeof candidate === 'string' && candidate.length
+		? candidate
+		: ''
+}
+
+export function runMain(input) {
+	const isArrayInput = Array.isArray(input)
+	const isObjectInput =
+		typeof input === 'object' && input !== null && !isArrayInput
+
+	let argv = isArrayInput
+		? normalizeArgv(input)
+		: normalizeArgv(isObjectInput ? input.argv : null)
+
+	let entry = typeof input === 'string' ? input : ''
+
+	const code =
+		isObjectInput && typeof input.code === 'string' ? input.code : null
+
+	if (code) {
 		globalFs.mkdirSync('/tmp', { recursive: true })
-		path = `/tmp/file-${Date.now()}.cjs`
-		globalFs.writeFileSync(path, options.code)
-		options = path
+		const tempPath = `/tmp/file-${Date.now()}.cjs`
+		globalFs.writeFileSync(tempPath, code)
+		entry = tempPath
+		if (!argv) {
+			argv = ['node', tempPath]
+		} else if (argv.length === 0) {
+			argv = ['node', tempPath]
+		} else if (argv.length === 1) {
+			argv = [argv[0], tempPath]
+		} else {
+			argv[1] = tempPath
+		}
 	}
 
-	globalThis.coreModules.module.initializeCJS(options)
-	return globalThis.coreModules.module.Module.runMain(options)
+	if (!entry && argv) {
+		entry = ensureEntryFromArgv(argv)
+	}
+
+	if (!entry) {
+		throw new Error('runMain: unable to determine entry script path.')
+	}
+
+	if (argv) {
+		const processObj = globalThis.process
+		if (processObj && Array.isArray(processObj.argv)) {
+			processObj.argv = [...argv]
+		}
+	}
+
+	globalThis.coreModules.module.initializeCJS(entry)
+	return globalThis.coreModules.module.Module.runMain(entry)
 }
 
 globalThis.setImmediate = setTimeout

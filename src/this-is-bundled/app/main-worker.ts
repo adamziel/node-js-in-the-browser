@@ -309,7 +309,6 @@ class ShellCommandExecutor {
 
 type SpawnRemoteProcessParams = {
 	argv?: unknown[]
-	entry: string
 	env?: Record<string, string>
 	cwd?: string
 	columns?: number
@@ -411,19 +410,12 @@ class MainWorker {
 	): Promise<RemoteProcessHandle> {
 		const {
 			argv = [],
-			entry,
 			env,
 			cwd,
 			columns,
 			rows,
 			name,
 		} = params || ({} as SpawnRemoteProcessParams)
-
-		if (typeof entry !== 'string' || entry.length === 0) {
-			throw new Error(
-				'spawnRemoteProcess: entry must be a non-empty string'
-			)
-		}
 
 		const events = new EventTarget()
 		const emit = (type: string, detail?: unknown) => {
@@ -432,7 +424,6 @@ class MainWorker {
 		}
 
 		const handle = await spawnNodeProcess(argv, {
-			entry,
 			env,
 			cwd,
 			columns,

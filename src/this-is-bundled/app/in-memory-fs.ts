@@ -1007,20 +1007,6 @@ export class InMemoryFileSystem {
 		})
 		return fd
 	}
-	openFileHandle(path, flags, mode, usePromises) {
-		if (usePromises === globalThis.internalModules.fs.kUsePromises) {
-			return promiseFromSync(() =>
-				this.openFileHandleSync(path, flags, mode)
-			)
-		}
-		return this.openFileHandleSync(path, flags, mode)
-	}
-	openFileHandleSync(path, flags, mode) {
-		const FileHandle = globalThis.coreModules['fs'].FileHandle
-		const fd = this.openSync(path, flags, mode)
-		const internalHandle = new InternalFileHandle(fd, this)
-		return new FileHandle(internalHandle)
-	}
 	closeSync(fd) {
 		if (!this.openFiles.has(fd)) {
 			throw createFsError('EBADF', `EBADF: bad file descriptor, close`)

@@ -70811,6 +70811,7 @@ var require_shrinkwrap = __commonJS({
         } else {
           s.filename = resolve(s.path, "package-lock.json");
         }
+        console.log('s.filename', s.filename)
         s.loadedFromDisk = !!(sw || lock);
         s.type = basename(s.filename);
         return s;
@@ -70965,7 +70966,7 @@ var require_shrinkwrap = __commonJS({
               throw er;
             }
           }))
-        );
+        )
       }
       get resetFiles() {
         return Promise.all(
@@ -71004,6 +71005,8 @@ var require_shrinkwrap = __commonJS({
           } else {
             this.filename = resolve(this.path, "package-lock.json");
           }
+          console.log('load()', this.filename);
+          console.log({'hiddenLockfile': this.hiddenLockfile});
           this.type = basename(this.filename);
           this.loadedFromDisk = Boolean(sw || lock);
           if (yarn) {
@@ -93770,6 +93773,7 @@ var require_npm2 = __commonJS({
           try {
             await this.#exec(cmd, args);
           } catch (e) {
+            console.error(e);
             err = e;
           }
           return this.#handleError(err);

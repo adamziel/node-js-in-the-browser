@@ -48,7 +48,6 @@ export type SpawnedNodeProcessHandle = {
 }
 
 export type SpawnNodeProcessOptions = {
-	entry: string
 	env?: Record<string, string>
 	cwd?: string
 	columns?: number
@@ -68,10 +67,13 @@ export async function spawnNodeProcess(
 	options = {} as SpawnNodeProcessOptions
 ): Promise<SpawnedNodeProcessHandle> {
 	const normalizedArgv = sanitizeArgv(argv)
-	const entry = options.entry
-	if (!entry || typeof entry !== 'string') {
+	const entry =
+		typeof normalizedArgv[1] === 'string' && normalizedArgv[1].length
+			? normalizedArgv[1]
+			: undefined
+	if (!entry) {
 		throw new Error(
-			'spawnNodeProcess: options.entry must be a non-empty string.'
+			'spawnNodeProcess: argv must include a script path at index 1.'
 		)
 	}
 
@@ -209,7 +211,6 @@ export async function spawnNodeProcess(
 				argv: normalizedArgv,
 				env,
 				cwd,
-				entry,
 				columns,
 				rows,
 				name,
