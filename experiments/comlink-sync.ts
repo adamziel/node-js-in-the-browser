@@ -33,7 +33,8 @@ interface SyncMessage {
 	/** existing Comlink fields …            */
 	[k: string]: any
 	/** new part that carries the latch      */
-	notifyBuffer?: SharedArrayBuffer
+	notifyBuffer?: SharedArrayBuffer;
+	__comlinkTransfers?: Transferable[];
 }
 
 interface SyncTransport {
@@ -205,36 +206,21 @@ async function endpointToMessagePort(
 
 export type IsomorphicMessagePort = MessagePort | NodeMessagePort
 
-const STATE_EMPTY = 0
-const STATE_FULL = 1
-const STATE_CLOSED = -1
-const FLAG_MORE = 1
-
-type BrowserSyncConnection = {
-	worker: Worker
-	commandPort: MessagePort
-	control: Int32Array
-	payload: Uint8Array
-	ctrlSAB: SharedArrayBuffer
-	bufSAB: SharedArrayBuffer
-	pendingResponses: { message: any }[]
-}
-
 export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 	private static receiveMessageOnPort: any
 
 	/**
-	 * Creates a new transport instance while also initializing the 
+	 * Creates a new transport instance while also initializing the
 	 * receiveMessageOnPort function. We're using this hack because we
 	 * don't have many other options:
-	 * 
+	 *
 	 * * We can't initialize it in the constructor because it's async.
 	 * * We can't initialize it in a top-level code block – await won't work
 	 *   for CommonJS build target.
 	 * * We can't expose a static receiveMessageOnPort method runs these requires/imports
 	 *   upon the first call because, again, this logic is async and receiveMessageOnPort()
 	 *   must be synchronous.
-	 * 
+	 *
 	 * @returns
 	 */
 	static async create(): Promise<NodeSABSyncReceiveMessageTransport> {
@@ -297,6 +283,21 @@ export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 			}
 		}
 	}
+}
+
+const STATE_EMPTY = 0
+const STATE_FULL = 1
+const STATE_CLOSED = -1
+const FLAG_MORE = 1
+
+type BrowserSyncConnection = {
+	worker: Worker
+	commandPort: MessagePort
+	control: Int32Array
+	payload: Uint8Array
+	ctrlSAB: SharedArrayBuffer
+	bufSAB: SharedArrayBuffer
+	pendingResponses: { message: any }[]
 }
 
 export class SABAtomicsWaitTransport implements SyncTransport {
@@ -539,9 +540,7 @@ listen(topLevelTarget, (data) => {
 		view[0] = 0
 
 		const id = generateUUID()
-		const message: SyncMessage & {
-			__comlinkTransfers?: Transferable[]
-		} = { ...msg, id, notifyBuffer: latch }
+		const message = { ...msg, id, notifyBuffer: latch } as SyncMessage;
 
 		if (transferables.length) {
 			Object.defineProperty(message, '__comlinkTransfers', {
@@ -566,8 +565,7 @@ listen(topLevelTarget, (data) => {
 		}
 
 		while (true) {
-			const res =
-				SABAtomicsWaitTransport.receiveMessageOnPort(connection)
+			const res = SABAtomicsWaitTransport.receiveMessageOnPort(connection)
 			if (!res) {
 				throw new Error('No response received')
 			}
