@@ -1,6 +1,5 @@
 import * as Comlink from './comlink-sync';
 import {
-	createSyncTransport,
 	nodeEndpoint,
 	type NodeEndpoint,
 	type Remote,
@@ -27,8 +26,7 @@ export async function consumeAPISync<APIType>(
 	remote: IsomorphicMessagePort
 ): Promise<APIType> {
 	setupTransferHandlers();
-	const transport = await createSyncTransport();
-	return Comlink.wrapSync<APIType>(remote, transport);
+	return await Comlink.wrapSync<APIType>(remote);
 }
 
 export function consumeAPI<APIType>(

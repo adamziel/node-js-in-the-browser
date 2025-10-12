@@ -48,6 +48,8 @@ interface SyncTransport {
 		msg: Omit<SyncMessage, 'id' | 'notifyBuffer'>,
 		transferables?: Transferable[]
 	): WireValue;
+	prepareEndpoint?
+		(port: MessagePort): Promise<MessagePort> | MessagePort;
 }
 
 export function exposeSync(
@@ -131,11 +133,109 @@ function createSyncProxy<T>(
 	}) as unknown as T;
 }
 
-export function wrapSync<T>(
-	ep: IsomorphicMessagePort,
-	transport: SyncTransport
-): T {
-	return createSyncProxy<T>(ep, [], transport);
+type SyncWrapEndpoint = IsomorphicMessagePort | Endpoint | Worker;
+const endpointPortPromises = new WeakMap<Endpoint, Promise<MessagePort>>();
+const endpointHandshakeTimeoutMs = 5000;
+
+async function preparePortForSync(
+	transport: SyncTransport,
+	port: IsomorphicMessagePort
+): Promise<IsomorphicMessagePort> {
+	const maybePrepare = (transport as any).prepareEndpoint as
+		| ((p: IsomorphicMessagePort) => Promise<IsomorphicMessagePort> | IsomorphicMessagePort)
+		| undefined;
+	if (typeof maybePrepare === 'function') {
+		const result = await maybePrepare.call(transport, port);
+		if (result) {
+			return result as IsomorphicMessagePort;
+		}
+	}
+	return port;
+}
+
+function isMessagePortLike(value: SyncWrapEndpoint): value is IsomorphicMessagePort {
+	return (
+		!!value &&
+		typeof (value as any).postMessage === 'function' &&
+		typeof (value as any).close === 'function'
+	);
+}
+
+function isEndpointLike(value: SyncWrapEndpoint): value is Endpoint {
+	return (
+		!!value &&
+		typeof (value as any).postMessage === 'function' &&
+		typeof (value as any).addEventListener === 'function' &&
+		typeof (value as any).removeEventListener === 'function'
+	);
+}
+
+function getPortFromEndpoint(endpoint: Endpoint): Promise<MessagePort> {
+	let promise = endpointPortPromises.get(endpoint);
+	if (promise) {
+		return promise;
+	}
+
+	promise = new Promise<MessagePort>((resolve, reject) => {
+		const id = generateUUID();
+		const timer = setTimeout(() => {
+			cleanup();
+			reject(new Error('Timed out acquiring synchronous message port'));
+		}, endpointHandshakeTimeoutMs);
+
+		const handler = (event: Event) => {
+			const { data } = event as MessageEvent<WireValue>;
+			if (!data || (data as any).id !== id) {
+				return;
+			}
+			cleanup();
+			resolve(fromWireValue(data) as MessagePort);
+		};
+
+		const cleanup = () => {
+			clearTimeout(timer);
+			endpoint.removeEventListener('message', handler as any);
+		};
+
+		endpoint.addEventListener('message', handler as any);
+		if (typeof endpoint.start === 'function') {
+			endpoint.start();
+		}
+		endpoint.postMessage({ id, type: MessageType.ENDPOINT });
+	});
+
+	promise.catch(() => {
+		endpointPortPromises.delete(endpoint);
+	});
+
+	endpointPortPromises.set(endpoint, promise);
+	return promise;
+}
+
+export async function wrapSync<T>(
+	ep: SyncWrapEndpoint,
+	transport?: SyncTransport
+): Promise<T> {
+	const resolvedTransport =
+		transport ?? (await createSyncTransport());
+	if (isMessagePortLike(ep)) {
+		const prepared = await preparePortForSync(resolvedTransport, ep);
+		return createSyncProxy<T>(prepared, [], resolvedTransport);
+	}
+	if (!isEndpointLike(ep)) {
+		throw new TypeError(
+			'wrapSync expects a MessagePort, Worker, or Comlink Endpoint'
+		);
+	}
+	const port = await getPortFromEndpoint(ep);
+	if (typeof port.start === 'function') {
+		port.start();
+	}
+	const prepared = await preparePortForSync(
+		resolvedTransport,
+		port as unknown as IsomorphicMessagePort
+	);
+	return createSyncProxy<T>(prepared, [], resolvedTransport);
 }
 
 /// Transport ///
@@ -154,6 +254,7 @@ type BrowserSyncConnection = {
 	payload: Uint8Array;
 	ctrlSAB: SharedArrayBuffer;
 	bufSAB: SharedArrayBuffer;
+	pendingResponses: { message: any }[];
 };
 
 export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
@@ -173,6 +274,10 @@ export class NodeSABSyncReceiveMessageTransport implements SyncTransport {
 			}
 		}
 		return new NodeSABSyncReceiveMessageTransport();
+	}
+
+	prepareEndpoint(port: IsomorphicMessagePort): Promise<IsomorphicMessagePort> {
+		return Promise.resolve(port);
 	}
 
 	private constructor() {}
@@ -242,6 +347,7 @@ const STATE_FULL = 1
 const STATE_CLOSED = -1
 const FLAG_MORE = 1
 const encoder = new TextEncoder()
+const pendingLatches = new Map()
 
 function waitUntilEmptyOrClosed(control) {
 	for (;;) {
@@ -291,16 +397,34 @@ function handleInitMessage(data) {
 			return
 		}
 		switch (messageData.type) {
-			case 'postMessage': {
+			case 'request': {
 				const message = messageData.message || {}
 				const transfers = message.__comlinkTransfers || []
 				if ('__comlinkTransfers' in message) {
 					delete message.__comlinkTransfers
 				}
+				const id = message && message.id
+				if (
+					id !== undefined &&
+					messageData.notifyBuffer instanceof SharedArrayBuffer
+				) {
+					pendingLatches.set(
+						String(id),
+						messageData.notifyBuffer
+					)
+				}
 				port.postMessage(message, transfers)
 				break
 			}
 			case 'close': {
+				for (const buffer of pendingLatches.values()) {
+					try {
+						const view = new Int32Array(buffer)
+						view[0] = 1
+						Atomics.notify(view, 0)
+					} catch {}
+				}
+				pendingLatches.clear()
 				closePump()
 				break
 			}
@@ -329,6 +453,22 @@ function handleInitMessage(data) {
 			Atomics.notify(control, 0, 1)
 			offset += chunkSize
 		}
+
+		const responseId =
+			payloadData && typeof payloadData === 'object'
+				? payloadData.id
+				: undefined
+		if (responseId !== undefined) {
+			const buffer = pendingLatches.get(String(responseId))
+			if (buffer) {
+				pendingLatches.delete(String(responseId))
+				try {
+					const view = new Int32Array(buffer)
+					view[0] = 1
+					Atomics.notify(view, 0)
+				} catch {}
+			}
+		}
 	})
 
 	if (typeof port.start === 'function') {
@@ -355,6 +495,8 @@ listen(topLevelTarget, (data) => {
 		Atomics.notify(signal, 0)
 		throw error
 	}
+	// @TODO: Will this crash on Node.js?
+	self.postMessage({ type: 'init-done' })
 })
 `;
 
@@ -364,6 +506,11 @@ listen(topLevelTarget, (data) => {
 	}
 
 	private constructor() {}
+
+	async prepareEndpoint(port: MessagePort): Promise<MessagePort> {
+		await SABAtomicsWaitTransport.ensureConnection(port);
+		return port;
+	}
 
 	afterResponseSent(ev: MessageEvent) {
 		const { notifyBuffer } = ev.data as SyncMessage;
@@ -384,7 +531,15 @@ listen(topLevelTarget, (data) => {
 				'SABAtomicsWaitTransport expects a MessagePort endpoint'
 			);
 		}
-		const connection = SABAtomicsWaitTransport.ensureConnection(ep);
+		const connection =
+			SABAtomicsWaitTransport.browserConnections.get(
+				ep as MessagePort
+			);
+		if (!connection) {
+			throw new Error(
+				'SABAtomicsWaitTransport endpoint not initialized; call wrapSync() first'
+			);
+		}
 		return SABAtomicsWaitTransport.sendThroughConnection(
 			connection,
 			msg,
@@ -423,7 +578,7 @@ listen(topLevelTarget, (data) => {
 		}
 
 		connection.commandPort.postMessage(
-			{ type: 'postMessage', message },
+			{ type: 'request', message, notifyBuffer: latch },
 			transferables as any
 		);
 
@@ -445,6 +600,11 @@ listen(topLevelTarget, (data) => {
 			}
 			if (res.message?.id === id) {
 				return res.message;
+			}
+			connection.pendingResponses.push(res);
+			if (connection.pendingResponses.length > 100) {
+				// avoid unbounded growth
+				connection.pendingResponses.shift();
 			}
 		}
 	}
@@ -474,7 +634,9 @@ listen(topLevelTarget, (data) => {
 		}
 	}
 
-	private static ensureConnection(port: MessagePort): BrowserSyncConnection {
+	private static async ensureConnection(
+		port: MessagePort
+	): Promise<BrowserSyncConnection> {
 		const existing = SABAtomicsWaitTransport.browserConnections.get(port);
 		if (existing) {
 			return existing;
@@ -511,6 +673,17 @@ listen(topLevelTarget, (data) => {
 			[port, commandPortForWorker]
 		);
 
+		await new Promise((resolve, reject) => {
+			worker.onmessage = (event) => {
+				if (event.data.type === 'init-done') {
+					resolve(void 0)
+				}
+			}
+			worker.onerror = (event) => {
+				reject(event.error)
+			}
+		})
+
 		const waitResult = Atomics.wait(
 			handshake,
 			0,
@@ -543,6 +716,7 @@ listen(topLevelTarget, (data) => {
 			payload,
 			ctrlSAB,
 			bufSAB,
+			pendingResponses: [],
 		};
 		SABAtomicsWaitTransport.browserConnections.set(port, connection);
 		return connection;
@@ -587,6 +761,16 @@ listen(topLevelTarget, (data) => {
 		throw new Error('Worker API is required for synchronous transport');
 	}
 
+	private static async yieldControl(): Promise<void> {
+		await new Promise((resolve) => {
+			if (typeof setImmediate === 'function') {
+				setImmediate(resolve);
+			} else {
+				setTimeout(resolve, 0);
+			}
+		});
+	}
+
 	private static getPumpWorkerUrl(): string {
 		if (!SABAtomicsWaitTransport.browserPumpWorkerUrl) {
 			const supportsBlob =
@@ -610,6 +794,9 @@ listen(topLevelTarget, (data) => {
 		connection: BrowserSyncConnection,
 		options?: { timeoutMs?: number }
 	): { message: any } | undefined {
+		if (connection.pendingResponses.length) {
+			return connection.pendingResponses.shift();
+		}
 		const pieces: Uint8Array[] = [];
 		let total = 0;
 

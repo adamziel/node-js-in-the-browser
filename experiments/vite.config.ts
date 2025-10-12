@@ -15,10 +15,12 @@ export default defineConfig({
     outDir: 'dist',
     target: 'esnext',
     lib: false,
+    minify: false,
     rollupOptions: {
       output: {
         format: 'esm',
       },
+      
       input: {
         index: 'index.html',
         'comlink-sync': 'comlink-sync.html'
