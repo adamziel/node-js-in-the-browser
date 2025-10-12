@@ -159,7 +159,7 @@
 			import { Terminal } from 'https://cdn.jsdelivr.net/npm/xterm@5.3.0/+esm'
 			import { FitAddon } from 'https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/+esm'
 			import { RemoteInMemoryFileSystem } from './dist/app/in-memory-fs.client.js'
-			import { consumeAPI } from './dist/app/comlink.js'
+			import { wrap } from './dist/app/api.js'
 			import { StoredHistory } from './dist/app/ui/StoredHistory.js'
 
 			window.stableConsole = {
@@ -229,7 +229,7 @@
 			const mainWorker = new Worker('./dist/app/main-worker.js', {
 				type: 'module',
 			})
-			const mainWorkerClient = await consumeAPI(mainWorker)
+			const mainWorkerClient = await wrap(mainWorker)
 
 			// @TODO: If this is await-ed, it never gets resolved. If
 			// it's then-ed, it works as expected. Why?

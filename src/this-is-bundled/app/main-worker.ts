@@ -3,7 +3,7 @@ import { initFiles } from './init-demo-fs.js'
 import { spawnNodeProcess } from './spawn-node-process.ts'
 import type { NodeProcessExitInfo } from './spawn-node-process.ts'
 import { RemoteInMemoryFileSystem } from './in-memory-fs.client.js'
-import { exposeAPI } from './api.ts'
+import { expose } from './api.ts'
 import * as Comlink from './comlink-sync.ts'
 
 // Create and attach the filesystem worker
@@ -75,6 +75,7 @@ class ShellCommandExecutor {
 			}
 			return { ok: true, cwd: resolved }
 		} catch (error) {
+			console.error(error)
 			const code = error && error.code ? error.code : 'ERROR'
 			let message
 			if (code === 'ENOENT') {
@@ -459,4 +460,4 @@ class MainWorker {
 	}
 }
 
-exposeAPI(new MainWorker(globalThis.globalFs as any), self)
+expose(new MainWorker(globalThis.globalFs as any), self)

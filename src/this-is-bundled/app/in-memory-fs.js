@@ -1,5 +1,7 @@
 'use strict'
 
+import { Stats, Dirent } from './in-memory-fs-classes.js'
+
 // Helper function to create filesystem errors with proper code property
 function createFsError(code, message) {
 	const error = new Error(message)
@@ -7,69 +9,6 @@ function createFsError(code, message) {
 	return error
 }
 
-class Stats {
-	constructor(node) {
-		this.type = node.type
-		this.mode = node.mode
-		this.size = node.type === 'file' ? node.content.length : 0
-		this.atime = new Date(node.atime)
-		this.mtime = new Date(node.mtime)
-		this.ctime = new Date(node.ctime)
-		this.birthtime = new Date(node.birthtime)
-		this.atimeMs = this.atime.getTime()
-		this.mtimeMs = this.mtime.getTime()
-		this.ctimeMs = this.ctime.getTime()
-		this.birthtimeMs = this.birthtime.getTime()
-	}
-	isFile() {
-		return this.type === 'file'
-	}
-	isDirectory() {
-		return this.type === 'dir'
-	}
-	isSymbolicLink() {
-		return this.type === 'symlink'
-	}
-	isBlockDevice() {
-		return false
-	}
-	isCharacterDevice() {
-		return false
-	}
-	isFIFO() {
-		return false
-	}
-	isSocket() {
-		return false
-	}
-}
-class Dirent {
-	constructor(name, type) {
-		this.name = name
-		this.type = type
-	}
-	isDirectory() {
-		return this.type === 'dir'
-	}
-	isFile() {
-		return this.type === 'file'
-	}
-	isBlockDevice() {
-		return false
-	}
-	isCharacterDevice() {
-		return false
-	}
-	isFIFO() {
-		return false
-	}
-	isSocket() {
-		return false
-	}
-	isSymbolicLink() {
-		return false
-	}
-}
 const DEFAULT_FILE_MODE = 0o666
 const DEFAULT_DIRECTORY_MODE = 0o777
 const createDirectoryNode = (mode = DEFAULT_DIRECTORY_MODE) => {

@@ -1,4 +1,4 @@
-import * as Comlink from './comlink-sync.ts'
+import { wrap, wrapSync } from './api.ts'
 
 function createFilesystemPort(fsWorker) {
 	const channel = new MessageChannel()
@@ -10,11 +10,11 @@ function createFilesystemPort(fsWorker) {
 
 export class RemoteInMemoryFileSystem {
 	static async connectSync(fsWorker) {
-		return await Comlink.wrapSync(createFilesystemPort(fsWorker))
-    }
-    
+		return await wrapSync(createFilesystemPort(fsWorker))
+	}
+
 	static async connectAsync(fsWorker) {
-		return await Comlink.wrap(createFilesystemPort(fsWorker))
+        return await wrap(fsWorker); //createFilesystemPort(fsWorker))
 	}
 
 	static async connectBoth(fsWorker) {

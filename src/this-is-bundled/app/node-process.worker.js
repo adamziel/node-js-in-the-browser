@@ -373,6 +373,13 @@ function createTtyStreams(columns, rows) {
 	}
 }
 
+window.stableConsole = {
+	log: console.log.bind(console),
+	info: console.info.bind(console),
+	warn: console.warn.bind(console),
+	error: console.error.bind(console),
+	trace: console.trace.bind(console),
+}
 function prepareEnvironment({ argv, env, cwd }) {
 	const processObj = globalThis.process
 	const utilModule = globalThis.coreModules?.util
@@ -415,6 +422,7 @@ function prepareEnvironment({ argv, env, cwd }) {
 	processObj?.setTerminal?.(terminalAdapter)
 
 	console.log = (...args) => {
+		window.stableConsole.log(...args)
 		postMessage({
 			type: 'stdout',
 			data: `${format(...args)}\n`,
@@ -422,6 +430,7 @@ function prepareEnvironment({ argv, env, cwd }) {
 	}
 	console.info = console.log
 	console.warn = (...args) => {
+		window.stableConsole.warn(...args)
 		postMessage({
 			type: 'stderr',
 			data: `${format(...args)}\n`,

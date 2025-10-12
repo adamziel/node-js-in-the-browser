@@ -12,7 +12,7 @@ if (!isWatchMode) {
 
 const buildOptionsApp = {
 	entryPoints: {
-		comlink: './src/this-is-bundled/app/api.ts',
+		api: './src/this-is-bundled/app/api.ts',
 		'main-worker': './src/this-is-bundled/app/main-worker.ts',
 		'in-memory-fs.client': './src/this-is-bundled/app/in-memory-fs.client.js',
 		'in-memory-fs': './src/this-is-bundled/app/in-memory-fs.js',
