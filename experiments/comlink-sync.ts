@@ -190,7 +190,7 @@ async function endpointToMessagePort(
 		const timeout = setTimeout(() => {
 			cleanup()
 			reject(new Error('Timed out acquiring synchronous message port'))
-		}, 5000)
+		}, SABAtomicsWaitSyncToAsyncTransport.handshakeTimeoutMs)
 
 		function cleanup() {
 			clearTimeout(timeout)
@@ -299,18 +299,39 @@ type BrowserSyncConnection = {
 	pendingResponses: { message: any }[]
 }
 
-export class SABAtomicsWaitTransport implements SyncTransport {
+/**
+ * Allows consuming asynchronous Comlink endpoints using synchronous function calls! ✨
+ * 
+ * It spawns an intermediary `syncBridgeWorker` that communicates synchronously with
+ * the current worker and asynchronously with the target async endpoint.
+ * 
+ * Synchronous communication is achieved as follows:
+ * 
+ * 1. The current worker uses Atomics.wait() to block until a message
+ *    is available in the SharedArrayBuffer.
+ * 2. `syncBridgeWorker` writes a message to a SharedArrayBuffer
+ * 3. The current worker reads the message from the SharedArrayBuffer, JSON-parses it,
+ *    and processes it.
+ * 
+ *    note this means we can only exchange JSON-serializable values. Transferables are
+ *    not supported.
+ * 
+ * Meanwhile, the `syncBridgeWorker` communicates asynchronously with the target async endpoint
+ * using the typical MessagePort.postMessage() mechanism.
+ */
+export class SABAtomicsWaitSyncToAsyncTransport implements SyncTransport {
 	private static browserConnections = new WeakMap<
 		MessagePort,
 		BrowserSyncConnection
 	>()
-	private static browserPumpWorkerUrl?: string
+	private static browsersyncBridgeWorkerUrl?: string
 	private static textDecoder: TextDecoder | undefined
+	public static readonly handshakeTimeoutMs = 5000
 	private static readonly browserBufferBytes = 1 << 20
-	private static readonly handshakeTimeoutMs = 5000
-	private static readonly pumpWorkerSource =
-		'pumpWorker(); ' +
-		function pumpWorker() {
+
+	private static readonly syncBridgeWorkerSource =
+		'syncBridgeWorker(); ' +
+		function syncBridgeWorker() {
 			const STATE_EMPTY = 0
 			const STATE_FULL = 1
 			const STATE_CLOSED = -1
@@ -325,7 +346,7 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 				const payload = new Uint8Array(data.buf)
 				const signal = new Int32Array(data.handshake)
 
-				function closePump() {
+				function closesyncBridge() {
 					Atomics.store(control, 0, STATE_CLOSED)
 					Atomics.notify(control, 0)
 					try {
@@ -374,7 +395,7 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 								} catch {}
 							}
 							pendingLatches.clear()
-							closePump()
+							closesyncBridge()
 							break
 						}
 					}
@@ -467,7 +488,10 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 							}
 					  })()
 					: null
-			const workerScope = typeof self !== 'undefined' ? (self as DedicatedWorkerGlobalScope) : globalThis
+			const workerScope =
+				typeof self !== 'undefined'
+					? (self as DedicatedWorkerGlobalScope)
+					: globalThis
 			const parentEndpoint = parentPort || workerScope
 
 			listen(parentEndpoint, (data) => {
@@ -486,15 +510,15 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 			})
 		}
 
-	static async create(): Promise<SABAtomicsWaitTransport> {
-		SABAtomicsWaitTransport.assertSupport()
-		return new SABAtomicsWaitTransport()
+	static async create(): Promise<SABAtomicsWaitSyncToAsyncTransport> {
+		SABAtomicsWaitSyncToAsyncTransport.assertSupport()
+		return new SABAtomicsWaitSyncToAsyncTransport()
 	}
 
 	private constructor() {}
 
 	async initiateSyncConnection(port: MessagePort): Promise<void> {
-		await SABAtomicsWaitTransport.ensureConnection(port)
+		await SABAtomicsWaitSyncToAsyncTransport.ensureConnection(port)
 	}
 
 	afterResponseSent(ev: MessageEvent) {
@@ -511,20 +535,21 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 		msg: Omit<SyncMessage, 'id' | 'notifyBuffer'>,
 		transferables: Transferable[] = []
 	): WireValue {
-		if (!SABAtomicsWaitTransport.isMessagePort(ep)) {
+		if (!SABAtomicsWaitSyncToAsyncTransport.isMessagePort(ep)) {
 			throw new TypeError(
 				'SABAtomicsWaitTransport expects a MessagePort endpoint'
 			)
 		}
-		const connection = SABAtomicsWaitTransport.browserConnections.get(
-			ep as MessagePort
-		)
+		const connection =
+			SABAtomicsWaitSyncToAsyncTransport.browserConnections.get(
+				ep as MessagePort
+			)
 		if (!connection) {
 			throw new Error(
 				'SABAtomicsWaitTransport endpoint not initialized; call wrapSync() first'
 			)
 		}
-		return SABAtomicsWaitTransport.sendThroughConnection(
+		return SABAtomicsWaitSyncToAsyncTransport.sendThroughConnection(
 			connection,
 			msg,
 			transferables
@@ -568,14 +593,21 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 			delete (message as Record<string, unknown>).__comlinkTransfers
 		}
 
-		const timeoutMs = 5000
-		const waitResult = Atomics.wait(view, 0, 0, timeoutMs)
+		const waitResult = Atomics.wait(
+			view,
+			0,
+			0,
+			SABAtomicsWaitSyncToAsyncTransport.handshakeTimeoutMs
+		)
 		if (waitResult === 'timed-out') {
 			throw new Error('Timeout waiting for response')
 		}
 
 		while (true) {
-			const res = SABAtomicsWaitTransport.receiveMessageOnPort(connection)
+			const res =
+				SABAtomicsWaitSyncToAsyncTransport.receiveMessageOnPort(
+					connection
+				)
 			if (!res) {
 				throw new Error('No response received')
 			}
@@ -617,14 +649,15 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 	private static async ensureConnection(
 		port: MessagePort
 	): Promise<BrowserSyncConnection> {
-		const existing = SABAtomicsWaitTransport.browserConnections.get(port)
+		const existing =
+			SABAtomicsWaitSyncToAsyncTransport.browserConnections.get(port)
 		if (existing) {
 			return existing
 		}
 
 		const ctrlSAB = new SharedArrayBuffer(16)
 		const bufSAB = new SharedArrayBuffer(
-			SABAtomicsWaitTransport.browserBufferBytes
+			SABAtomicsWaitSyncToAsyncTransport.browserBufferBytes
 		)
 		const control = new Int32Array(ctrlSAB, 0, 3)
 		const payload = new Uint8Array(bufSAB)
@@ -639,7 +672,8 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 		const { port1: commandPortForWorker, port2: commandPortForClient } =
 			new MessageChannel()
 
-		const worker = SABAtomicsWaitTransport.createPumpWorker()
+		const worker =
+			SABAtomicsWaitSyncToAsyncTransport.createsyncBridgeWorker()
 
 		worker.postMessage(
 			{
@@ -668,12 +702,12 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 			handshake,
 			0,
 			0,
-			SABAtomicsWaitTransport.handshakeTimeoutMs
+			SABAtomicsWaitSyncToAsyncTransport.handshakeTimeoutMs
 		)
 		if (waitResult === 'timed-out') {
 			worker.terminate()
 			throw new Error(
-				'Timed out waiting for synchronous transport pump worker'
+				'Timed out waiting for synchronous transport sync bridge worker'
 			)
 		}
 
@@ -681,7 +715,7 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 		if (status !== 1) {
 			worker.terminate()
 			throw new Error(
-				'Synchronous transport pump worker failed to initialize'
+				'Synchronous transport sync bridge worker failed to initialize'
 			)
 		}
 
@@ -698,26 +732,29 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 			bufSAB,
 			pendingResponses: [],
 		}
-		SABAtomicsWaitTransport.browserConnections.set(port, connection)
+		SABAtomicsWaitSyncToAsyncTransport.browserConnections.set(
+			port,
+			connection
+		)
 		return connection
 	}
 
-	private static createPumpWorker(): Worker {
+	private static createsyncBridgeWorker(): Worker {
 		const WorkerCtor =
 			typeof Worker !== 'undefined' ? Worker : (globalThis as any)?.Worker
 		if (WorkerCtor) {
 			try {
 				return new WorkerCtor(
-					SABAtomicsWaitTransport.getPumpWorkerUrl(),
+					SABAtomicsWaitSyncToAsyncTransport.getsyncBridgeWorkerUrl(),
 					{
-						name: 'comlink-sync-pump',
+						name: 'comlink-sync-sync bridge',
 					}
 				)
 			} catch {
 				try {
 					return new (WorkerCtor as any)(
-						SABAtomicsWaitTransport.pumpWorkerSource,
-						{ eval: true, name: 'comlink-sync-pump' }
+						SABAtomicsWaitSyncToAsyncTransport.syncBridgeWorkerSource,
+						{ eval: true, name: 'comlink-sync-sync bridge' }
 					)
 				} catch {
 					// fall through
@@ -729,10 +766,10 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 				// eslint-disable-next-line @typescript-eslint/no-var-requires
 				const { Worker: NodeWorker } = require('worker_threads')
 				return new NodeWorker(
-					SABAtomicsWaitTransport.pumpWorkerSource,
+					SABAtomicsWaitSyncToAsyncTransport.syncBridgeWorkerSource,
 					{
 						eval: true,
-						name: 'comlink-sync-pump',
+						name: 'comlink-sync-sync bridge',
 					}
 				)
 			} catch {
@@ -742,8 +779,8 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 		throw new Error('Worker API is required for synchronous transport')
 	}
 
-	private static getPumpWorkerUrl(): string {
-		if (!SABAtomicsWaitTransport.browserPumpWorkerUrl) {
+	private static getsyncBridgeWorkerUrl(): string {
+		if (!SABAtomicsWaitSyncToAsyncTransport.browsersyncBridgeWorkerUrl) {
 			const supportsBlob =
 				typeof Blob !== 'undefined' &&
 				typeof URL !== 'undefined' &&
@@ -753,13 +790,16 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 					'Blob and URL APIs are required for synchronous transport'
 				)
 			}
-			const blob = new Blob([SABAtomicsWaitTransport.pumpWorkerSource], {
-				type: 'text/javascript',
-			})
-			SABAtomicsWaitTransport.browserPumpWorkerUrl =
+			const blob = new Blob(
+				[SABAtomicsWaitSyncToAsyncTransport.syncBridgeWorkerSource],
+				{
+					type: 'text/javascript',
+				}
+			)
+			SABAtomicsWaitSyncToAsyncTransport.browsersyncBridgeWorkerUrl =
 				URL.createObjectURL(blob)
 		}
-		return SABAtomicsWaitTransport.browserPumpWorkerUrl
+		return SABAtomicsWaitSyncToAsyncTransport.browsersyncBridgeWorkerUrl
 	}
 
 	private static receiveMessageOnPort(
@@ -793,8 +833,9 @@ export class SABAtomicsWaitTransport implements SyncTransport {
 						offset += part.length
 					}
 					const decoder =
-						SABAtomicsWaitTransport.textDecoder || new TextDecoder()
-					SABAtomicsWaitTransport.textDecoder = decoder
+						SABAtomicsWaitSyncToAsyncTransport.textDecoder ||
+						new TextDecoder()
+					SABAtomicsWaitSyncToAsyncTransport.textDecoder = decoder
 					const json = decoder.decode(bytes)
 					return { message: JSON.parse(json) }
 				}
@@ -830,7 +871,7 @@ export async function createSyncTransport(): Promise<SyncTransport> {
 			// fall through to SharedArrayBuffer transport
 		}
 	}
-	return SABAtomicsWaitTransport.create()
+	return SABAtomicsWaitSyncToAsyncTransport.create()
 }
 
 async function canAccessWorkerThreads(): Promise<boolean> {
