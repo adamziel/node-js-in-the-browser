@@ -242,6 +242,25 @@ extensions: ['.tsx', '.ts', '.js'],
 	}
 
 	fs.mkdirSync('/bin', { recursive: true })
+	fs.mkdirSync('/demos/demo-worker', { recursive: true })
+	fs.writeFileSync(
+		'/demos/demo-worker/demo.js',
+		`
+const { spawn } = require('child_process');
+console.log("Started demo.");
+const childProcess = spawn('node', ['/demos/demo-worker/child.js']);
+console.log("spawned child process.");
+childProcess.on('exit', (code, signal) => {
+	console.log("Child process exited with code", code, "and signal", signal);
+});
+`
+	)
+	fs.writeFileSync(
+		'/demos/demo-worker/child.js',
+		`
+		console.log("Child process spawned");`
+	)
+
 	fs.mkdirSync('/demos/demo-cowsay', { recursive: true })
 	if (!fs.existsSync('/demos/demo-cowsay/package.json')) {
 		fs.writeFileSync(

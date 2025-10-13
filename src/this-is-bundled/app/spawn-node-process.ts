@@ -1,5 +1,3 @@
-const workerScriptUrl = new URL('./node-process.worker.js', import.meta.url)
-
 let processCounter = 0
 
 function sanitizeArgv(argv: string[]) {
