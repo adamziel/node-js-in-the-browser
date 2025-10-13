@@ -3327,6 +3327,7 @@ globalThis.internalModules.worker.Worker = class WorkerImplementation extends ev
 			name: name,
 		});
 
+		// @TODO: Need to support messagePort etc.
 		// this.messagePort 
 	}
 }
