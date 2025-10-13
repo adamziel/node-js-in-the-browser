@@ -258,7 +258,11 @@ childProcess.on('exit', (code, signal) => {
 	fs.writeFileSync(
 		'/demos/demo-worker/child.js',
 		`
-		console.log("Child process spawned");`
+		console.log("[CHILD] Child process spawned");
+		const fs = require('fs');
+		console.log("required fs");
+		console.log('CHILD', fs.readdirSync('/'));
+		`
 	)
 
 	fs.mkdirSync('/demos/demo-cowsay', { recursive: true })

@@ -138,6 +138,119 @@ let exitDispatched = false
 let nextFsPortRequestId = 1
 const pendingFsRequests = new Map()
 
+function requestFsPortFromParent() {
+	const requestId = nextFsPortRequestId++
+	return new Promise((resolve, reject) => {
+		const timeoutId = setTimeout(() => {
+			pendingFsRequests.delete(requestId)
+			reject(new Error('Filesystem port request timed out after 1 second'))
+		}, 1000)
+
+		pendingFsRequests.set(requestId, { 
+			resolve: (value) => {
+				clearTimeout(timeoutId)
+				resolve(value)
+			}, 
+			reject: (reason) => {
+				clearTimeout(timeoutId)
+				reject(reason)
+			}
+		})
+		try {
+			self.postMessage({ type: 'request-fs-port', requestId })
+		} catch (error) {
+			clearTimeout(timeoutId)
+			pendingFsRequests.delete(requestId)
+			const reason =
+				error instanceof Error
+					? error
+					: new Error(
+							String(
+								error ?? 'Failed to request filesystem port.'
+							)
+					  )
+			reject(reason)
+		}
+	})
+}
+
+let ownFsPortPromise = null
+
+function ensureOwnFsPort() {
+	if (!ownFsPortPromise) {
+		ownFsPortPromise = requestFsPortFromParent()
+		ownFsPortPromise.catch(() => {})
+	}
+	return ownFsPortPromise
+}
+
+const fsPortPool = []
+const FS_PORT_POOL_TARGET_SIZE = 2
+let fsPortPoolPrimed = false
+let fsPortPoolPrimingPromise = null
+let fsPortPoolRefillPromise = null
+
+async function ensureFsPortPoolPrimed() {
+	if (fsPortPoolPrimed) {
+		return
+	}
+	if (fsPortPoolPrimingPromise) {
+		await fsPortPoolPrimingPromise
+		return
+	}
+	fsPortPoolPrimingPromise = (async () => {
+		const port = await requestFsPortFromParent()
+		fsPortPool.push(port)
+		fsPortPoolPrimed = true
+	})()
+	try {
+		await fsPortPoolPrimingPromise
+	} finally {
+		fsPortPoolPrimingPromise = null
+	}
+	if (fsPortPoolPrimed) {
+		scheduleFsPortPoolRefill()
+	}
+}
+
+function scheduleFsPortPoolRefill() {
+	if (!fsPortPoolPrimed || fsPortPoolRefillPromise) {
+		return
+	}
+	fsPortPoolRefillPromise = (async () => {
+		try {
+			while (fsPortPool.length < FS_PORT_POOL_TARGET_SIZE) {
+				const port = await requestFsPortFromParent()
+				fsPortPool.push(port)
+			}
+		} catch (error) {
+			globalThis.stableConsole?.warn?.(
+				'Failed to prefetch filesystem port',
+				error
+			)
+		} finally {
+			fsPortPoolRefillPromise = null
+		}
+	})()
+}
+
+async function borrowFilesystemPort() {
+	if (!fsPortPoolPrimed) {
+		await ensureFsPortPoolPrimed()
+	}
+	const cached = fsPortPool.shift()
+	if (cached) {
+		scheduleFsPortPoolRefill()
+		return cached
+	}
+	const fresh = await requestFsPortFromParent()
+	scheduleFsPortPoolRefill()
+	return fresh
+}
+
+;(globalThis).__webPolyfillsRequestFsPort = borrowFilesystemPort
+ensureOwnFsPort()
+
 function resolveFsPortRequest(data) {
 	const entry = pendingFsRequests.get(data.requestId)
 	if (!entry) {
@@ -155,13 +268,8 @@ function resolveFsPortRequest(data) {
 	entry.reject(new Error(message))
 }
 
-async function ensureRuntimeInitialized(fsPort) {
-	if (!(fsPort instanceof MessagePort)) {
-		throw new TypeError(
-			'Node process worker expected a MessagePort for filesystem access.'
-		)
-	}
-
+async function ensureRuntimeInitialized() {
+	const fsPort = await ensureOwnFsPort()
 	if (!globalFsInstance) {
 		globalFsInstance = await RemoteInMemoryFileSystem.connectSync(fsPort)
 	}
@@ -179,6 +287,7 @@ async function ensureRuntimeInitialized(fsPort) {
 	}
 
 	await runtimeReadyPromise
+	await ensureFsPortPoolPrimed()
 }
 
 function resetRuntimeState() {
@@ -549,7 +658,7 @@ async function runNodeProcess(config) {
 		)
 	}
 	try {
-		await ensureRuntimeInitialized(config.fsPort)
+		await ensureRuntimeInitialized()
 		const { stdin, stdout, stderr, dispose } = createTtyStreams(
 			config.columns,
 			config.rows
@@ -642,7 +751,6 @@ self.onmessage = (event) => {
 					typeof data.rows === 'number' && Number.isFinite(data.rows)
 						? data.rows
 						: 24,
-				fsPort: data.fsPort instanceof MessagePort ? data.fsPort : null,
 			}).catch((error) => {
 				reportError(error)
 			})

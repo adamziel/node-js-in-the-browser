@@ -31,6 +31,22 @@ function toInteger(value: string, fallback: number) {
 	return Number.isInteger(number) && number > 0 ? number : fallback
 }
 
+async function requestFilesystemPort(): Promise<MessagePort> {
+	const factory = (globalThis as any).__webPolyfillsRequestFsPort
+	if (typeof factory !== 'function') {
+		throw new Error(
+			'spawnNodeProcess: no filesystem port factory registered.'
+		)
+	}
+	const port = await factory()
+	if (!(port instanceof MessagePort)) {
+		throw new Error(
+			'spawnNodeProcess: filesystem port factory must return a MessagePort.'
+		)
+	}
+	return port
+}
+
 export type NodeProcessExitInfo = {
 	code: number
 	signal: string | null
@@ -51,7 +67,6 @@ export type SpawnNodeProcessOptions = {
 	columns?: number
 	rows?: number
 	name?: string
-	fsPort: MessagePort
 	onStdout?: (text: string) => void
 	onStderr?: (text: string) => void
 	onExit?: (info: NodeProcessExitInfo) => void
@@ -107,6 +122,44 @@ export async function spawnNodeProcess(
 		exitResolve = resolve
 		exitReject = reject
 	})
+	const handleFsPortRequest = (requestId: unknown) => {
+		if (typeof requestId !== 'number') {
+			return
+		}
+		;(async () => {
+			try {
+				const port = await requestFilesystemPort()
+				if (settled) {
+					port.close()
+					return
+				}
+				worker.postMessage(
+					{
+						type: 'provide-fs-port',
+						requestId,
+						ok: true,
+						port,
+					},
+					[port]
+				)
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message || 'Failed to obtain filesystem port'
+						: String(error ?? 'Failed to obtain filesystem port')
+				if (!settled) {
+					worker.postMessage({
+						type: 'provide-fs-port',
+						requestId,
+						ok: false,
+						message,
+					})
+				}
+			}
+		})().catch((error) => {
+			console.error('Error handling filesystem port request:', error)
+		})
+	}
 
 	worker.onmessage = (event) => {
 		const data = event.data || {}
@@ -115,6 +168,9 @@ export async function spawnNodeProcess(
 				if (typeof options.onStdout === 'function') {
 					options.onStdout(String(data.data ?? ''))
 				}
+				break
+			case 'request-fs-port':
+				handleFsPortRequest(data.requestId)
 				break
 			case 'stderr':
 				if (typeof options.onStderr === 'function') {
@@ -201,21 +257,18 @@ export async function spawnNodeProcess(
 	worker.addEventListener('messageerror', (event) => {
 		console.error('Node process worker messageerror:', event)
 	})
+	// await new Promise((resolve) => { setTimeout(resolve, 10) });
 
 	const start = async () => {
-		worker.postMessage(
-			{
-				type: 'start',
-				argv: normalizedArgv,
-				env,
-				cwd,
-				columns,
-				rows,
-				name,
-				fsPort: options.fsPort,
-			},
-			[options.fsPort]
-		)
+		worker.postMessage({
+			type: 'start',
+			argv: normalizedArgv,
+			env,
+			cwd,
+			columns,
+			rows,
+			name,
+		})
 	}
 
 	await start().catch((error) => {

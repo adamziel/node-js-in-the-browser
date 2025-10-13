@@ -254,7 +254,6 @@ export const spawn = (command, args = [], options = {}) => {
 		// @TODO: Support other options
 		spawnNodeProcess([command, ...args], {
 			options,
-			fsPort: child.fsPort,
 		})
 		// runHandler(child, command, Array.from(args), options, handler);
 	})

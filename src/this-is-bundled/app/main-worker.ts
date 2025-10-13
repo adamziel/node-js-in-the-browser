@@ -35,6 +35,9 @@ function createFilesystemPort() {
 	return channel.port2
 }
 
+;(globalThis as any).__webPolyfillsRequestFsPort = () =>
+	createFilesystemPort()
+
 globalThis.globalFs = await RemoteInMemoryFileSystem.connectSync(fsWorker)
 
 class ShellCommandExecutor {
@@ -429,7 +432,6 @@ class MainWorker {
 			columns,
 			rows,
 			name,
-			fsPort: createFilesystemPort(),
 			onStdout: (text) => emit('stdout', text),
 			onStderr: (text) => emit('stderr', text),
 			onExit: (info) => emit('exit', info),
