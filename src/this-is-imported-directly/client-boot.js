@@ -1978,40 +1978,9 @@ globalThis.internalModules = {
 		resourceLimits: {},
 		threadId: 0,
 		threadName: 'WorkerThread',
-		Worker: class FsWorker extends Worker {
-			constructor(
-				url,
-				envVariables,
-				argv,
-				resourceLimits,
-				trackUnmanagedFds,
-				isInternal,
-				name
-			) {
-				// @TODO: Support env, argv, name...
-
-				const fs = globalThis.coreModules.fs
-
-				// Extract the file path from the URL
-				const filePath =
-					globalThis.internalModules.url.fileURLToPath(url)
-
-				// Read the file content
-				const fileContent = fs.readFileSync(filePath, 'utf8')
-
-				// Convert the file content to a base64 string
-				const base64Content = btoa(fileContent)
-
-				// Create a base64 URL
-				const base64Url = `data:text/javascript;base64,${base64Content}`
-
-				// Return or use the base64 URL as needed
-				console.log('Base64 URL:', base64Url)
-				super(base64Url, {
-					name: name,
-				})
-			}
-		},
+		// filled in later in this file once we have
+		// access to the EventEmitter constructor
+		// Worker: ,
 		kMaxYoungGenerationSizeMb: 1024,
 		kMaxOldGenerationSizeMb: 1024,
 		kCodeRangeSizeMb: 1024,
@@ -3263,16 +3232,6 @@ globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle
 const events = await import('../../dist/events.js')
 globalThis.coreModules.events = events.default
 
-// Mixin EventEmitter methods into FsWorker prototype
-Object.getOwnPropertyNames(events.default.EventEmitter.prototype).forEach(
-	(name) => {
-		if (name !== 'constructor') {
-			globalThis.internalModules.worker.Worker.prototype[name] =
-				events.default.EventEmitter.prototype[name]
-		}
-	}
-)
-
 const http = await import('../../dist/http.js')
 globalThis.coreModules.http = http.default
 
@@ -3346,6 +3305,38 @@ globalThis.coreModules.vm = vm.default
 const v8 = await import('../../dist/v8.js')
 globalThis.coreModules.v8 = { ...v8 }
 
+import { spawnNodeProcess } from '../../dist/app/spawn-node-process.js'
+globalThis.internalModules.worker.Worker = class WorkerImplementation extends events.default.EventEmitter {
+	constructor(
+		url,
+		envVariables,
+		argv,
+		resourceLimits,
+		trackUnmanagedFds,
+		isInternal,
+		name
+	) {
+		super()
+
+		const fs = globalThis.coreModules.fs
+		this.spawnedNodeProcess = spawnNodeProcess(argv, {
+			env: envVariables,
+			cwd: '/',
+			columns: 80,
+			rows: 24,
+			name: name,
+		});
+
+		// this.messagePort 
+	}
+}
+
+/**
+ * It's important to load worker_threads after the WorkerImplementation.
+ * It destructures the 'worker' internal binding at the top level and stores
+ * whatever reference is there at the time. By the time the worker_threads import is finished,
+ * it's too late to polyfill the 'worker' internal binding.
+ */
 const workerThreads = await import('../../dist/worker_threads.js')
 globalThis.coreModules.worker_threads = workerThreads.default
 
@@ -3369,6 +3360,7 @@ for (const key in globalThis.coreModules) {
 }
 
 globalThis.internalModules.natives = Object.keys(globalThis.internalModules)
+
 
 // const ModuleCJSLoader = await import("../../dist/internal/modules/cjs/loader.js");
 // console.log({ ModuleCJSLoader })

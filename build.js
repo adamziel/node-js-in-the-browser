@@ -19,6 +19,7 @@ const buildOptionsApp = {
 		'in-memory-fs.worker': './src/this-is-bundled/app/in-memory-fs.worker.js',
 		'node-process.worker': './src/this-is-bundled/app/node-process.worker.js',
 		'ui/StoredHistory': './src/this-is-bundled/app/ui/StoredHistory.ts',
+		'spawn-node-process': './src/this-is-bundled/app/spawn-node-process.ts',
 	},
 	bundle: true,
 	outdir: './dist/app',
