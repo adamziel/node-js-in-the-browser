@@ -13,7 +13,9 @@ self.onmessage = function (e) {
 		for (;;) {
 			const st = Atomics.load(control, 0)
 			if (st === 0 || st < 0) return st
+			console.log('Waiting for consumer to flip it')
 			Atomics.wait(control, 0, st) // wait for consumer to flip it
+			console.log('Waiting for consumer to flip it done')
 		}
 	}
 
