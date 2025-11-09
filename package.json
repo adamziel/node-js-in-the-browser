@@ -1,0 +1,36 @@
+{
+	"name": "@adamziel/web-polyfills",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Monorepo for browser-based kernel and VS Code web extension",
+	"workspaces": [
+		"packages/kernel",
+		"packages/web-extensions"
+	],
+	"scripts": {
+		"build": "nx run-many -t build",
+		"build:kernel": "nx run @adamziel/kernel:build",
+		"build:extension": "nx run kernel-vscode-extension:build",
+		"dev": "nx run kernel-vscode-extension:dev",
+		"test": "nx run @adamziel/kernel:test",
+		"test:all": "nx run-many -t test",
+		"clean": "nx reset && rm -rf dist packages/*/dist packages/*/node_modules node_modules",
+		"graph": "nx graph",
+		"affected:build": "nx affected -t build",
+		"affected:test": "nx affected -t test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Automattic/web-polyfills.git"
+	},
+	"author": "Automattic",
+	"license": "GPL-2.0-or-later",
+	"engines": {
+		"node": ">=18.0.0",
+		"npm": ">=9.0.0"
+	},
+	"devDependencies": {
+		"@nx/js": "^22.0.2",
+		"nx": "^22.0.2"
+	}
+}
