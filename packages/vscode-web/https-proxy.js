@@ -127,11 +127,12 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 	const contentType = proxyRes.headers['content-type'] || '';
 	const encoding = proxyRes.headers['content-encoding'];
 	const pathname = req.url ? req.url.split('?')[0] : '';
-	const wantsHtmlInjection =
+
+	const wantsCspHeaderPatch =
 		req.method === 'GET' &&
 		encoding === undefined &&
-		/^text\/html/i.test(contentType || '') &&
-		(pathname === '/' || pathname === '/index.html');
+		/\btext\/html\b/i.test(contentType || '') &&
+		(pathname || '').includes('webWorkerExtensionHostIframe.html');
 
 	const wantsWorkerPatch =
 		req.method === 'GET' &&
@@ -139,7 +140,7 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 		/\bjavascript\b/i.test(contentType || '') &&
 		(pathname || '').includes('extensionHostWorkerMain');
 
-	if (!wantsHtmlInjection && !wantsWorkerPatch) {
+	if (!wantsWorkerPatch && !wantsCspHeaderPatch) {
 		res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
 		proxyRes.pipe(res);
 		return;
@@ -149,13 +150,17 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 	proxyRes.on('data', (chunk) => chunks.push(chunk));
 	proxyRes.on('end', () => {
 		let body = Buffer.concat(chunks).toString('utf8');
-		if (wantsHtmlInjection && !body.includes('kernel-host/bootstrap.js')) {
+		if (wantsCspHeaderPatch) {
+			// Disable CSP entirely for now, JS Kernel needs the freedom to
+			// run arbitrary code via import("data:...")
 			body = body.replace(
-				'</head>',
-				`\t<script type="module" src="./kernel-host/bootstrap.js"></script>\n</head>`
+				/<meta http-equiv="Content-Security-Policy" content="[^"]*"/g,
+				''
 			);
-		}
-		if (wantsWorkerPatch) {
+		} else if (
+			wantsWorkerPatch &&
+			!body.includes('__kernelWorkerPatched')
+		) {
 			if (body.includes('"use strict";')) {
 				body = body.replace(
 					'"use strict";',

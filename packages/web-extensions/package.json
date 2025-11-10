@@ -41,7 +41,15 @@
 			{
 				"type": "kernel-shell"
 			}
-		]
+		],
+		"terminal": {
+			"profiles": [
+				{
+					"id": "kernel.terminal",
+					"title": "Kernel Shell"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"dev": "npm run build:kernel && node esbuild.js --watch",

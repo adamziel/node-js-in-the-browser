@@ -5,6 +5,11 @@ const fs = require('fs/promises');
 const watch = process.argv.includes('--watch');
 const extensionDistPath = path.resolve(__dirname, 'dist');
 const workspaceKernelDistPath = path.resolve(__dirname, '../../dist/kernel');
+const workspaceKernelHelpers = [
+	{ source: path.resolve(__dirname, '../../dist/lib'), target: 'lib' },
+	{ source: path.resolve(__dirname, '../../dist/util'), target: 'util' },
+	{ source: path.resolve(__dirname, '../../dist/shell'), target: 'shell' },
+];
 
 const ctx = esbuild
 	.context({
@@ -34,30 +39,47 @@ const ctx = esbuild
 				},
 			},
 			{
-				name: 'copy-kernel-dist',
-				setup(build) {
-					build.onEnd(async () => {
-						try {
-							const targetKernelDist = path.join(
-								extensionDistPath,
-								'kernel'
+			name: 'copy-kernel-dist',
+			setup(build) {
+				build.onEnd(async () => {
+					try {
+						const targetKernelDist = path.join(
+							extensionDistPath,
+							'kernel'
+						);
+						await fs.rm(targetKernelDist, { recursive: true, force: true });
+						await fs.cp(workspaceKernelDistPath, targetKernelDist, {
+							recursive: true,
+						});
+						console.log('Copied kernel dist/ into extension bundle');
+					} catch (error) {
+						if (error.code !== 'ENOENT') {
+							console.warn(
+								'Warning: Could not copy kernel dist:',
+								error.message
 							);
-							await fs.rm(targetKernelDist, { recursive: true, force: true });
-							await fs.cp(workspaceKernelDistPath, targetKernelDist, {
-								recursive: true,
-							});
-							console.log('Copied kernel dist/ into extension bundle');
+						}
+					}
+					for (const helper of workspaceKernelHelpers) {
+						try {
+							const source = helper.source;
+							await fs.access(source);
+							const target = path.join(extensionDistPath, helper.target);
+							await fs.rm(target, { recursive: true, force: true });
+							await fs.cp(source, target, { recursive: true });
+							console.log(`Copied ${helper.target}/ into extension bundle`);
 						} catch (error) {
-							if (error.code !== 'ENOENT') {
+							if (error && error.code !== 'ENOENT') {
 								console.warn(
-									'Warning: Could not copy kernel dist:',
+									`Warning: Could not copy ${helper.target}:`,
 									error.message
 								);
 							}
 						}
-					});
-				},
+					}
+				});
 			},
+		},
 		],
 	})
 	.then(async (ctx) => {

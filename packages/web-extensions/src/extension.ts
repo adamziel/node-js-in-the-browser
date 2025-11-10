@@ -12,6 +12,26 @@ export async function activate(context: vscode.ExtensionContext) {
 	console.log('Kernel VS Code extension is activating...');
 	try {
 		const kernelModule = await loadKernelModule(context);
+		const workersBase = vscode.Uri.joinPath(
+			context.extensionUri,
+			'dist',
+			'kernel',
+			'workers'
+		);
+		kernelModule.setWorkerConfig?.({
+			processController: vscode.Uri.joinPath(
+				workersBase,
+				'process-controller.js'
+			).toString(true),
+			pumpWorker: vscode.Uri.joinPath(
+				workersBase,
+				'pump-worker.js'
+			).toString(true),
+			wasmfsWorker: vscode.Uri.joinPath(
+				workersBase,
+				'wasmfs-worker.js'
+			).toString(true),
+		});
 		kernelManager = new KernelManager(
 			kernelModule.Kernel,
 			kernelModule.installBusybox
@@ -112,19 +132,28 @@ function ensureKernelWorkspaceFolder() {
 }
 
 async function ensureKernelTerminalDefault() {
-	if (vscode.window.terminals.some((terminal) => terminal.name === 'Kernel Shell')) {
+	const hasKernelTerminal = vscode.window.terminals.some(
+		(terminal) => terminal.name === 'Kernel Shell'
+	);
+	if (hasKernelTerminal) {
+		vscode.window.terminals
+			.find((terminal) => terminal.name === 'Kernel Shell')
+			?.show();
 		return;
 	}
+
 	if (terminalProvider) {
 		const terminal = await terminalProvider.createTerminal();
-		terminal.show();
+		terminal.show(true);
 		return;
 	}
+
 	try {
-		await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile', {
-			profileName: 'Kernel Shell',
-		});
-	} catch {
-		// ignore
+		await vscode.commands.executeCommand(
+			'workbench.action.terminal.newWithProfile',
+			{ profileName: 'Kernel Shell' }
+		);
+	} catch (error) {
+		console.warn('Kernel: unable to launch terminal profile', error);
 	}
 }
