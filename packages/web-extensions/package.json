@@ -3,7 +3,7 @@
 	"displayName": "JavaScript Kernel",
 	"description": "Run a JavaScript kernel with filesystem and terminal integration in VS Code Web",
 	"version": "0.0.1",
-	"publisher": "automattic",
+	"publisher": "adamziel",
 	"engines": {
 		"vscode": "^1.94.0"
 	},
@@ -13,8 +13,20 @@
 	"activationEvents": [
 		"onStartupFinished"
 	],
+	"extensionKind": [
+		"web"
+	],
 	"browser": "./dist/extension.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "kernel-sidebar",
+					"title": "Kernel",
+					"icon": "$(star)"
+				}
+			]
+		},
 		"commands": [
 			{
 				"command": "kernel.openTerminal",

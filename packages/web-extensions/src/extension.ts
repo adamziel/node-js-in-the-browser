@@ -26,7 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(
 			vscode.workspace.registerFileSystemProvider('kernel', fsProvider, {
 				isCaseSensitive: true,
-				isReadonly: false
+				isReadonly: false,
 			})
 		);
 		console.log('Kernel filesystem provider registered');
@@ -34,7 +34,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Register terminal provider
 		terminalProvider = new KernelTerminalProvider(kernelManager);
 		context.subscriptions.push(
-			vscode.window.registerTerminalProfileProvider('kernel.terminal', terminalProvider)
+			vscode.window.registerTerminalProfileProvider(
+				'kernel.terminal',
+				terminalProvider
+			)
 		);
 		console.log('Kernel terminal provider registered');
 
@@ -49,21 +52,26 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(
 			vscode.commands.registerCommand('kernel.restart', async () => {
 				await kernelManager.restart();
-				vscode.window.showInformationMessage('Kernel restarted successfully');
+				vscode.window.showInformationMessage(
+					'Kernel restarted successfully'
+				);
 			})
 		);
 
-		vscode.window.showInformationMessage('JavaScript Kernel extension activated!');
+		vscode.window.showInformationMessage(
+			'JavaScript Kernel extension activated!'
+		);
 
 		// Optionally auto-open a terminal on first activation
 		const config = vscode.workspace.getConfiguration('kernel');
 		if (config.get('autoOpenTerminal', false)) {
 			vscode.commands.executeCommand('kernel.openTerminal');
 		}
-
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
-		vscode.window.showErrorMessage(`Failed to activate Kernel extension: ${message}`);
+		vscode.window.showErrorMessage(
+			`Failed to activate Kernel extension: ${message}`
+		);
 		console.error('Kernel activation error:', error);
 		throw error;
 	}

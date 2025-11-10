@@ -14,28 +14,32 @@ console.log('Step 1/3: Checking for VS Code assets...');
 const cacheExists = fs.existsSync(CACHE_DIR);
 
 if (!cacheExists) {
-  console.log('VS Code assets not found. Downloading...');
-  console.log('Running: npm run dev (this will download VS Code)');
-  console.log('Please wait while VS Code downloads (~22MB)...\n');
+	console.log('VS Code assets not found. Downloading...');
+	console.log('Running: npm run dev (this will download VS Code)');
+	console.log('Please wait while VS Code downloads (~22MB)...\n');
 
-  try {
-    // Run the dev server briefly to trigger download
-    const child = execSync('timeout 30 npm run dev || true', {
-      stdio: 'inherit',
-      cwd: __dirname
-    });
-  } catch (e) {
-    // Timeout is expected, we just need the download
-  }
+	try {
+		// Run the dev server briefly to trigger download
+		const child = execSync('timeout 30 npm run dev || true', {
+			stdio: 'inherit',
+			cwd: __dirname,
+		});
+	} catch (e) {
+		// Timeout is expected, we just need the download
+	}
 }
 
 // Step 2: Find the downloaded VS Code directory
 console.log('\nStep 2/3: Locating VS Code assets...');
-const vscodeDir = fs.readdirSync(CACHE_DIR).find(dir => dir.startsWith('vscode-web-'));
+const vscodeDir = fs
+	.readdirSync(CACHE_DIR)
+	.find((dir) => dir.startsWith('vscode-web-'));
 
 if (!vscodeDir) {
-  console.error('Error: Could not find VS Code assets. Please run: npm run dev');
-  process.exit(1);
+	console.error(
+		'Error: Could not find VS Code assets. Please run: npm run dev'
+	);
+	process.exit(1);
 }
 
 const sourcePath = path.join(CACHE_DIR, vscodeDir);
@@ -46,7 +50,7 @@ console.log('\nStep 3/3: Copying assets to dist/...');
 
 // Remove old dist if exists
 if (fs.existsSync(DIST_DIR)) {
-  fs.rmSync(DIST_DIR, { recursive: true });
+	fs.rmSync(DIST_DIR, { recursive: true });
 }
 
 // Copy everything
@@ -54,19 +58,25 @@ fs.cpSync(sourcePath, DIST_DIR, { recursive: true });
 
 // Copy and modify the AMD main.js file
 const testWebPackageJson = require.resolve('@vscode/test-web/package.json', {
-  paths: [__dirname]
+	paths: [__dirname],
 });
 const testWebRoot = path.dirname(testWebPackageJson);
 const amdSourceDir = path.join(testWebRoot, 'out', 'browser', 'amd');
 const amdDestDir = path.join(DIST_DIR, 'out', 'browser', 'amd');
 if (!fs.existsSync(amdDestDir)) {
-  fs.mkdirSync(amdDestDir, { recursive: true });
+	fs.mkdirSync(amdDestDir, { recursive: true });
 }
 
 // Read main.js and replace the workbench.api path
-let mainJsContent = fs.readFileSync(path.join(amdSourceDir, 'main.js'), 'utf-8');
+let mainJsContent = fs.readFileSync(
+	path.join(amdSourceDir, 'main.js'),
+	'utf-8'
+);
 // Replace ./workbench.api with the correct path
-mainJsContent = mainJsContent.replace('./workbench.api', 'vs/workbench/workbench.web.main');
+mainJsContent = mainJsContent.replace(
+	'./workbench.api',
+	'vs/workbench/workbench.web.main'
+);
 fs.writeFileSync(path.join(amdDestDir, 'main.js'), mainJsContent);
 
 // Create index.html
@@ -92,7 +102,7 @@ const indexHtml = `<!-- Copyright (C) Microsoft Corporation. All rights reserved
 		<meta id="vscode-workbench-web-configuration" data-settings="{&quot;productConfiguration&quot;:{&quot;enableTelemetry&quot;:false},&quot;workspaceUri&quot;:{&quot;scheme&quot;:&quot;tmp&quot;,&quot;path&quot;:&quot;/default.code-workspace&quot;}}">
 
 		<!-- Builtin Extensions -->
-		<meta id="vscode-workbench-builtin-extensions" data-settings="[]">
+		<meta id="vscode-workbench-builtin-extensions" data-settings="[&quot;automattic.foo-button-extension&quot;]">
 
 		<!-- Workbench Icon/Manifest/CSS -->
 		<link rel="icon" href="./favicon.ico" type="image/x-icon" />

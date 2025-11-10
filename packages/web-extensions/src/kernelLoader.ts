@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import type * as KernelModule from '@adamziel/kernel';
+// import type * as KernelModule from '@adamziel/kernel';
 
 let kernelModulePromise: Promise<KernelModule> | null = null;
 

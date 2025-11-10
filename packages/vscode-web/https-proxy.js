@@ -46,9 +46,9 @@ proxy.on('proxyReq', (proxyReq, req) => {
 });
 
 proxy.on('proxyRes', (proxyRes) => {
-	proxyRes.headers['Cross-Origin-Opener-Policy'] = 'same-origin';
-	proxyRes.headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
-	proxyRes.headers['Cross-Origin-Resource-Policy'] = 'same-origin';
+	// proxyRes.headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+	// proxyRes.headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+	// proxyRes.headers['Cross-Origin-Resource-Policy'] = 'same-origin';
 });
 
 proxy.on('error', (error, req, res) => {
@@ -75,7 +75,9 @@ server.listen(publicPort, sslHost, () => {
 	console.log(
 		`[https-proxy] Forwarding to http://${targetHost}:${targetPort}`
 	);
-	console.log('[https-proxy] Browsers treat *.localhost as loopback automatically.');
+	console.log(
+		'[https-proxy] Browsers treat *.localhost as loopback automatically.'
+	);
 });
 
 function shutdown() {
