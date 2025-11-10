@@ -1,5 +1,7 @@
-import { Kernel } from '@adamziel/kernel/runtime/core/kernel';
-import { installBusybox } from '@adamziel/kernel/runtime/busybox/index';
+import type { Kernel } from '@adamziel/kernel';
+
+type KernelConstructor = new () => Kernel;
+type BusyboxInstaller = (kernel: Kernel, path?: string) => void;
 
 /**
  * Manages the kernel instance lifecycle
@@ -7,6 +9,11 @@ import { installBusybox } from '@adamziel/kernel/runtime/busybox/index';
 export class KernelManager {
 	private kernel: Kernel | null = null;
 	private initializationPromise: Promise<void> | null = null;
+
+	constructor(
+		private readonly KernelCtor: KernelConstructor,
+		private readonly installBusyboxFn: BusyboxInstaller
+	) {}
 
 	async initialize(): Promise<void> {
 		if (this.initializationPromise) {
@@ -21,7 +28,7 @@ export class KernelManager {
 		console.log('[KernelManager] Initializing kernel...');
 
 		// Create kernel instance
-		this.kernel = new Kernel();
+		this.kernel = new this.KernelCtor();
 
 		// Set up basic environment
 		this.kernel.setEnv('HOME', '/home');
@@ -39,7 +46,7 @@ export class KernelManager {
 
 		// Install busybox commands
 		console.log('[KernelManager] Installing busybox...');
-		installBusybox(this.kernel);
+		this.installBusyboxFn(this.kernel);
 
 		// TODO: Install custom programs (node, php, etc.) if available
 		// installCustomPrograms(this.kernel);

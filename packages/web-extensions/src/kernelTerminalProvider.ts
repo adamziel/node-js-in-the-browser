@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { KernelManager } from './kernelManager';
-import { ttyShellProgramSource } from '@adamziel/kernel/runtime/busybox/tty-shell';
 import type { KernelSubprocess } from '@adamziel/kernel/runtime/core/kernel';
 
 /**
@@ -76,12 +75,9 @@ class KernelTerminal implements vscode.Pseudoterminal {
 
 	private async startShell(): Promise<void> {
 		try {
-			// Install the tty-shell program if not already present
 			const shellPath = '/bin/tty-shell';
 			if (!this.kernel.existsSync(shellPath)) {
-				this.kernel.writeFileSync(shellPath, ttyShellProgramSource, {
-					mode: 0o755,
-				});
+				throw new Error('tty-shell program is missing from /bin');
 			}
 
 			// Spawn the shell process

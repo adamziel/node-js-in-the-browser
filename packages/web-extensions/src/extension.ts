@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { KernelManager } from './kernelManager';
 import { KernelFileSystemProvider } from './kernelFileSystemProvider';
 import { KernelTerminalProvider } from './kernelTerminalProvider';
+import { loadKernelModule } from './kernelLoader';
 
 let kernelManager: KernelManager;
 let fsProvider: KernelFileSystemProvider;
@@ -9,10 +10,14 @@ let terminalProvider: KernelTerminalProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('Kernel VS Code extension is activating...');
-
 	try {
+		const kernelModule = await loadKernelModule(context);
+		kernelManager = new KernelManager(
+			kernelModule.Kernel,
+			kernelModule.installBusybox
+		);
+
 		// Initialize the kernel
-		kernelManager = new KernelManager();
 		await kernelManager.initialize();
 		console.log('Kernel initialized successfully');
 

@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# VS Code test-web downloads
+.vscode-test-web/
+
+# Build output (uncomment if you don't want to commit dist)
+# dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db

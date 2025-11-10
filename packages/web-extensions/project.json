@@ -49,9 +49,9 @@
 		"package": {
 			"executor": "nx:run-commands",
 			"dependsOn": ["build"],
-			"outputs": ["{projectRoot}/*.vsix"],
+			"outputs": ["{workspaceRoot}/dist/web-extensions/*.vsix"],
 			"options": {
-				"command": "vsce package --no-dependencies",
+				"command": "vsce package --no-dependencies --out ../../dist/web-extensions",
 				"cwd": "packages/web-extensions"
 			}
 		}

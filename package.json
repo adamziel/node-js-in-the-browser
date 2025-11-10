@@ -5,13 +5,16 @@
 	"description": "Monorepo for browser-based kernel and VS Code web extension",
 	"workspaces": [
 		"packages/kernel",
-		"packages/web-extensions"
+		"packages/web-extensions",
+		"packages/vscode-web"
 	],
 	"scripts": {
 		"build": "nx run-many -t build",
 		"build:kernel": "nx run @adamziel/kernel:build",
 		"build:extension": "nx run kernel-vscode-extension:build",
-		"dev": "nx run kernel-vscode-extension:dev",
+		"dev": "concurrently -n extension,vscode,proxy,browser \"nx run kernel-vscode-extension:watch\" \"nx run vscode-web:dev\" \"nx run vscode-web:proxy\" \"node scripts/open-vscode.js\"",
+		"certs": "./scripts/generate-certs.sh",
+		"dev:extension": "nx run kernel-vscode-extension:dev",
 		"test": "nx run @adamziel/kernel:test",
 		"test:all": "nx run-many -t test",
 		"clean": "nx reset && rm -rf dist packages/*/dist packages/*/node_modules node_modules",
@@ -31,6 +34,9 @@
 	},
 	"devDependencies": {
 		"@nx/js": "^22.0.2",
-		"nx": "^22.0.2"
+		"concurrently": "^9.2.1",
+		"cross-env": "^10.1.0",
+		"nx": "^22.0.2",
+		"wait-on": "^9.0.3"
 	}
 }
