@@ -56,6 +56,14 @@ if (fs.existsSync(DIST_DIR)) {
 // Copy everything
 fs.cpSync(sourcePath, DIST_DIR, { recursive: true });
 
+// Copy over custom kernel host bootstrap/worker
+const kernelHostDir = path.join(__dirname, 'kernel-host');
+if (fs.existsSync(kernelHostDir)) {
+	fs.cpSync(kernelHostDir, path.join(DIST_DIR, 'kernel-host'), {
+		recursive: true,
+	});
+}
+
 // Copy and modify the AMD main.js file
 const testWebPackageJson = require.resolve('@vscode/test-web/package.json', {
 	paths: [__dirname],
@@ -111,6 +119,7 @@ const indexHtml = `<!-- Copyright (C) Microsoft Corporation. All rights reserved
 	</head>
 
 	<body aria-label="">
+		<script type="module" src="./kernel-host/bootstrap.js"></script>
 	</body>
 
 	<!-- Startup (do not modify order of script tags!) -->

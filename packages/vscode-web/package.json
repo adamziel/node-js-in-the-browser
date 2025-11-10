@@ -17,8 +17,9 @@
 	],
 	"author": "",
 	"license": "MIT",
-	"devDependencies": {
+	"dependencies": {
 		"@vscode/test-web": "^0.0.64",
-		"http-proxy": "^1.18.1"
+		"http-proxy": "^1.18.1",
+		"mime-types": "^2.1.35"
 	}
 }

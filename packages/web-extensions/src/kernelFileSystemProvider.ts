@@ -1,168 +1,124 @@
 import * as vscode from 'vscode';
-import { KernelManager } from './kernelManager';
+import { KernelManager, RemoteDirectoryEntry, RemoteFileStat } from './kernelManager';
 
-/**
- * VS Code FileSystemProvider implementation that bridges to the kernel filesystem
- */
+const toFileType = (entry: RemoteDirectoryEntry | RemoteFileStat): vscode.FileType => {
+	const kind = entry.type;
+	switch (kind) {
+		case 'directory':
+			return vscode.FileType.Directory;
+		case 'file':
+			return vscode.FileType.File;
+		case 'symlink':
+			return vscode.FileType.SymbolicLink;
+		default:
+			return vscode.FileType.Unknown;
+	}
+};
+
+const toFileStat = (stat: RemoteFileStat): vscode.FileStat => ({
+	type: toFileType(stat),
+	ctime: stat.ctime,
+	mtime: stat.mtime,
+	size: stat.size,
+});
+
 export class KernelFileSystemProvider implements vscode.FileSystemProvider {
 	private _emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
 	readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this._emitter.event;
 
 	constructor(private kernelManager: KernelManager) {}
 
-	watch(uri: vscode.Uri, options: { recursive: boolean; excludes: string[] }): vscode.Disposable {
-		// TODO: Implement file watching if needed
+	watch(_uri: vscode.Uri, _options: { recursive: boolean; excludes: string[] }): vscode.Disposable {
 		return new vscode.Disposable(() => {});
 	}
 
-	stat(uri: vscode.Uri): vscode.FileStat {
+	async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
 		const kernel = this.kernelManager.getKernel();
-		const path = uri.path;
-
 		try {
-			const stats = kernel.statSync(path);
-
-			let type = vscode.FileType.Unknown;
-			if (stats.isDirectory()) {
-				type = vscode.FileType.Directory;
-			} else if (stats.isFile()) {
-				type = vscode.FileType.File;
-			} else if (stats.isSymbolicLink()) {
-				type = vscode.FileType.SymbolicLink;
-			}
-
-			return {
-				type,
-				ctime: stats.ctimeMs || 0,
-				mtime: stats.mtimeMs || 0,
-				size: stats.size || 0
-			};
+			const stats = await kernel.stat(uri.path);
+			return toFileStat(stats);
 		} catch (error) {
 			throw vscode.FileSystemError.FileNotFound(uri);
 		}
 	}
 
-	readDirectory(uri: vscode.Uri): [string, vscode.FileType][] {
+	async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
 		const kernel = this.kernelManager.getKernel();
-		const path = uri.path;
-
 		try {
-			const entries = kernel.readdirSync(path) as string[];
-			const result: [string, vscode.FileType][] = [];
-
-			for (const entry of entries) {
-				const entryPath = path === '/' ? `/${entry}` : `${path}/${entry}`;
-				try {
-					const stats = kernel.statSync(entryPath);
-					let type = vscode.FileType.Unknown;
-
-					if (stats.isDirectory()) {
-						type = vscode.FileType.Directory;
-					} else if (stats.isFile()) {
-						type = vscode.FileType.File;
-					} else if (stats.isSymbolicLink()) {
-						type = vscode.FileType.SymbolicLink;
-					}
-
-					result.push([entry, type]);
-				} catch {
-					// Skip entries we can't stat
-				}
-			}
-
-			return result;
+			const entries = await kernel.readDirectory(uri.path);
+			return entries.map((entry) => [entry.name, toFileType(entry)]);
 		} catch (error) {
 			throw vscode.FileSystemError.FileNotFound(uri);
 		}
 	}
 
-	createDirectory(uri: vscode.Uri): void {
+	async createDirectory(uri: vscode.Uri): Promise<void> {
 		const kernel = this.kernelManager.getKernel();
-		const path = uri.path;
-
 		try {
-			kernel.mkdirSync(path, { mode: 0o755, recursive: true });
+			await kernel.createDirectory(uri.path, { recursive: true });
 			this._fireSoon({ type: vscode.FileChangeType.Created, uri });
 		} catch (error) {
 			throw vscode.FileSystemError.Unavailable(uri);
 		}
 	}
 
-	readFile(uri: vscode.Uri): Uint8Array {
+	async readFile(uri: vscode.Uri): Promise<Uint8Array> {
 		const kernel = this.kernelManager.getKernel();
-		const path = uri.path;
-
 		try {
-			const content = kernel.readFileSync(path);
-
-			if (typeof content === 'string') {
-				return new TextEncoder().encode(content);
-			}
-
-			return content;
+			return await kernel.readFile(uri.path);
 		} catch (error) {
 			throw vscode.FileSystemError.FileNotFound(uri);
 		}
 	}
 
-	writeFile(uri: vscode.Uri, content: Uint8Array, options: { create: boolean; overwrite: boolean }): void {
+	async writeFile(
+		uri: vscode.Uri,
+		content: Uint8Array,
+		options: { create: boolean; overwrite: boolean }
+	): Promise<void> {
 		const kernel = this.kernelManager.getKernel();
-		const path = uri.path;
+		const exists = await kernel.exists(uri.path);
 
-		const exists = kernel.existsSync(path);
-
-		if (exists) {
-			if (!options.overwrite) {
-				throw vscode.FileSystemError.FileExists(uri);
-			}
-		} else {
-			if (!options.create) {
-				throw vscode.FileSystemError.FileNotFound(uri);
-			}
+		if (exists && !options.overwrite) {
+			throw vscode.FileSystemError.FileExists(uri);
+		}
+		if (!exists && !options.create) {
+			throw vscode.FileSystemError.FileNotFound(uri);
 		}
 
 		try {
-			kernel.writeFileSync(path, content, { mode: 0o644 });
+			await kernel.writeFile(uri.path, content, {});
 			this._fireSoon({
 				type: exists ? vscode.FileChangeType.Changed : vscode.FileChangeType.Created,
-				uri
+				uri,
 			});
 		} catch (error) {
 			throw vscode.FileSystemError.Unavailable(uri);
 		}
 	}
 
-	delete(uri: vscode.Uri, options: { recursive: boolean }): void {
+	async delete(uri: vscode.Uri, options: { recursive: boolean }): Promise<void> {
 		const kernel = this.kernelManager.getKernel();
-		const path = uri.path;
-
 		try {
-			const stats = kernel.statSync(path);
-
-			if (stats.isDirectory()) {
-				kernel.rmdirSync(path, { recursive: options.recursive });
-			} else {
-				kernel.unlinkSync(path);
-			}
-
+			await kernel.delete(uri.path, { recursive: options.recursive });
 			this._fireSoon({ type: vscode.FileChangeType.Deleted, uri });
 		} catch (error) {
 			throw vscode.FileSystemError.FileNotFound(uri);
 		}
 	}
 
-	rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): void {
+	async rename(
+		oldUri: vscode.Uri,
+		newUri: vscode.Uri,
+		options: { overwrite: boolean }
+	): Promise<void> {
 		const kernel = this.kernelManager.getKernel();
-		const oldPath = oldUri.path;
-		const newPath = newUri.path;
-
-		const newExists = kernel.existsSync(newPath);
-		if (newExists && !options.overwrite) {
+		if (!options.overwrite && (await kernel.exists(newUri.path))) {
 			throw vscode.FileSystemError.FileExists(newUri);
 		}
 
 		try {
-			kernel.renameSync(oldPath, newPath);
+			await kernel.rename(oldUri.path, newUri.path);
 			this._fireSoon(
 				{ type: vscode.FileChangeType.Deleted, uri: oldUri },
 				{ type: vscode.FileChangeType.Created, uri: newUri }
@@ -172,22 +128,20 @@ export class KernelFileSystemProvider implements vscode.FileSystemProvider {
 		}
 	}
 
-	copy(source: vscode.Uri, destination: vscode.Uri, options: { overwrite: boolean }): void {
+	async copy(
+		source: vscode.Uri,
+		destination: vscode.Uri,
+		options: { overwrite: boolean }
+	): Promise<void> {
 		const kernel = this.kernelManager.getKernel();
-		const sourcePath = source.path;
-		const destPath = destination.path;
-
-		const destExists = kernel.existsSync(destPath);
-		if (destExists && !options.overwrite) {
+		if (!options.overwrite && (await kernel.exists(destination.path))) {
 			throw vscode.FileSystemError.FileExists(destination);
 		}
-
 		try {
-			const content = kernel.readFileSync(sourcePath);
-			kernel.writeFileSync(destPath, content);
+			await kernel.copy(source.path, destination.path);
 			this._fireSoon({ type: vscode.FileChangeType.Created, uri: destination });
 		} catch (error) {
-			throw vscode.FileSystemError.Unavailable(source);
+			throw vscode.FileSystemError.Unavailable(destination);
 		}
 	}
 
@@ -198,16 +152,13 @@ export class KernelFileSystemProvider implements vscode.FileSystemProvider {
 		this._bufferedEvents.push(...events);
 
 		if (this._fireSoonHandle) {
-			clearTimeout(this._fireSoonHandle);
+			return;
 		}
 
 		this._fireSoonHandle = setTimeout(() => {
+			this._fireSoonHandle = undefined;
 			this._emitter.fire(this._bufferedEvents);
 			this._bufferedEvents = [];
-		}, 5);
-	}
-
-	dispose(): void {
-		this._emitter.dispose();
+		}, 50);
 	}
 }
