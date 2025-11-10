@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
-import { KernelManager, RemoteKernel, RemoteKernelProcess } from './kernelManager';
+import { KernelManager } from './kernelManager';
+import type { KernelSubprocess } from '@adamziel/kernel/runtime/core/kernel';
 
+/**
+ * VS Code Terminal integration for the kernel shell
+ */
 export class KernelTerminalProvider implements vscode.TerminalProfileProvider {
 	private terminals: Map<number, KernelTerminal> = new Map();
 	private terminalCounter = 1;
@@ -25,12 +29,17 @@ export class KernelTerminalProvider implements vscode.TerminalProfileProvider {
 		return terminal;
 	}
 
-	private async createTerminalPty(): Promise<KernelTerminalPty> {
+	private async createTerminalPty(): Promise<KernelTerminal> {
 		const kernel = this.kernelManager.getKernel();
 		const id = this.terminalCounter;
+
 		const terminal = new KernelTerminal(kernel, id);
 		this.terminals.set(id, terminal);
-		terminal.onDidClose(() => this.terminals.delete(id));
+
+		terminal.onDidClose(() => {
+			this.terminals.delete(id);
+		});
+
 		return terminal;
 	}
 
@@ -42,6 +51,9 @@ export class KernelTerminalProvider implements vscode.TerminalProfileProvider {
 	}
 }
 
+/**
+ * Pseudoterminal implementation that runs the kernel tty-shell
+ */
 class KernelTerminal implements vscode.Pseudoterminal {
 	private writeEmitter = new vscode.EventEmitter<string>();
 	private closeEmitter = new vscode.EventEmitter<number | void>();
@@ -49,34 +61,36 @@ class KernelTerminal implements vscode.Pseudoterminal {
 	onDidWrite = this.writeEmitter.event;
 	onDidClose = this.closeEmitter.event;
 
-	private process: RemoteKernelProcess | null = null;
+	private process: KernelSubprocess | null = null;
 	private isOpen = false;
+	private dimensions?: vscode.TerminalDimensions;
 
-	constructor(private kernel: RemoteKernel, private id: number) {}
+	constructor(private kernel: any, private id: number) {}
 
 	open(initialDimensions: vscode.TerminalDimensions | undefined): void {
 		this.isOpen = true;
-		void this.startShell();
+		this.dimensions = initialDimensions;
+		this.startShell();
 	}
 
 	private async startShell(): Promise<void> {
 		try {
 			const shellPath = '/bin/tty-shell';
-			const exists = await this.kernel.exists(shellPath);
-			if (!exists) {
+			if (!this.kernel.existsSync(shellPath)) {
 				throw new Error('tty-shell program is missing from /bin');
 			}
 
-			const result = await this.kernel.spawn({
+			// Spawn the shell process
+			const result = this.kernel.spawn({
 				argv: [shellPath, '$ '],
 				env: {
-					PATH: (await this.kernel.getEnv('PATH')) || '/bin',
-					HOME: (await this.kernel.getEnv('HOME')) || '/home',
-					USER: (await this.kernel.getEnv('USER')) || 'user',
+					PATH: this.kernel.getEnv('PATH') || '/bin',
+					HOME: this.kernel.getEnv('HOME') || '/home',
+					USER: this.kernel.getEnv('USER') || 'user',
 					TERM: 'xterm-256color',
 					SHELL: shellPath,
 				},
-				cwd: (await this.kernel.getEnv('HOME')) || '/',
+				cwd: this.kernel.getEnv('HOME') || '/',
 				name: `terminal-${this.id}`,
 				stdio: {
 					stdin: 'pipe',
@@ -94,11 +108,41 @@ class KernelTerminal implements vscode.Pseudoterminal {
 			}
 
 			this.process = result;
-			this.process.onStdout((chunk) => this.writeEmitter.fire(chunk));
-			this.process.onStderr((chunk) => this.writeEmitter.fire(chunk));
-			this.process.onExit((code) => this.closeEmitter.fire(code ?? undefined));
+
+			// Handle stdout
+			if (this.process.stdout) {
+				this.process.stdout.on('data', (chunk: string | Uint8Array) => {
+					const text =
+						typeof chunk === 'string'
+							? chunk
+							: new TextDecoder().decode(chunk);
+					this.writeEmitter.fire(text);
+				});
+
+				this.process.stdout.on('end', () => {
+					console.log('[Terminal] stdout ended');
+				});
+			}
+
+			// Handle stderr
+			if (this.process.stderr) {
+				this.process.stderr.on('data', (chunk: string | Uint8Array) => {
+					const text =
+						typeof chunk === 'string'
+							? chunk
+							: new TextDecoder().decode(chunk);
+					this.writeEmitter.fire(text);
+				});
+			}
+
+			// Handle exit
+			this.process.onExit((code) => {
+				console.log(`[Terminal] Process exited with code ${code}`);
+				this.closeEmitter.fire(code);
+			});
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message =
+				error instanceof Error ? error.message : String(error);
 			this.writeEmitter.fire(`Failed to start shell: ${message}\r\n`);
 			this.closeEmitter.fire(1);
 		}
@@ -106,19 +150,27 @@ class KernelTerminal implements vscode.Pseudoterminal {
 
 	close(): void {
 		this.isOpen = false;
-		void this.process?.kill();
-		this.process = null;
+		if (this.process) {
+			this.process.kill();
+			this.process = null;
+		}
 	}
 
 	handleInput(data: string): void {
-		if (!this.isOpen || !this.process) {
+		if (!this.isOpen || !this.process || !this.process.stdin) {
 			return;
 		}
-		void this.process.write(data);
+
+		try {
+			this.process.stdin.write(data);
+		} catch (error) {
+			console.error('[Terminal] Error writing to stdin:', error);
+		}
 	}
 
-	setDimensions(): void {
-		// TODO: resize support
+	setDimensions(dimensions: vscode.TerminalDimensions): void {
+		this.dimensions = dimensions;
+		// TODO: Send resize signal to shell if needed
 	}
 
 	dispose(): void {
@@ -127,5 +179,3 @@ class KernelTerminal implements vscode.Pseudoterminal {
 		this.closeEmitter.dispose();
 	}
 }
-
-type KernelTerminalPty = KernelTerminal;

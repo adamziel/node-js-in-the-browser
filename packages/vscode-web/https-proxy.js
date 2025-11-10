@@ -6,6 +6,80 @@ const path = require('path');
 const httpProxy = require('http-proxy');
 const mime = require('mime-types');
 
+const extensionHostWorkerPatch = String.raw`
+;(() => {
+  if (typeof globalThis === 'undefined') {
+    return;
+  }
+  if (globalThis.__kernelWorkerPatched) {
+    return;
+  }
+  globalThis.__kernelWorkerPatched = true;
+
+  const realWorker = globalThis.RealWorker || globalThis.Worker;
+  if (!realWorker) {
+    return;
+  }
+  globalThis.RealWorker = realWorker;
+
+  const toUrlString = (value) => {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (value && typeof value.href === 'string') {
+      return value.href;
+    }
+    if (value && typeof value.toString === 'function') {
+      try {
+        return value.toString();
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  };
+
+  const shouldForceModule = (targetUrl, options) => {
+    if (!targetUrl) {
+      return false;
+    }
+    if ((options?.type ?? 'classic') === 'module') {
+      return true;
+    }
+    return targetUrl.includes('/dist/kernel/');
+  };
+
+  const createModuleBootstrapUrl = (targetUrl) => {
+    const safeTarget = JSON.stringify(targetUrl);
+    const code =
+      '(async () => {' +
+      'try { await import(' + safeTarget + '); }' +
+      'catch (error) { console.error("[kernel-worker] Failed to import", ' + safeTarget + ', error); }' +
+      '})();';
+    return URL.createObjectURL(
+      new Blob([code], { type: 'application/javascript' })
+    );
+  };
+
+  const patchedWorker = function KernelPatchedWorker(url, options = {}) {
+    const targetUrl = toUrlString(url);
+    if (shouldForceModule(targetUrl, options)) {
+      const blobUrl = createModuleBootstrapUrl(targetUrl);
+      try {
+        return new realWorker(blobUrl, { ...options, type: 'classic' });
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+    }
+    return new realWorker(url, options);
+  };
+
+  Object.setPrototypeOf(patchedWorker, realWorker);
+  patchedWorker.prototype = realWorker.prototype;
+  globalThis.Worker = patchedWorker;
+})();
+`;
+
 const targetHost = process.env.VSCODE_WEB_TARGET_HOST || '127.0.0.1';
 const targetPort = Number(process.env.VSCODE_WEB_TARGET_PORT || '3958');
 const sslHost = process.env.VSCODE_WEB_SSL_BIND || '0.0.0.0';
@@ -53,13 +127,19 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 	const contentType = proxyRes.headers['content-type'] || '';
 	const encoding = proxyRes.headers['content-encoding'];
 	const pathname = req.url ? req.url.split('?')[0] : '';
-	const wantsInjection =
+	const wantsHtmlInjection =
 		req.method === 'GET' &&
 		encoding === undefined &&
 		/^text\/html/i.test(contentType || '') &&
 		(pathname === '/' || pathname === '/index.html');
 
-	if (!wantsInjection) {
+	const wantsWorkerPatch =
+		req.method === 'GET' &&
+		encoding === undefined &&
+		/\bjavascript\b/i.test(contentType || '') &&
+		(pathname || '').includes('extensionHostWorkerMain');
+
+	if (!wantsHtmlInjection && !wantsWorkerPatch) {
 		res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
 		proxyRes.pipe(res);
 		return;
@@ -69,14 +149,24 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 	proxyRes.on('data', (chunk) => chunks.push(chunk));
 	proxyRes.on('end', () => {
 		let body = Buffer.concat(chunks).toString('utf8');
-		if (!body.includes('kernel-host/bootstrap.js')) {
+		if (wantsHtmlInjection && !body.includes('kernel-host/bootstrap.js')) {
 			body = body.replace(
 				'</head>',
 				`\t<script type="module" src="./kernel-host/bootstrap.js"></script>\n</head>`
 			);
 		}
+		if (wantsWorkerPatch) {
+			if (body.includes('"use strict";')) {
+				body = body.replace(
+					'"use strict";',
+					`"use strict";\n${extensionHostWorkerPatch}\n`
+				);
+			} else {
+				body = `${extensionHostWorkerPatch}\n${body}`;
+			}
+		}
 		const headers = { ...proxyRes.headers };
-		delete headers['content-length'];
+		headers['content-length'] = Buffer.byteLength(body);
 		res.writeHead(proxyRes.statusCode || 200, headers);
 		res.end(body);
 	});
