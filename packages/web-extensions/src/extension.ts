@@ -62,6 +62,8 @@ export async function activate(context: vscode.ExtensionContext) {
 			'JavaScript Kernel extension activated!'
 		);
 
+		ensureKernelWorkspaceFolder();
+
 		// Optionally auto-open a terminal on first activation
 		const config = vscode.workspace.getConfiguration('kernel');
 		if (config.get('autoOpenTerminal', false)) {
@@ -91,4 +93,18 @@ export function deactivate() {
 	if (kernelManager) {
 		kernelManager.dispose();
 	}
+}
+
+function ensureKernelWorkspaceFolder() {
+	const existing = vscode.workspace.workspaceFolders || [];
+	const alreadyAdded = existing.some(
+		(folder) => folder.uri.scheme === 'kernel'
+	);
+	if (alreadyAdded) {
+		return;
+	}
+	vscode.workspace.updateWorkspaceFolders(0, 0, {
+		uri: vscode.Uri.parse('kernel:/'),
+		name: 'Kernel FS',
+	});
 }
