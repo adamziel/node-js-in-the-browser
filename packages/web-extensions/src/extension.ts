@@ -41,6 +41,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		);
 		console.log('Kernel terminal provider registered');
 
+		await ensureKernelTerminalDefault();
+
 		// Register commands
 		context.subscriptions.push(
 			vscode.commands.registerCommand('kernel.openTerminal', async () => {
@@ -107,4 +109,22 @@ function ensureKernelWorkspaceFolder() {
 		uri: vscode.Uri.parse('kernel:/'),
 		name: 'Kernel FS',
 	});
+}
+
+async function ensureKernelTerminalDefault() {
+	if (vscode.window.terminals.some((terminal) => terminal.name === 'Kernel Shell')) {
+		return;
+	}
+	if (terminalProvider) {
+		const terminal = await terminalProvider.createTerminal();
+		terminal.show();
+		return;
+	}
+	try {
+		await vscode.commands.executeCommand('workbench.action.terminal.newWithProfile', {
+			profileName: 'Kernel Shell',
+		});
+	} catch {
+		// ignore
+	}
 }
