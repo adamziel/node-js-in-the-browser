@@ -738,6 +738,7 @@ Module._findPath = function (request, paths, isMain, conditions) {
 };
 
 export function isBuiltin(request) {
+	console.log('isBuiltin', request);
 	return (
 		request.startsWith('node:') ||
 		globalThis.coreModules?.[request] ||

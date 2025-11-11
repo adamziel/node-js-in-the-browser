@@ -2,6 +2,11 @@ import { Kernel } from '@adamziel/kernel/runtime/index.ts';
 import { joinPaths } from '@adamziel/kernel/runtime/util/paths.ts';
 import { nodeProgramSource } from './node.ts';
 
+// @ts-ignore
+import npmProgramSource from './npm/npm-single.js?loader=text';
+// @ts-ignore
+import defaultInputProgramSource from './npm/default-input.js?loader=text';
+
 export const programs: Record<string, string> = {
 	node: nodeProgramSource,
 };
@@ -27,4 +32,14 @@ export function installNodeJs(kernel: Kernel, path = '/bin') {
 			mode: 0o755,
 		});
 	}
+	kernel.writeFileSync(joinPaths(path, 'npm'), `${npmProgramSource}\n`, {
+		mode: 0o755,
+	});
+	kernel.writeFileSync(
+		joinPaths(path, 'default-input.js'),
+		`${defaultInputProgramSource}\n`,
+		{
+			mode: 0o755,
+		}
+	);
 }

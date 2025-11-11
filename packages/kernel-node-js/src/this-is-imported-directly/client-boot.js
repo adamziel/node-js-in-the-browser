@@ -2371,7 +2371,9 @@ function createTaskQueueBinding() {
 globalThis.internalModules = {
 	builtins: {
 		get builtinIds() {
-			return Object.keys(globalThis.internalModules);
+			return Object.keys(globalThis.internalModules).concat(
+				Object.keys(globalThis.coreModules)
+			);
 		},
 		compileFunction: (id) => {
 			if (id in globalThis.internalModules) {
@@ -5976,18 +5978,7 @@ globalThis.coreModules['internal/errors'] = globalThis.internalModules.errors;
 
 const realm = await import('../../node/lib/internal/bootstrap/realm.js');
 globalThis.realm = { ...realm };
-// realm.BuiltinModule
-for (const key in globalThis.coreModules) {
-	realm.default.BuiltinModule.allowRequireByUsers(key);
-	realm.default.BuiltinModule.map.set(key, {
-		exports: globalThis.coreModules[key],
-		filename: key,
-		id: key,
-		loaded: true,
-		loading: false,
-		compileForPublicLoader() {},
-	});
-}
+
 // console.log(realm.default.BuiltinModule.map);
 // console.log(...realm.default.BuiltinModule.map.values());
 
@@ -6261,7 +6252,7 @@ if (
 }
 
 const fsPromises = await import('../../node/lib/fs/promises.js');
-globalThis.coreModules['fs/promises'] = fsPromises.default.exports;
+globalThis.coreModules['fs/promises'] = fsPromises.default;
 globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle;
 
 // Make fs.promises.opendir usable directly in for await...of by returning
@@ -7688,6 +7679,18 @@ globalThis.coreModules.module = {
 	createRequire: (parentModule) => Module.Module.createRequire(parentModule),
 };
 
+for (const key in globalThis.coreModules) {
+	realm.default.BuiltinModule.allowRequireByUsers(key);
+	realm.default.BuiltinModule.map.set(key, {
+		exports: globalThis.coreModules[key],
+		filename: key,
+		id: key,
+		loaded: true,
+		loading: false,
+		compileForPublicLoader() {},
+	});
+}
+
 globalThis.internalModules.natives = Object.keys(globalThis.internalModules);
 
 // const ModuleCJSLoader = await import("../internal/modules/cjs/loader.js");
@@ -7846,6 +7849,7 @@ const streamModule = globalThis.coreModules?.stream;
 if (!streamModule) {
 	throw new Error('stream module is not available');
 }
+
 // @TODO: A better way of connecting a TTY stream
 const { Writable, Readable } = streamModule;
 

@@ -205,6 +205,24 @@ const nodePolyfillPlugin = {
 				loader: 'default',
 			};
 		});
+
+		// Treat files with ?loader=text as text files
+		build.onResolve({ filter: /\?loader=text/ }, async (args) => {
+			const f = fs.readFileSync(args.path.split('?')[0], 'utf8');
+			return {
+				path: args.path.split('?')[0],
+				namespace: 'loader-text',
+			};
+		});
+
+		// Load text files as text files
+		build.onLoad(
+			{ filter: /.*/, namespace: 'loader-text' },
+			async (args) => {
+				const f = fs.readFileSync(args.path, 'utf8');
+				return { loader: 'text', contents: f };
+			}
+		);
 	},
 };
 
@@ -227,7 +245,10 @@ async function main() {
 	// Copy this-is-imported-directly to dist
 	const srcDir = './src/this-is-imported-directly';
 	const destDir = fileURLToPath(
-		new URL('../../dist/kernel-node-js/this-is-imported-directly', import.meta.url)
+		new URL(
+			'../../dist/kernel-node-js/this-is-imported-directly',
+			import.meta.url
+		)
 	);
 
 	function copyImportedDirectly() {
