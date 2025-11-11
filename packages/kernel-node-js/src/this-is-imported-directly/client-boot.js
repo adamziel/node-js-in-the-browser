@@ -3684,7 +3684,7 @@ globalThis.internalModules = {
 				// File permissions are simplified in browser environment
 				return handleAsyncOperation(
 					() => undefined,
-					Promise.resolve(undefined),
+					() => Promise.resolve(undefined),
 					kUsePromises
 				);
 			},
@@ -3692,7 +3692,7 @@ globalThis.internalModules = {
 				// File permissions are simplified in browser environment
 				return handleAsyncOperation(
 					() => undefined,
-					Promise.resolve(undefined),
+					() => Promise.resolve(undefined),
 					kUsePromises
 				);
 			},
@@ -3700,7 +3700,7 @@ globalThis.internalModules = {
 				// File ownership is not supported in browser environment
 				return handleAsyncOperation(
 					() => undefined,
-					Promise.resolve(undefined),
+					() => Promise.resolve(undefined),
 					kUsePromises
 				);
 			},
@@ -3708,7 +3708,7 @@ globalThis.internalModules = {
 				// File ownership is not supported in browser environment
 				return handleAsyncOperation(
 					() => undefined,
-					Promise.resolve(undefined),
+					() => Promise.resolve(undefined),
 					kUsePromises
 				);
 			},
@@ -3716,7 +3716,7 @@ globalThis.internalModules = {
 				// Always synced in memory filesystem
 				return handleAsyncOperation(
 					() => undefined,
-					Promise.resolve(undefined),
+					() => Promise.resolve(undefined),
 					kUsePromises
 				);
 			},
@@ -3724,7 +3724,7 @@ globalThis.internalModules = {
 				// Always synced in memory filesystem
 				return handleAsyncOperation(
 					() => undefined,
-					Promise.resolve(undefined),
+					() => Promise.resolve(undefined),
 					kUsePromises
 				);
 			},
@@ -6251,8 +6251,8 @@ if (
 	);
 }
 
-const fsPromises = await import('../../node/lib/fs/promises.js');
-globalThis.coreModules['fs/promises'] = fsPromises.default;
+const fsPromises = await import('../../node/lib/internal/fs/promises.js');
+globalThis.coreModules['fs/promises'] = fsPromises.default.exports;
 globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle;
 
 // Make fs.promises.opendir usable directly in for await...of by returning

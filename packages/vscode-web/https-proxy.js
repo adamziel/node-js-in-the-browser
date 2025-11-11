@@ -2,9 +2,11 @@
 
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 const path = require('path');
 const httpProxy = require('http-proxy');
 const mime = require('mime-types');
+const zlib = require('zlib');
 
 const extensionHostWorkerPatch = String.raw`
 ;(() => {
@@ -215,8 +217,141 @@ const serveKernelAsset = (req, res) => {
 	return true;
 };
 
+const handleCorsProxy = (req, res) => {
+	// Handle preflight requests
+	if (req.method === 'OPTIONS') {
+		res.writeHead(200, {
+			'access-control-allow-origin': '*',
+			'access-control-allow-methods': '*',
+			'access-control-allow-headers': '*',
+			'access-control-max-age': '86400',
+		});
+		res.end();
+		return true;
+	}
+
+	const url = new URL(req.url, `https://${req.headers.host}`);
+	const targetUrl = url.searchParams.get('url');
+
+	if (!targetUrl) {
+		res.writeHead(400, { 'Content-Type': 'text/plain' });
+		res.end('Missing url parameter');
+		return true;
+	}
+
+	let parsedTarget;
+	try {
+		parsedTarget = new URL(targetUrl);
+	} catch (error) {
+		res.writeHead(400, { 'Content-Type': 'text/plain' });
+		res.end(`Invalid URL: ${error.message}`);
+		return true;
+	}
+
+	// Use the appropriate protocol module
+	const protocol =
+		parsedTarget.protocol === 'https:' ? require('https') : require('http');
+
+	// Filter headers similar to PHP proxy
+	// Strictly disallowed headers
+	const strictlyDisallowedHeaders = [
+		// Drop the incoming Host header because it identifies the
+		// proxy server, not the target server.
+		'host',
+		// Don't pass accept-encoding header to the target server.
+		// Fetch() in the browser already handles encoding, we don't
+		// want the minipass-fetch code to get confused and try
+		// double unzipping.
+		'accept-encoding',
+	];
+
+	const forwardHeaders = {};
+	for (const [key, value] of Object.entries(req.headers)) {
+		if (!strictlyDisallowedHeaders.includes(key.toLowerCase())) {
+			forwardHeaders[key] = value;
+		}
+	}
+	forwardHeaders.host = parsedTarget.host;
+
+	const proxyReq = protocol.request(
+		{
+			hostname: parsedTarget.hostname,
+			port: parsedTarget.port,
+			path: parsedTarget.pathname + parsedTarget.search,
+			method: req.method,
+			headers: forwardHeaders,
+		},
+		(proxyRes) => {
+			// Filter response headers similar to PHP proxy
+			const responseHeaders = {};
+			const encoding = proxyRes.headers['content-encoding'];
+
+			for (const [key, value] of Object.entries(proxyRes.headers)) {
+				const lowerKey = key.toLowerCase();
+
+				// Skip headers that shouldn't be relayed
+				if (
+					// Skip CORS headers - we'll add our own
+					lowerKey === 'access-control-allow-origin' ||
+					lowerKey === 'access-control-allow-credentials' ||
+					lowerKey === 'access-control-allow-methods' ||
+					lowerKey === 'access-control-allow-headers' ||
+					// Skip content-encoding since we're decompressing
+					lowerKey === 'content-encoding' ||
+					// Skip content-length since it won't match after decompression
+					lowerKey === 'content-length'
+				) {
+					continue;
+				}
+
+				responseHeaders[key] = value;
+			}
+
+			// Add CORS headers to allow any origin
+			responseHeaders['access-control-allow-origin'] = '*';
+			responseHeaders['access-control-allow-methods'] = '*';
+			responseHeaders['access-control-allow-headers'] = '*';
+			responseHeaders['access-control-expose-headers'] = '*';
+
+			// Add cache control (matching PHP proxy)
+			responseHeaders['cache-control'] = 'no-cache';
+			responseHeaders['x-cache'] = 'MISS';
+
+			res.writeHead(proxyRes.statusCode || 200, responseHeaders);
+
+			// Decompress if needed, otherwise pipe directly
+			let stream = proxyRes;
+			if (encoding === 'gzip') {
+				stream = proxyRes.pipe(zlib.createGunzip());
+			} else if (encoding === 'deflate') {
+				stream = proxyRes.pipe(zlib.createInflate());
+			} else if (encoding === 'br') {
+				stream = proxyRes.pipe(zlib.createBrotliDecompress());
+			}
+
+			stream.pipe(res);
+		}
+	);
+
+	proxyReq.on('error', (error) => {
+		console.error('[https-proxy] CORS proxy error:', error.message);
+		if (!res.headersSent) {
+			res.writeHead(502, { 'Content-Type': 'text/plain' });
+		}
+		res.end(`Proxy error: ${error.message}`);
+	});
+
+	// Forward request body
+	req.pipe(proxyReq);
+	return true;
+};
+
 const server = https.createServer(credentials, (req, res) => {
 	const pathname = req.url ? req.url.split('?')[0] : '';
+	if (pathname.startsWith('/proxy/')) {
+		handleCorsProxy(req, res);
+		return;
+	}
 	if (pathname.startsWith('/kernel-host/')) {
 		serveKernelAsset(req, res);
 		return;

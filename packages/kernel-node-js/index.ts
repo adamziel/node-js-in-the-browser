@@ -42,4 +42,17 @@ export function installNodeJs(kernel: Kernel, path = '/bin') {
 			mode: 0o755,
 		}
 	);
+
+	kernel.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
+
+	// npm really wants to see a module called `node-gyp` in the filesystem,
+	// even if it doesn't actually run it.
+	// @TODO: Find a better location for a global node_modules directory.
+	kernel.mkdirSync('/node_modules/node-gyp/bin', { recursive: true });
+	kernel.writeFileSync('/node_modules/node-gyp/package.json', '{}', {
+		mode: 0o755,
+	});
+	kernel.writeFileSync('/node_modules/node-gyp/bin/node-gyp.js', '', {
+		mode: 0o755,
+	});
 }
