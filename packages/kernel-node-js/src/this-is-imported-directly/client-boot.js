@@ -1,8 +1,7 @@
 globalThis.primordials = {};
 globalThis.global = globalThis;
-import * as builtins from './builtins.js';
 
-import { createTokenizer } from './naive-tokenizer.js';
+import { createTokenizer } from '../this-is-bundled/node-lib/naive-tokenizer.js';
 const tokenize = createTokenizer();
 function isESMSyntax(code) {
 	// Fast pass to check if the code contains import or export statements.
@@ -2371,7 +2370,29 @@ function createTaskQueueBinding() {
 }
 globalThis.internalModules = {
 	builtins: {
-		...builtins,
+		get builtinIds() {
+			return Object.keys(globalThis.internalModules);
+		},
+		compileFunction: (id) => {
+			if (id in globalThis.internalModules) {
+				return (
+					exportsObject,
+					requireFn,
+					buildinModuleInstance,
+					process,
+					internalBinding,
+					primordials
+				) => {
+					Object.assign(
+						exportsObject,
+						globalThis.internalModules[id]
+					);
+				};
+			} else {
+				throw new Error(`Unknown builtin id: ${id}`);
+			}
+		},
+		setInternalLoaders: () => {},
 	},
 	util: createDebugProxy('util', {
 		privateSymbols: {
@@ -3731,6 +3752,11 @@ globalThis.internalModules = {
 	errors: createDebugProxy(
 		'errors',
 		{
+			setPrepareStackTraceCallback: () => {},
+			setEnhanceStackForFatalException: () => {},
+			setGetSourceMapErrorSource: () => {},
+			setSourceMapsEnabled: () => {},
+			setMaybeCacheGeneratedSourceMap: () => {},
 			exitCodes: {},
 			codes: {
 				kGenericUserError: 1,
@@ -5866,7 +5892,7 @@ globalThis.internalModules.os.constants =
 	globalThis.internalModules.constants.os;
 globalThis.internalModules.os.default = globalThis.internalModules.os;
 
-await import('../primordials.js');
+await import('../../node/lib/internal/per_context/primordials.js');
 // import * as myPrimordials from "./src/this-is-imported-directly/primordials.js";
 // globalThis.primordials = { ...myPrimordials, ...globalThis.primordials };
 // console.log(globalThis.primordials);
@@ -5885,11 +5911,14 @@ globalThis.getInternalBinding = globalThis.internalBinding = function (
 };
 globalThis.coreModules = {};
 
-const process = (await import('../process.js')).default;
-globalThis.process = { ...process };
+const process = (await import('../this-is-bundled/node-lib/process.js'))
+	.default;
+globalThis.process = {
+	...process,
+};
 globalThis.coreModules.process = globalThis.process;
 
-const types = await import('../internal/types.js');
+const types = await import('../../node/lib/internal/util/types.js');
 globalThis.internalModules.util = {
 	types: { ...types },
 	...globalThis.internalModules.util,
@@ -5900,7 +5929,7 @@ globalThis.internalModules.types = {
 };
 
 const internalProcessPreExecution = await import(
-	'../internal/process/pre_execution.js'
+	'../../node/lib/internal/process/pre_execution.js'
 );
 // console.log({ internalProcessPreExecution });
 globalThis.internalModules.process = {
@@ -5908,7 +5937,7 @@ globalThis.internalModules.process = {
 	...(internalProcessPreExecution.default || {}),
 };
 
-const internalConstants = await import('../internal/constants.js');
+const internalConstants = await import('../../node/lib/internal/constants.js');
 globalThis.internalModules.constants = {
 	...globalThis.internalModules.constants,
 	...internalConstants,
@@ -5937,7 +5966,32 @@ globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 };
 
-const CryptoInternal = await import('../crypto.js');
+const errors = await import('../../node/lib/internal/errors.js');
+globalThis.internalModules.errors = {
+	...globalThis.internalModules.errors,
+	...errors.default,
+	codes: errors.default.codes,
+};
+globalThis.coreModules['internal/errors'] = globalThis.internalModules.errors;
+
+const realm = await import('../../node/lib/internal/bootstrap/realm.js');
+globalThis.realm = { ...realm };
+// realm.BuiltinModule
+for (const key in globalThis.coreModules) {
+	realm.default.BuiltinModule.allowRequireByUsers(key);
+	realm.default.BuiltinModule.map.set(key, {
+		exports: globalThis.coreModules[key],
+		filename: key,
+		id: key,
+		loaded: true,
+		loading: false,
+		compileForPublicLoader() {},
+	});
+}
+// console.log(realm.default.BuiltinModule.map);
+// console.log(...realm.default.BuiltinModule.map.values());
+
+const CryptoInternal = await import('../this-is-bundled/node-lib/crypto.js');
 globalThis.internalModules.crypto = {
 	startLoadingCertificatesOffThread() {
 		return;
@@ -5948,7 +6002,7 @@ globalThis.internalModules.crypto = {
 	...globalThis.internalModules.crypto,
 	...CryptoInternal.default,
 };
-const buffer = await import('../buffer.js');
+const buffer = await import('../../node/lib/buffer.js');
 globalThis.internalModules.buffer = {
 	buffer: { ...buffer.default },
 	...globalThis.internalModules.buffer,
@@ -5957,20 +6011,20 @@ globalThis.coreModules.buffer = buffer.default;
 globalThis.buffer = buffer.default;
 globalThis.Buffer = buffer.default.Buffer;
 
-const stringDecoder = await import('../string_decoder.js');
+const stringDecoder = await import('../../node/lib/string_decoder.js');
 globalThis.internalModules.string_decoder = {
 	stringDecoder: { ...stringDecoder },
 	...globalThis.internalModules.string_decoder,
 };
 globalThis.coreModules.string_decoder = stringDecoder.default;
 
-const inspect = await import('../util/inspect.js');
+const inspect = await import('../../node/lib/internal/util/inspect.js');
 globalThis.internalModules.util = {
 	inspect: { ...inspect },
 	...globalThis.internalModules.util,
 };
 
-const util = await import('../util.js');
+const util = await import('../../node/lib/util.js');
 globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 	...util,
@@ -5982,26 +6036,16 @@ globalThis.coreModules.util.encodingsMap =
 globalThis.coreModules.util.TextDecoder = globalThis.TextDecoder;
 globalThis.coreModules.util.TextEncoder = globalThis.TextEncoder;
 
-const errors = await import('../errors.js');
-globalThis.internalModules.errors = {
-	...globalThis.internalModules.errors,
-	...errors.default,
-	codes: errors.default.codes,
-};
-
-const realm = await import('../realm.js');
-globalThis.realm = { ...realm };
-
-const path = await import('../path.js');
+const path = await import('../../node/lib/path.js');
 globalThis.coreModules.path = path.default;
 
-const stream = await import('../stream.js');
+const stream = await import('../../node/lib/stream.js');
 globalThis.coreModules.stream = stream.default;
 
-const asyncHooks = await import('../async_hooks.js');
+const asyncHooks = await import('../../node/lib/async_hooks.js');
 globalThis.coreModules.async_hooks = asyncHooks.default;
 
-const debuglog = await import('../internal/util/debuglog.js');
+const debuglog = await import('../../node/lib/internal/util/debuglog.js');
 globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 	debuglog: debuglog.default,
@@ -6015,10 +6059,10 @@ globalThis.coreModules.os = globalThis.internalModules.os;
 // 	// do nothing
 // };
 
-const blob = await import('../blob.js');
+const blob = await import('../../node/lib/internal/blob.js');
 globalThis.coreModules.blob = blob.default;
 
-const fs = await import('../fs.js');
+const fs = await import('../../node/lib/fs.js');
 
 // Register internal/fs/dir module for lazy loading
 // Use the Dir class we implemented in fs_dir binding
@@ -6216,7 +6260,7 @@ if (
 	);
 }
 
-const fsPromises = await import('../fs/promises.js');
+const fsPromises = await import('../../node/lib/fs/promises.js');
 globalThis.coreModules['fs/promises'] = fsPromises.default.exports;
 globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle;
 
@@ -6232,10 +6276,10 @@ globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle;
 	}
 }
 
-const events = await import('../events.js');
+const events = await import('../../node/lib/events.js');
 globalThis.coreModules.events = events.default;
 
-const event_target = await import('../internal/event_target.js');
+const event_target = await import('../../node/lib/internal/event_target.js');
 globalThis.internalModules.event_target = event_target.default;
 
 const setupMessagingBinding = () => {
@@ -6966,14 +7010,14 @@ const ensureNodeSpawnBridge = () => {
 
 ensureNodeSpawnBridge();
 
-const _http_agent = await import('../_http_agent.js');
+const _http_agent = await import('../../node/lib/_http_agent.js');
 globalThis.coreModules._http_agent = _http_agent.default;
 
-const http = await import('../http.js');
+const http = await import('../this-is-bundled/node-lib/http.js');
 globalThis.coreModules.http = http.default;
 
 // Recycle http module for http2
-const http2 = await import('../http2.js');
+const http2 = await import('../../node/lib/http2.js');
 globalThis.coreModules.http2 = {
 	// For HTTP2 constants
 	// ...http2.default,
@@ -6982,7 +7026,7 @@ globalThis.coreModules.http2 = {
 	...http2.default,
 };
 
-const cryptoModule = await import('../crypto.js');
+const cryptoModule = await import('../this-is-bundled/node-lib/crypto.js');
 const cryptoExports = cryptoModule?.default ?? {};
 globalThis.coreModules.crypto = cryptoExports;
 const randomFillSync =
@@ -7062,59 +7106,61 @@ try {
 	}
 }
 
-const https = await import('../https.js');
+const https = await import('../this-is-bundled/node-lib/http.js');
 globalThis.coreModules.https = https.default;
 
-const tls = await import('../tls.js');
+const tls = await import('../../node/lib/tls.js');
 globalThis.coreModules.tls = tls.default;
 
-const net = await import('../net.js');
+const net = await import('../../node/lib/net.js');
 globalThis.coreModules.net = net.default;
 
-const url = await import('../url.js');
+const url = await import('../this-is-bundled/node-lib/url.js');
 globalThis.coreModules.url = {
 	...url.default,
 	pathToFileURL: globalThis.internalModules.url.pathToFileURL,
 	fileURLToPath: globalThis.internalModules.url.fileURLToPath,
 };
 
-const zlib = await import('../zlib.js');
+const zlib = await import('../this-is-bundled/node-lib/zlib.js');
 globalThis.coreModules.zlib = zlib.default;
 
-const dns = await import('../dns.js');
+const dns = await import('../../node/lib/dns.js');
 globalThis.coreModules.dns = dns.default;
 
-const readline = await import('../readline.js');
+const readline = await import('../../node/lib/readline.js');
 globalThis.coreModules.readline = readline.default;
 
-const querystring = await import('../querystring.js');
+const querystring = await import('../../node/lib/querystring.js');
 globalThis.coreModules.querystring = querystring.default;
 
-const console2 = await import('../console.js');
+const console2 = await import('../../node/lib/console.js');
 globalThis.coreModules.console = console2.default;
 
-const tty = await import('../tty.js');
+const tty = await import('../../node/lib/tty.js');
 globalThis.coreModules.tty = tty.default;
 
-const assert = await import('../assert.js');
+const assert = await import('../../node/lib/assert.js');
 globalThis.coreModules.assert = assert.default;
 
-const assertStrict = await import('../assert/strict.js');
+const assertStrict = await import('../../node/lib/assert/strict.js');
 globalThis.coreModules['assert/strict'] = assertStrict.default;
 
-const timers = await import('../timers.js');
+const timers = await import('../../node/lib/timers.js');
 globalThis.coreModules.timers = timers.default;
 
-const timersPromises = await import('../timers/promises.js');
+const timersPromises = await import('../../node/lib/timers/promises.js');
 globalThis.coreModules['timers/promises'] = timersPromises.default;
 
-const childProcess = await import('../child_process.js');
+const childProcess = await import(
+	'../this-is-bundled/node-lib/child_process.js'
+);
 globalThis.coreModules.child_process = childProcess.default;
 
-const vm = await import('../vm.js');
+const vm = await import('../this-is-bundled/node-lib/vm.js');
 globalThis.coreModules.vm = vm.default;
 
-const v8 = await import('../v8.js');
+const v8 = await import('../this-is-bundled/node-lib/v8.js');
 globalThis.coreModules.v8 = { ...v8 };
 const workerBindingContext = (() => {
 	const threadIdValue =
@@ -7635,25 +7681,12 @@ globalThis.internalModules.worker = {
 	Worker: workerThreadsPolyfill.Worker,
 };
 
-const Module = await import('./module.js');
+const Module = await import('../this-is-bundled/node-lib/module.js');
 globalThis.coreModules.module = {
 	...Module,
 	runMain: () => Module.Module.runMain(),
 	createRequire: (parentModule) => Module.Module.createRequire(parentModule),
 };
-
-// realm.BuiltinModule
-for (const key in globalThis.coreModules) {
-	realm.default.BuiltinModule.allowRequireByUsers(key);
-	realm.default.BuiltinModule.map.set(key, {
-		exports: globalThis.coreModules[key],
-		filename: key,
-		id: key,
-		loaded: true,
-		loading: false,
-		compileForPublicLoader() {},
-	});
-}
 
 globalThis.internalModules.natives = Object.keys(globalThis.internalModules);
 

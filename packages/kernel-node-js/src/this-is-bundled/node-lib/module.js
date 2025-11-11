@@ -1,7 +1,8 @@
-import path from '../path.js';
-import fs from '../fs.js';
-const ModuleCJSLoader = (await import('../internal/modules/cjs/loader.js'))
-	.default;
+import path from '../../../node/lib/path.js';
+import fs from '../../../node/lib/fs.js';
+const ModuleCJSLoader = (
+	await import('../../../node/lib/internal/modules/cjs/loader.js')
+).default;
 
 const NodeBuffer = globalThis.Buffer;
 

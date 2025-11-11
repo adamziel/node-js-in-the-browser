@@ -1,5 +1,3 @@
-type KernelStdioChunk = string | Uint8Array;
-
 export type NodeProcessExitInfo = {
 	code: number;
 	signal: string | null;
@@ -27,40 +25,6 @@ self.addEventListener('unhandledrejection', (event) => {
 	console.error('[node-loader] Promise:', event.promise);
 });
 
-const clientBootUrl = new URL(
-	'./node-loader/src/this-is-imported-directly/client-boot.js',
-	import.meta.url
-).href;
-
-function createServiceWorkerImportUrl(sourceUrl: string): string | null {
-	console.log('[createServiceWorkerImportUrl] START');
-	try {
-		console.log('[createServiceWorkerImportUrl] Creating URL object...');
-		const target = new URL(sourceUrl, self.location.href);
-		console.log(
-			'[createServiceWorkerImportUrl] URL created, getting origin...'
-		);
-		const origin =
-			typeof self.location?.origin === 'string'
-				? self.location.origin
-				: `${target.protocol}//${target.host}`;
-		console.log('[createServiceWorkerImportUrl] Origin:', origin);
-		const path = target.pathname || '/';
-		console.log('[createServiceWorkerImportUrl] Path:', path);
-		const result = `${origin}${path}?import=${encodeURIComponent(path)}`;
-		console.log('[createServiceWorkerImportUrl] Result created, returning');
-		return result;
-	} catch (e) {
-		console.error('[createServiceWorkerImportUrl] ERROR:', e);
-		return null;
-	}
-}
-
-async function importWithServiceWorker(url: string) {
-	const result = await import(/* @vite-ignore */ url);
-	return result;
-}
-
 let runtimePromise: Promise<NodeRuntime> | null = null;
 
 export async function loadNode(): Promise<NodeRuntime> {
@@ -80,7 +44,9 @@ export async function loadNode(): Promise<NodeRuntime> {
 async function bootstrapNodeRuntime(): Promise<NodeRuntime> {
 	let module;
 	try {
-		module = await importWithServiceWorker(clientBootUrl);
+		module = await import(
+			/* @vite-ignore */ './src/this-is-imported-directly/client-boot.js'
+		);
 	} catch (error) {
 		console.error(error);
 		console.trace('Error loading client-boot.js:', error);

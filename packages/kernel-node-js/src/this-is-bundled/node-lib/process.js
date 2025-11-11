@@ -341,4 +341,7 @@ module.exports = {
 	emitWarning,
 	getMaxListeners,
 	setMaxListeners,
+	listenerCount(event) {
+		return eventListeners.get(event)?.length || 0;
+	},
 };

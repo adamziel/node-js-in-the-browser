@@ -4,7 +4,9 @@ declare const processController: {
 	getEnv?(name: string): string;
 };
 
-const nodeLoaderUrl = new URL('./node-loader.ts', import.meta.url).href;
+// @TODO: Don't assume the built loader will use this file structure.
+//        Mayve use vite instead of esbuild
+const nodeLoaderUrl = new URL('./nodeLoader.js', import.meta.url).href;
 
 const createProgramSource = (): string => {
 	const program = async function main(urls: { nodeLoaderUrl: string }) {
