@@ -75,35 +75,6 @@ class KernelTerminal implements vscode.Pseudoterminal {
 
 	private async startShell(): Promise<void> {
 		try {
-			const result2 = this.kernel.spawn({
-				argv: ['/bin/ls', '/'],
-				env: {},
-				debug: true,
-				cwd: this.kernel.getEnv('HOME') || '/',
-				name: `ls-${this.id}`,
-				stdio: {
-					stdin: 'ignore',
-					stdout: 'pipe',
-					stderr: 'pipe',
-				},
-			});
-			console.log('[Terminal] ls result', result2);
-			if (typeof result2 === 'number') {
-				this.writeEmitter.fire(
-					`Failed to start ls: exit code ${result2}\r\n`
-				);
-				this.closeEmitter.fire(result2);
-				return;
-			}
-			result2.stdout?.on('data', (chunk: string | Uint8Array) => {
-				const text =
-					typeof chunk === 'string'
-						? chunk
-						: new TextDecoder().decode(chunk);
-				console.log('[Terminal] ls stdout data', text);
-				this.writeEmitter.fire(text);
-			});
-
 			const shellPath = '/bin/tty-shell';
 			if (!this.kernel.existsSync(shellPath)) {
 				throw new Error('tty-shell program is missing from /bin');
@@ -137,22 +108,32 @@ class KernelTerminal implements vscode.Pseudoterminal {
 			}
 
 			this.process = result;
-			console.log('[Terminal] process', this.process);
+			(console.log, function (...args: any[]) {})(
+				'[Terminal] process',
+				this.process
+			);
 
 			// Handle stdout
 			if (this.process.stdout) {
-				console.log('Registering stdout listener');
+				(console.log, function (...args: any[]) {})(
+					'Registering stdout listener'
+				);
 				this.process.stdout.on('data', (chunk: string | Uint8Array) => {
 					const text =
 						typeof chunk === 'string'
 							? chunk
 							: new TextDecoder().decode(chunk);
-					console.log('[Terminal] stdout data', text);
+					// (console.log, function (...args: any[]) {})(
+					// 	'[Terminal] stdout data',
+					// 	text
+					// );
 					this.writeEmitter.fire(text);
 				});
 
 				this.process.stdout.on('end', () => {
-					console.log('[Terminal] stdout ended');
+					(console.log, function (...args: any[]) {})(
+						'[Terminal] stdout ended'
+					);
 				});
 			}
 
@@ -169,7 +150,9 @@ class KernelTerminal implements vscode.Pseudoterminal {
 
 			// Handle exit
 			this.process.onExit((code) => {
-				console.log(`[Terminal] Process exited with code ${code}`);
+				(console.log, function (...args: any[]) {})(
+					`[Terminal] Process exited with code ${code}`
+				);
 				this.closeEmitter.fire(code);
 			});
 		} catch (error) {
@@ -189,11 +172,15 @@ class KernelTerminal implements vscode.Pseudoterminal {
 	}
 
 	handleInput(data: string): void {
-		console.log('[Terminal] handleInput', data, {
-			isOpen: this.isOpen,
-			process: this.process,
-			processStdin: this.process?.stdin,
-		});
+		(console.log, function (...args: any[]) {})(
+			'[Terminal] handleInput',
+			data,
+			{
+				isOpen: this.isOpen,
+				process: this.process,
+				processStdin: this.process?.stdin,
+			}
+		);
 		if (!this.isOpen || !this.process || !this.process.stdin) {
 			return;
 		}
