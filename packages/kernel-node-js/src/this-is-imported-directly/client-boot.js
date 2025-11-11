@@ -5866,7 +5866,7 @@ globalThis.internalModules.os.constants =
 	globalThis.internalModules.constants.os;
 globalThis.internalModules.os.default = globalThis.internalModules.os;
 
-await import('../../dist/primordials.js');
+await import('../primordials.js');
 // import * as myPrimordials from "./src/this-is-imported-directly/primordials.js";
 // globalThis.primordials = { ...myPrimordials, ...globalThis.primordials };
 // console.log(globalThis.primordials);
@@ -5885,11 +5885,11 @@ globalThis.getInternalBinding = globalThis.internalBinding = function (
 };
 globalThis.coreModules = {};
 
-const process = (await import('../../dist/process.js')).default;
+const process = (await import('../process.js')).default;
 globalThis.process = { ...process };
 globalThis.coreModules.process = globalThis.process;
 
-const types = await import('../../dist/internal/types.js');
+const types = await import('../internal/types.js');
 globalThis.internalModules.util = {
 	types: { ...types },
 	...globalThis.internalModules.util,
@@ -5900,7 +5900,7 @@ globalThis.internalModules.types = {
 };
 
 const internalProcessPreExecution = await import(
-	'../../dist/internal/process/pre_execution.js'
+	'../internal/process/pre_execution.js'
 );
 // console.log({ internalProcessPreExecution });
 globalThis.internalModules.process = {
@@ -5908,7 +5908,7 @@ globalThis.internalModules.process = {
 	...(internalProcessPreExecution.default || {}),
 };
 
-const internalConstants = await import('../../dist/internal/constants.js');
+const internalConstants = await import('../internal/constants.js');
 globalThis.internalModules.constants = {
 	...globalThis.internalModules.constants,
 	...internalConstants,
@@ -5937,7 +5937,7 @@ globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 };
 
-const CryptoInternal = await import('../../dist/crypto.js');
+const CryptoInternal = await import('../crypto.js');
 globalThis.internalModules.crypto = {
 	startLoadingCertificatesOffThread() {
 		return;
@@ -5948,7 +5948,7 @@ globalThis.internalModules.crypto = {
 	...globalThis.internalModules.crypto,
 	...CryptoInternal.default,
 };
-const buffer = await import('../../dist/buffer.js');
+const buffer = await import('../buffer.js');
 globalThis.internalModules.buffer = {
 	buffer: { ...buffer.default },
 	...globalThis.internalModules.buffer,
@@ -5957,20 +5957,20 @@ globalThis.coreModules.buffer = buffer.default;
 globalThis.buffer = buffer.default;
 globalThis.Buffer = buffer.default.Buffer;
 
-const stringDecoder = await import('../../dist/string_decoder.js');
+const stringDecoder = await import('../string_decoder.js');
 globalThis.internalModules.string_decoder = {
 	stringDecoder: { ...stringDecoder },
 	...globalThis.internalModules.string_decoder,
 };
 globalThis.coreModules.string_decoder = stringDecoder.default;
 
-const inspect = await import('../../dist/util/inspect.js');
+const inspect = await import('../util/inspect.js');
 globalThis.internalModules.util = {
 	inspect: { ...inspect },
 	...globalThis.internalModules.util,
 };
 
-const util = await import('../../dist/util.js');
+const util = await import('../util.js');
 globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 	...util,
@@ -5982,26 +5982,26 @@ globalThis.coreModules.util.encodingsMap =
 globalThis.coreModules.util.TextDecoder = globalThis.TextDecoder;
 globalThis.coreModules.util.TextEncoder = globalThis.TextEncoder;
 
-const errors = await import('../../dist/errors.js');
+const errors = await import('../errors.js');
 globalThis.internalModules.errors = {
 	...globalThis.internalModules.errors,
 	...errors.default,
 	codes: errors.default.codes,
 };
 
-const realm = await import('../../dist/realm.js');
+const realm = await import('../realm.js');
 globalThis.realm = { ...realm };
 
-const path = await import('../../dist/path.js');
+const path = await import('../path.js');
 globalThis.coreModules.path = path.default;
 
-const stream = await import('../../dist/stream.js');
+const stream = await import('../stream.js');
 globalThis.coreModules.stream = stream.default;
 
-const asyncHooks = await import('../../dist/async_hooks.js');
+const asyncHooks = await import('../async_hooks.js');
 globalThis.coreModules.async_hooks = asyncHooks.default;
 
-const debuglog = await import('../../dist/internal/util/debuglog.js');
+const debuglog = await import('../internal/util/debuglog.js');
 globalThis.internalModules.util = {
 	...globalThis.internalModules.util,
 	debuglog: debuglog.default,
@@ -6015,10 +6015,10 @@ globalThis.coreModules.os = globalThis.internalModules.os;
 // 	// do nothing
 // };
 
-const blob = await import('../../dist/blob.js');
+const blob = await import('../blob.js');
 globalThis.coreModules.blob = blob.default;
 
-const fs = await import('../../dist/fs.js');
+const fs = await import('../fs.js');
 
 // Register internal/fs/dir module for lazy loading
 // Use the Dir class we implemented in fs_dir binding
@@ -6216,7 +6216,7 @@ if (
 	);
 }
 
-const fsPromises = await import('../../dist/fs/promises.js');
+const fsPromises = await import('../fs/promises.js');
 globalThis.coreModules['fs/promises'] = fsPromises.default.exports;
 globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle;
 
@@ -6232,10 +6232,10 @@ globalThis.coreModules['fs'].FileHandle = fsPromises.default.FileHandle;
 	}
 }
 
-const events = await import('../../dist/events.js');
+const events = await import('../events.js');
 globalThis.coreModules.events = events.default;
 
-const event_target = await import('../../dist/internal/event_target.js');
+const event_target = await import('../internal/event_target.js');
 globalThis.internalModules.event_target = event_target.default;
 
 const setupMessagingBinding = () => {
@@ -6966,14 +6966,14 @@ const ensureNodeSpawnBridge = () => {
 
 ensureNodeSpawnBridge();
 
-const _http_agent = await import('../../dist/_http_agent.js');
+const _http_agent = await import('../_http_agent.js');
 globalThis.coreModules._http_agent = _http_agent.default;
 
-const http = await import('../../dist/http.js');
+const http = await import('../http.js');
 globalThis.coreModules.http = http.default;
 
 // Recycle http module for http2
-const http2 = await import('../../dist/http2.js');
+const http2 = await import('../http2.js');
 globalThis.coreModules.http2 = {
 	// For HTTP2 constants
 	// ...http2.default,
@@ -6982,7 +6982,7 @@ globalThis.coreModules.http2 = {
 	...http2.default,
 };
 
-const cryptoModule = await import('../../dist/crypto.js');
+const cryptoModule = await import('../crypto.js');
 const cryptoExports = cryptoModule?.default ?? {};
 globalThis.coreModules.crypto = cryptoExports;
 const randomFillSync =
@@ -7062,59 +7062,59 @@ try {
 	}
 }
 
-const https = await import('../../dist/https.js');
+const https = await import('../https.js');
 globalThis.coreModules.https = https.default;
 
-const tls = await import('../../dist/tls.js');
+const tls = await import('../tls.js');
 globalThis.coreModules.tls = tls.default;
 
-const net = await import('../../dist/net.js');
+const net = await import('../net.js');
 globalThis.coreModules.net = net.default;
 
-const url = await import('../../dist/url.js');
+const url = await import('../url.js');
 globalThis.coreModules.url = {
 	...url.default,
 	pathToFileURL: globalThis.internalModules.url.pathToFileURL,
 	fileURLToPath: globalThis.internalModules.url.fileURLToPath,
 };
 
-const zlib = await import('../../dist/zlib.js');
+const zlib = await import('../zlib.js');
 globalThis.coreModules.zlib = zlib.default;
 
-const dns = await import('../../dist/dns.js');
+const dns = await import('../dns.js');
 globalThis.coreModules.dns = dns.default;
 
-const readline = await import('../../dist/readline.js');
+const readline = await import('../readline.js');
 globalThis.coreModules.readline = readline.default;
 
-const querystring = await import('../../dist/querystring.js');
+const querystring = await import('../querystring.js');
 globalThis.coreModules.querystring = querystring.default;
 
-const console2 = await import('../../dist/console.js');
+const console2 = await import('../console.js');
 globalThis.coreModules.console = console2.default;
 
-const tty = await import('../../dist/tty.js');
+const tty = await import('../tty.js');
 globalThis.coreModules.tty = tty.default;
 
-const assert = await import('../../dist/assert.js');
+const assert = await import('../assert.js');
 globalThis.coreModules.assert = assert.default;
 
-const assertStrict = await import('../../dist/assert/strict.js');
+const assertStrict = await import('../assert/strict.js');
 globalThis.coreModules['assert/strict'] = assertStrict.default;
 
-const timers = await import('../../dist/timers.js');
+const timers = await import('../timers.js');
 globalThis.coreModules.timers = timers.default;
 
-const timersPromises = await import('../../dist/timers/promises.js');
+const timersPromises = await import('../timers/promises.js');
 globalThis.coreModules['timers/promises'] = timersPromises.default;
 
-const childProcess = await import('../../dist/child_process.js');
+const childProcess = await import('../child_process.js');
 globalThis.coreModules.child_process = childProcess.default;
 
-const vm = await import('../../dist/vm.js');
+const vm = await import('../vm.js');
 globalThis.coreModules.vm = vm.default;
 
-const v8 = await import('../../dist/v8.js');
+const v8 = await import('../v8.js');
 globalThis.coreModules.v8 = { ...v8 };
 const workerBindingContext = (() => {
 	const threadIdValue =
@@ -7657,13 +7657,13 @@ for (const key in globalThis.coreModules) {
 
 globalThis.internalModules.natives = Object.keys(globalThis.internalModules);
 
-// const ModuleCJSLoader = await import("../../dist/internal/modules/cjs/loader.js");
+// const ModuleCJSLoader = await import("../internal/modules/cjs/loader.js");
 // console.log({ ModuleCJSLoader })
 // globalThis.coreModules.module.Module = ModuleCJSLoader.Module;
 // console.log({ModuleCJSLoader})
 
 // @TODO:
-// const resolveModule = await import("../../dist/internal/resolve.js");
+// const resolveModule = await import("../internal/resolve.js");
 // console.log({ resolveModule })
 
 function normalizeArgv(argv) {

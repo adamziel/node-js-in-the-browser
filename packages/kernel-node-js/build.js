@@ -12,6 +12,23 @@ if (!isWatchMode) {
 	fs.mkdirSync('dist');
 }
 
+// Helper function to copy directory recursively
+function copyDirectorySync(src, dest) {
+	fs.mkdirSync(dest, { recursive: true });
+	const entries = fs.readdirSync(src, { withFileTypes: true });
+
+	for (const entry of entries) {
+		const srcPath = path.join(src, entry.name);
+		const destPath = path.join(dest, entry.name);
+
+		if (entry.isDirectory()) {
+			copyDirectorySync(srcPath, destPath);
+		} else {
+			fs.copyFileSync(srcPath, destPath);
+		}
+	}
+}
+
 // const buildOptionsApp = {
 // 	entryPoints: {
 // 		api: './src/this-is-bundled/app/api.ts',
@@ -207,10 +224,33 @@ const buildOptionsNode = {
 };
 
 async function main() {
+	// Copy this-is-imported-directly to dist
+	const srcDir = './src/this-is-imported-directly';
+	const destDir = fileURLToPath(
+		new URL('../../dist/kernel-node-js/this-is-imported-directly', import.meta.url)
+	);
+
+	function copyImportedDirectly() {
+		if (fs.existsSync(srcDir)) {
+			copyDirectorySync(srcDir, destDir);
+			console.log('📁 Copied this-is-imported-directly to dist');
+		}
+	}
+
 	if (isWatchMode) {
 		console.log('🔍 Starting watch mode...');
+
+		// Copy on initial build
+		copyImportedDirectly();
+
 		const ctx1 = await esbuild.context(buildOptionsNode);
 		await ctx1.watch();
+
+		// Watch for changes in this-is-imported-directly
+		fs.watch(srcDir, { recursive: true }, (eventType, filename) => {
+			console.log(`📝 File changed: ${filename}`);
+			copyImportedDirectly();
+		});
 
 		// const ctx2 = await esbuild.context(buildOptionsApp)
 		// await ctx2.watch();
@@ -225,6 +265,10 @@ async function main() {
 	} else {
 		try {
 			await esbuild.build(buildOptionsNode);
+
+			// Copy this-is-imported-directly to dist
+			copyImportedDirectly();
+
 			console.log('✅ Build completed successfully');
 		} catch (error) {
 			console.error('❌ Build failed:', error);

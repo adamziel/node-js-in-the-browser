@@ -4,18 +4,10 @@ declare const processController: {
 	getEnv?(name: string): string;
 };
 
-const utilsModuleUrl = new URL(
-	'@adamziel/kernel/runtime/busybox/lib/utils.ts',
-	// '../../runtime/busybox/lib/utils.ts',
-	import.meta.url
-).href;
 const nodeLoaderUrl = new URL('./node-loader.ts', import.meta.url).href;
 
 const createProgramSource = (): string => {
-	const program = async function main(urls: {
-		utilsModuleUrl: string;
-		nodeLoaderUrl: string;
-	}) {
+	const program = async function main(urls: { nodeLoaderUrl: string }) {
 		var getStream = (name) => {
 			const stream = processController?.[name];
 			if (stream && typeof stream.write === 'function') {
@@ -27,7 +19,7 @@ const createProgramSource = (): string => {
 			const chunk =
 				appendNewline && !message.endsWith('\n')
 					? `${message}
-		  `
+		`
 					: message;
 			if (stream) {
 				stream.write(chunk);
@@ -106,7 +98,6 @@ const createProgramSource = (): string => {
 	};
 
 	return `(${program.toString()})(${JSON.stringify({
-		utilsModuleUrl,
 		nodeLoaderUrl,
 	})});`;
 };
