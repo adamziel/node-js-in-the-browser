@@ -7966,15 +7966,19 @@ globalThis.fetch = async (input, init) => {
 			const currentOrigin = globalThis.location?.origin;
 
 			// If it's a cross-origin request, proxy it through our CORS proxy
+			// @TODO: Configure proxy URL during the build
 			if (currentOrigin && parsedUrl.origin !== currentOrigin) {
-				const proxyUrl = `/proxy/?url=${encodeURIComponent(url)}`;
+				const proxyUrl = new URL(
+					`/proxy/?url=${encodeURIComponent(url)}`,
+					import.meta.url
+				);
 
 				if (typeof input === 'string') {
-					input = proxyUrl;
+					input = proxyUrl.toString();
 				} else if (input instanceof URL) {
-					input = new URL(proxyUrl);
+					input = proxyUrl;
 				} else if (input && typeof input === 'object') {
-					input = { ...input, url: proxyUrl };
+					input = { ...input, url: proxyUrl.toString() };
 				}
 			}
 		} catch (error) {
