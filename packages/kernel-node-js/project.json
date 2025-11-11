@@ -1,7 +1,7 @@
 {
-	"name": "@adamziel/kernel",
+	"name": "@adamziel/kernel-node-js",
 	"$schema": "../../node_modules/nx/schemas/project-schema.json",
-	"sourceRoot": "packages/kernel",
+	"sourceRoot": "packages/kernel-node-js",
 	"projectType": "library",
 	"tags": ["type:library"],
 	"targets": {
@@ -10,7 +10,7 @@
 			"outputs": ["{workspaceRoot}/dist/kernel"],
 			"options": {
 				"command": "node build.js",
-				"cwd": "packages/kernel"
+				"cwd": "packages/kernel-node-js"
 			},
 			"configurations": {
 				"production": {
@@ -22,7 +22,7 @@
 			"executor": "nx:run-commands",
 			"options": {
 				"command": "node build.js --watch",
-				"cwd": "packages/kernel"
+				"cwd": "packages/kernel-node-js"
 			}
 		},
 		"test": {

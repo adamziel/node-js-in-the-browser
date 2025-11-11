@@ -1,6 +1,7 @@
 import esbuild from 'esbuild';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Check if watch mode is enabled
 const isWatchMode =
@@ -37,6 +38,10 @@ if (!isWatchMode) {
 // }
 
 const entryPoints = {
+	index: './index.ts',
+	node: './node.ts',
+	nodeLoader: './node-loader.ts',
+
 	child_process: './src/this-is-bundled/node-lib/child_process.js',
 	primordials: './node/lib/internal/per_context/primordials.js',
 	realm: './node/lib/internal/bootstrap/realm.js',
@@ -189,7 +194,9 @@ const nodePolyfillPlugin = {
 const buildOptionsNode = {
 	entryPoints,
 	bundle: true,
-	outdir: '../../dist/kernel-node-js',
+	outdir: fileURLToPath(
+		new URL('../../dist/kernel-node-js', import.meta.url)
+	),
 	format: 'esm',
 	platform: 'browser',
 	splitting: true,

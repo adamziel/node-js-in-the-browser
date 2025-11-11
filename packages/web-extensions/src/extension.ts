@@ -2,16 +2,57 @@ import * as vscode from 'vscode';
 import { KernelManager } from './kernelManager';
 import { KernelFileSystemProvider } from './kernelFileSystemProvider';
 import { KernelTerminalProvider } from './kernelTerminalProvider';
-import { loadKernelModule } from './kernelLoader';
+import type * as KernelModule from '@adamziel/kernel';
 
 let kernelManager: KernelManager;
 let fsProvider: KernelFileSystemProvider;
 let terminalProvider: KernelTerminalProvider;
 
+let kernelModulePromise: Promise<KernelModule> | null = null;
+function loadKernelModule(
+	context: vscode.ExtensionContext
+): Promise<KernelModule> {
+	if (!kernelModulePromise) {
+		const kernelUri = vscode.Uri.joinPath(
+			context.extensionUri,
+			'dist',
+			'kernel',
+			'index.js'
+		);
+		const kernelUrl = kernelUri.toString(true);
+		kernelModulePromise = import(
+			/* @vite-ignore */ /* webpackIgnore: true */ kernelUrl
+		) as Promise<KernelModule>;
+	}
+
+	return kernelModulePromise;
+}
+
+let nodeModulePromise: Promise<any> | null = null;
+async function loadNodeJsInstaller(
+	context: vscode.ExtensionContext
+): Promise<any> {
+	if (!nodeModulePromise) {
+		const nodeModuleUri = vscode.Uri.joinPath(
+			context.extensionUri,
+			'dist',
+			'kernel-node-js',
+			'index.js'
+		);
+		nodeModulePromise = import(
+			/* @vite-ignore */ /* webpackIgnore: true */ nodeModuleUri.toString(
+				true
+			)
+		) as Promise<any>;
+	}
+	return await nodeModulePromise;
+}
+
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('Kernel VS Code extension is activating...');
 	try {
 		const kernelModule = await loadKernelModule(context);
+
 		const workersBase = vscode.Uri.joinPath(
 			context.extensionUri,
 			'dist',
@@ -40,6 +81,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Initialize the kernel
 		await kernelManager.initialize();
 		console.log('Kernel initialized successfully');
+
+		const nodeInstaller = await loadNodeJsInstaller(context);
+		await nodeInstaller.installNodeJs(kernelManager.getKernel());
 
 		// Register filesystem provider
 		fsProvider = new KernelFileSystemProvider(kernelManager);

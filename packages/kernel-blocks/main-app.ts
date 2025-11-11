@@ -1,5 +1,5 @@
 import { installBusybox } from '../runtime/busybox/index.ts';
-import { installCustomPrograms } from '../kernel-node-js/index.ts';
+import { installNode } from '../kernel-node-js/index.ts';
 import { Kernel } from '../runtime/index.ts';
 import type { KernelStdioChunk } from '../runtime/ipc/message-port.ts';
 import { BlobReader, ZipReader, Uint8ArrayWriter } from '@zip.js/zip.js';
@@ -14,7 +14,7 @@ kernel.setFsConnectorPreference('shared');
 globalThis.kernel = kernel;
 try {
 	installBusybox(kernel);
-	installCustomPrograms(kernel);
+	installNode(kernel);
 
 	kernel.mkdirSync('/home/user/.npm/_cacache', { recursive: true });
 	kernel.mkdirSync('/.npm', { recursive: true });

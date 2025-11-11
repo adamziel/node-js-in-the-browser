@@ -37,17 +37,19 @@ function createServiceWorkerImportUrl(sourceUrl: string): string | null {
 	try {
 		console.log('[createServiceWorkerImportUrl] Creating URL object...');
 		const target = new URL(sourceUrl, self.location.href);
-		console.log('[createServiceWorkerImportUrl] URL created, getting origin...');
+		console.log(
+			'[createServiceWorkerImportUrl] URL created, getting origin...'
+		);
 		const origin =
 			typeof self.location?.origin === 'string'
 				? self.location.origin
 				: `${target.protocol}//${target.host}`;
 		console.log('[createServiceWorkerImportUrl] Origin:', origin);
-	const path = target.pathname || '/';
-	console.log('[createServiceWorkerImportUrl] Path:', path);
-	const result = `${origin}${path}?import=${encodeURIComponent(path)}`;
-	console.log('[createServiceWorkerImportUrl] Result created, returning');
-	return result;
+		const path = target.pathname || '/';
+		console.log('[createServiceWorkerImportUrl] Path:', path);
+		const result = `${origin}${path}?import=${encodeURIComponent(path)}`;
+		console.log('[createServiceWorkerImportUrl] Result created, returning');
+		return result;
 	} catch (e) {
 		console.error('[createServiceWorkerImportUrl] ERROR:', e);
 		return null;
@@ -64,7 +66,10 @@ let runtimePromise: Promise<NodeRuntime> | null = null;
 export async function loadNode(): Promise<NodeRuntime> {
 	if (!runtimePromise) {
 		runtimePromise = bootstrapNodeRuntime().catch((error) => {
-			console.error('[node-loader] FATAL ERROR in bootstrapNodeRuntime:', error);
+			console.error(
+				'[node-loader] FATAL ERROR in bootstrapNodeRuntime:',
+				error
+			);
 			console.error('[node-loader] Error stack:', error?.stack);
 			throw error;
 		});

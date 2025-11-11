@@ -19,7 +19,7 @@ const wrapProgramModule = (source: string): string => {
 	return `export default async function __programModuleEntry(processController) {\n\treturn ${trimmed}\n}`;
 };
 
-export function installCustomPrograms(kernel: Kernel, path = '/bin') {
+export function installNodeJs(kernel: Kernel, path = '/bin') {
 	kernel.mkdirSync(path, { mode: 0o755, recursive: true });
 	for (const [name, source] of Object.entries(programs)) {
 		const wrapped = wrapProgramModule(source);
