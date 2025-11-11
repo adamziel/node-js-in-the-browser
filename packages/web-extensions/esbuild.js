@@ -115,6 +115,15 @@ const ctx = esbuild
 									);
 								}
 							}
+
+							// copy the block-development related assets
+							await fs.cp(
+								path.resolve(__dirname, '../kernel-blocks'),
+								path.join(extensionDistPath, 'kernel-blocks'),
+								{
+									recursive: true,
+								}
+							);
 						}
 					});
 				},

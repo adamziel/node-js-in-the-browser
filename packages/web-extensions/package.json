@@ -62,7 +62,8 @@
 		"publish": "vsce publish --no-dependencies"
 	},
 	"dependencies": {
-		"@adamziel/kernel": "*"
+		"@adamziel/kernel": "*",
+		"@zip.js/zip.js": "^2.8.10"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.85.0",

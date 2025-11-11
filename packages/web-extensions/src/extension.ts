@@ -3,6 +3,7 @@ import { KernelManager } from './kernelManager';
 import { KernelFileSystemProvider } from './kernelFileSystemProvider';
 import { KernelTerminalProvider } from './kernelTerminalProvider';
 import type * as KernelModule from '@adamziel/kernel';
+import { onDidLoadKernel } from './on-did-kernel-load';
 
 let kernelManager: KernelManager;
 let fsProvider: KernelFileSystemProvider;
@@ -135,6 +136,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		if (config.get('autoOpenTerminal', false)) {
 			vscode.commands.executeCommand('kernel.openTerminal');
 		}
+
+		onDidLoadKernel(context, kernelManager);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		vscode.window.showErrorMessage(
