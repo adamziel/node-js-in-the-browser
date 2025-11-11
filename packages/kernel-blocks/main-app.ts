@@ -1,5 +1,5 @@
 import { installBusybox } from '../runtime/busybox/index.ts';
-import { installCustomPrograms } from './programs/index.ts';
+import { installCustomPrograms } from '../kernel-node-js/index.ts';
 import { Kernel } from '../runtime/index.ts';
 import type { KernelStdioChunk } from '../runtime/ipc/message-port.ts';
 import { BlobReader, ZipReader, Uint8ArrayWriter } from '@zip.js/zip.js';

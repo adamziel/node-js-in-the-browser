@@ -117,6 +117,13 @@ const nodePolyfillPlugin = {
 	setup(build) {
 		const nodeBuiltins = Object.keys(entryPoints);
 		const filter = new RegExp(`^(node:)?(${nodeBuiltins.join('|')})$`);
+
+		// Resolution roots for module lookup
+		const resolutionRoots = [
+			path.resolve('./node/lib'),
+			path.resolve('./src/this-is-bundled/node-lib'),
+		];
+
 		build.onResolve({ filter }, (args) => {
 			const modulePath = args.path.startsWith('node:')
 				? args.path.slice(5)
@@ -124,6 +131,45 @@ const nodePolyfillPlugin = {
 			if (entryPoints[modulePath]) {
 				return { path: path.resolve(entryPoints[modulePath]) };
 			}
+		});
+
+		// Resolve internal requires from node/lib and custom polyfills
+		build.onResolve({ filter: /^internal\// }, (args) => {
+			// Try resolution roots in order
+			for (const root of resolutionRoots) {
+				const candidatePath = path.join(root, args.path + '.js');
+				if (fs.existsSync(candidatePath)) {
+					return { path: candidatePath };
+				}
+			}
+			// Fallback to default resolution
+			return undefined;
+		});
+
+		// Alias node/deps as internal/deps
+		build.onResolve({ filter: /^internal\/deps\// }, (args) => {
+			const nodeDepsPath = args.path.replace(
+				/^internal\/deps\//,
+				'node/deps/'
+			);
+			let candidatePath = path.resolve(
+				path.join(
+					'./node',
+					'deps',
+					args.path.slice('internal/deps/'.length)
+				)
+			);
+			if (fs.existsSync(candidatePath)) {
+				return { path: candidatePath };
+			}
+			if (fs.existsSync(candidatePath + '.js')) {
+				return { path: candidatePath + '.js' };
+			}
+			if (fs.existsSync(candidatePath + '/index.js')) {
+				return { path: candidatePath + '/index.js' };
+			}
+			// Fallback to default resolution
+			return undefined;
 		});
 
 		// Plugin to append module.exports to realm.js
@@ -143,7 +189,7 @@ const nodePolyfillPlugin = {
 const buildOptionsNode = {
 	entryPoints,
 	bundle: true,
-	outdir: './dist',
+	outdir: '../../dist/kernel-node-js',
 	format: 'esm',
 	platform: 'browser',
 	splitting: true,

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Kernel } from '../runtime/index.ts';
-import { installCustomPrograms } from './programs/index.ts';
+import { installCustomPrograms } from '../kernel-node-js/index.ts';
 import { ZipReader, BlobReader, Uint8ArrayWriter } from '@zip.js/zip.js';
 import esBundlerZipUrl from './programs/node-loader/es-bundler.zip?url';
 import bundleFixtureSource from './tests/fixtures/esbuild-wasm/bundle.js?raw';
@@ -412,7 +412,7 @@ describe.sequential('esbuild integration', () => {
 	});
 
 	const createRunnerSource = (entryType: 'virtual' | 'fs') => {
-	const virtualEntryBlock = String.raw`const wasmPath = '/esbuild/node_modules/esbuild-wasm/esbuild.wasm';
+		const virtualEntryBlock = String.raw`const wasmPath = '/esbuild/node_modules/esbuild-wasm/esbuild.wasm';
 	const wasmBytesCheck = fsSync.readFileSync(wasmPath, null);
 	console.error('[runner] wasm bytes length', wasmBytesCheck ? wasmBytesCheck.byteLength || wasmBytesCheck.length : 'null');
 	const entrySource = fsSync.readFileSync('/esbuild/src/index.js', 'utf8');
@@ -445,7 +445,7 @@ describe.sequential('esbuild integration', () => {
 		}
 	}`;
 
-	const filesystemEntryBlock = String.raw`console.error('[runner] about to call esbuild.build() with fs entry');
+		const filesystemEntryBlock = String.raw`console.error('[runner] about to call esbuild.build() with fs entry');
 	const entrySource = fsSync.readFileSync('/esbuild/src/index.js', 'utf8');
 	try {
 		const result = await esbuild.build({

@@ -11,6 +11,7 @@
 	"scripts": {
 		"build": "nx run-many -t build",
 		"build:kernel": "nx run @adamziel/kernel:build",
+		"build:kernel-node-js": "nx run @adamziel/kernel-node-js:build",
 		"build:extension": "nx run kernel-vscode-extension:build",
 		"dev": "concurrently -n extension,vscode,proxy,browser \"nx run kernel-vscode-extension:watch\" \"npm run build; npx @vscode/test-web --browserType none --extensionDevelopmentPath=./packages/web-extensions/ --host=127.0.0.1 --port=3958\" \"nx run vscode-web:proxy\" \"node scripts/open-vscode.js\"",
 		"dev2": "concurrently -n extension,vscode,proxy,browser \"nx run kernel-vscode-extension:watch\" \"nx run vscode-web:dev\" \"nx run vscode-web:proxy\" \"node scripts/open-vscode.js\"",
