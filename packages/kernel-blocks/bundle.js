@@ -365,10 +365,7 @@ const cssPlugin = {
 					);
 				}
 			} else {
-				const relativePath = path.relative(
-					process.argv[2] || process.cwd(),
-					args.path
-				);
+				const relativePath = path.relative(srcDir, args.path);
 				outputPath = path.join(
 					outDir,
 					relativePath.replace(/\.(scss|sass|pcss)$/, '.css')
@@ -404,15 +401,9 @@ const blockJsonPlugin = {
 	setup(build) {
 		build.onEnd(async () => {
 			const blockJsonFiles = findFiles(srcDir, /^block\.json$/, 0, 10);
-
 			let processedCount = 0;
-
 			for (const file of blockJsonFiles) {
 				const content = JSON.parse(fs.readFileSync(file, 'utf8'));
-
-				// Get path relative to src directory
-				const relativePath = path.relative(srcDir, file);
-				const outputPath = path.join('build', relativePath);
 
 				// Convert script/module paths
 				const scriptFields = [
@@ -439,10 +430,11 @@ const blockJsonPlugin = {
 					}
 				});
 
-				// Ensure directory exists
+				const outputPath = path.join(
+					outDir,
+					path.relative(srcDir, file)
+				);
 				fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-
-				// Write transformed block.json
 				fs.writeFileSync(outputPath, JSON.stringify(content, null, 2));
 				processedCount++;
 			}
@@ -569,12 +561,11 @@ function getEntryPoints() {
 		for (const entryFile of possibleEntries) {
 			const entryPath = path.join(blockDir, entryFile);
 			if (fs.existsSync(entryPath)) {
-				const relativePath = path.relative(
-					process.argv[2] || process.cwd(),
-					entryPath
-				);
 				// Output to blocks/{blockname}/index.js
-				entries[`blocks/${blockDirName}/index`] = relativePath;
+				entries[`blocks/${blockDirName}/index`] = path.join(
+					srcDir,
+					path.relative(srcDir, entryPath)
+				);
 				break;
 			}
 		}
@@ -585,12 +576,10 @@ function getEntryPoints() {
 			for (const ext of ['.js', '.jsx', '.ts', '.tsx']) {
 				const entryPath = path.join(blockDir, entryType + ext);
 				if (fs.existsSync(entryPath)) {
-					const relativePath = path.relative(
-						process.argv[2] || process.cwd(),
-						entryPath
+					entries[`blocks/${blockDirName}/${entryType}`] = path.join(
+						srcDir,
+						path.relative(srcDir, entryPath)
 					);
-					entries[`blocks/${blockDirName}/${entryType}`] =
-						relativePath;
 					break;
 				}
 			}
