@@ -15,26 +15,44 @@ const createProgramSource = (): string => {
 
 		try {
 			const argv = getArgv();
-
-			if (argv.length !== 1) {
-				writeStderr('sh: expected exactly one script path');
+			if (argv.length === 0) {
+				writeStderr('sh: expected a script path or "-c <command>"');
 				exitSafely(1);
 				return;
 			}
-
-			const scriptPath = argv[0];
 			const fs = processController.fsSync;
 			const decoder = new TextDecoder();
 
 			let source: string;
-			try {
-				const data = fs.readFileSync(scriptPath, 'utf8');
-				source =
-					typeof data === 'string'
-						? data
-						: decoder.decode(data as Uint8Array);
-			} catch (error) {
-				writeStderr(`sh: ${scriptPath}: ${errorToString(error)}`);
+			let scriptLabel: string;
+			if (argv[0] === '-c') {
+				if (argv.length < 2) {
+					writeStderr('sh: -c: expected a command string');
+					exitSafely(1);
+					return;
+				}
+				source = argv[1] ?? '';
+				scriptLabel = '-c';
+			} else if (argv.length === 1) {
+				const scriptPath = argv[0];
+				scriptLabel = scriptPath;
+				try {
+					const data = fs.readFileSync(scriptPath, 'utf8');
+					source =
+						typeof data === 'string'
+							? data
+							: decoder.decode(data as Uint8Array);
+				} catch (error) {
+					writeStderr(
+						`sh: ${scriptPath}: ${errorToString(error)}`
+					);
+					exitSafely(1);
+					return;
+				}
+			} else {
+				writeStderr(
+					'sh: expected exactly one script path or "-c <command>"'
+				);
 				exitSafely(1);
 				return;
 			}
@@ -64,7 +82,7 @@ const createProgramSource = (): string => {
 			try {
 				ast = parseShellCode(source);
 			} catch (error) {
-				writeStderr(`sh: ${scriptPath}: ${errorToString(error)}`);
+				writeStderr(`sh: ${scriptLabel}: ${errorToString(error)}`);
 				exitSafely(2);
 				return;
 			}
