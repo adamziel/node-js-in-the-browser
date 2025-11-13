@@ -54947,18 +54947,16 @@ var require_depth = __commonJS({
 					: processKids(kids);
 			};
 			const processKids = (nodes) => {
-				const kids = (nodes || [])
-					.filter(filter)
-					.map((kid) =>
-						depth({
-							visit,
-							leave,
-							filter,
-							seen,
-							getChildren,
-							tree: kid,
-						})
-					);
+				const kids = (nodes || []).filter(filter).map((kid) =>
+					depth({
+						visit,
+						leave,
+						filter,
+						seen,
+						getChildren,
+						tree: kid,
+					})
+				);
 				return kids.some(isPromise)
 					? Promise.all(kids).then(leaveNode)
 					: leaveNode(kids);
@@ -80740,33 +80738,30 @@ var require_cjs2 = __commonJS({
 			processOk(process4)
 				? new SignalExit(process4)
 				: new SignalExitFallback()
-		))
-		/**
-		 * Called when the process is exiting, whether via signal, explicit
-		 * exit, or running out of stuff to do.
-		 *
-		 * If the global process object is not suitable for instrumentation,
-		 * then this will be a no-op.
-		 *
-		 * Returns a function that may be used to unload signal-exit.
-		 */,
-			(exports2.onExit = _a.onExit)
+		)),
+			/**
+			 * Called when the process is exiting, whether via signal, explicit
+			 * exit, or running out of stuff to do.
+			 *
+			 * If the global process object is not suitable for instrumentation,
+			 * then this will be a no-op.
+			 *
+			 * Returns a function that may be used to unload signal-exit.
+			 */ (exports2.onExit = _a.onExit),
 			/**
 			 * Load the listeners.  Likely you never need to call this, unless
 			 * doing a rather deep integration with signal-exit functionality.
 			 * Mostly exposed for the benefit of testing.
 			 *
 			 * @internal
-			 */,
-			(exports2.load = _a.load)
+			 */ (exports2.load = _a.load),
 			/**
 			 * Unload the listeners.  Likely you never need to call this, unless
 			 * doing a rather deep integration with signal-exit functionality.
 			 * Mostly exposed for the benefit of testing.
 			 *
 			 * @internal
-			 */,
-			(exports2.unload = _a.unload);
+			 */ (exports2.unload = _a.unload);
 	},
 });
 

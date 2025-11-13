@@ -3116,10 +3116,7 @@ globalThis.internalModules = {
 				}
 
 				const promise = runAsyncWithRetry().then((bytesRead) => {
-					return {
-						bytesRead,
-						buffer,
-					};
+					return bytesRead;
 				});
 
 				if (usePromises) {
