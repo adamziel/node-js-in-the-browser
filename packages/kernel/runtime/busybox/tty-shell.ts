@@ -215,7 +215,8 @@ const createProgramSource = (): string => {
 			cursor = Math.max(0, Math.min(buffer.length, index));
 		};
 
-		const isWhitespace = (char: string) => /\s/.test(char);
+		const isWordSeparator = (char: string) =>
+			char === '/' || /\s/.test(char);
 
 		const resetHistoryNavigation = () => {
 			historyIndex = null;
@@ -248,10 +249,10 @@ const createProgramSource = (): string => {
 			if (cursor === 0) return;
 			resetHistoryNavigation();
 			let index = cursor;
-			while (index > 0 && isWhitespace(buffer[index - 1])) {
+			while (index > 0 && isWordSeparator(buffer[index - 1])) {
 				index -= 1;
 			}
-			while (index > 0 && !isWhitespace(buffer[index - 1])) {
+			while (index > 0 && !isWordSeparator(buffer[index - 1])) {
 				index -= 1;
 			}
 			buffer = buffer.slice(0, index) + buffer.slice(cursor);
@@ -620,10 +621,10 @@ const createProgramSource = (): string => {
 		const moveWordLeft = () => {
 			if (cursor === 0) return;
 			let index = cursor;
-			while (index > 0 && isWhitespace(buffer[index - 1])) {
+			while (index > 0 && isWordSeparator(buffer[index - 1])) {
 				index -= 1;
 			}
-			while (index > 0 && !isWhitespace(buffer[index - 1])) {
+			while (index > 0 && !isWordSeparator(buffer[index - 1])) {
 				index -= 1;
 			}
 			clampCursor(index);
@@ -633,10 +634,10 @@ const createProgramSource = (): string => {
 		const moveWordRight = () => {
 			if (cursor >= buffer.length) return;
 			let index = cursor;
-			while (index < buffer.length && !isWhitespace(buffer[index])) {
+			while (index < buffer.length && !isWordSeparator(buffer[index])) {
 				index += 1;
 			}
-			while (index < buffer.length && isWhitespace(buffer[index])) {
+			while (index < buffer.length && isWordSeparator(buffer[index])) {
 				index += 1;
 			}
 			clampCursor(index);
