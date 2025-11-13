@@ -3,6 +3,12 @@ import { joinPaths } from '@adamziel/kernel/runtime/util/paths.ts';
 import { nodeProgramSource } from './node.ts';
 
 // @ts-ignore
+import pnpmProgramSource from './pnpm/pnpm.cjs?loader=text';
+// @ts-ignore
+import pnpmWorkerProgramSource from './pnpm/worker.js?loader=text';
+// @ts-ignore
+
+// @ts-ignore
 import npmProgramSource from './npm/npm-single.js?loader=text';
 // @ts-ignore
 import defaultInputProgramSource from './npm/default-input.js?loader=text';
@@ -38,6 +44,16 @@ export function installNodeJs(kernel: Kernel, path = '/bin') {
 	kernel.writeFileSync(
 		joinPaths(path, 'default-input.js'),
 		`${defaultInputProgramSource}\n`,
+		{
+			mode: 0o755,
+		}
+	);
+	kernel.writeFileSync(joinPaths(path, 'pnpm'), `${pnpmProgramSource}\n`, {
+		mode: 0o755,
+	});
+	kernel.writeFileSync(
+		joinPaths(path, 'worker.js'),
+		`${pnpmWorkerProgramSource}\n`,
 		{
 			mode: 0o755,
 		}
