@@ -7722,6 +7722,94 @@ function ensureEntryFromArgv(argv) {
 	return typeof candidate === 'string' && candidate.length ? candidate : '';
 }
 
+function resolveExistingScriptPath(candidate) {
+	if (typeof candidate !== 'string' || candidate.length === 0) {
+		return null;
+	}
+	if (candidate.startsWith('-')) {
+		return null;
+	}
+	const resolved = resolveFsPath(candidate);
+	if (typeof resolved !== 'string' || resolved.length === 0) {
+		return null;
+	}
+	try {
+		if (
+			globalThis.globalFs &&
+			typeof globalThis.globalFs.existsSync === 'function'
+		) {
+			if (globalThis.globalFs.existsSync(resolved)) {
+				return resolved;
+			}
+		}
+	} catch {
+		// Ignore FS lookup failures; fall back to original behavior
+	}
+	return null;
+}
+
+function normalizeProcessArgvScriptEntry() {
+	if (
+		!globalThis.process ||
+		!Array.isArray(globalThis.process.argv) ||
+		globalThis.process.argv.length < 2
+	) {
+		return;
+	}
+
+	const argv = globalThis.process.argv.slice();
+	let scriptIndex = -1;
+
+	for (let index = 1; index < argv.length; index += 1) {
+		const value = argv[index];
+		if (value === '--' && index + 1 < argv.length) {
+			scriptIndex = index + 1;
+			break;
+		}
+		if (typeof value !== 'string' || value.length === 0) {
+			continue;
+		}
+		if (value.startsWith('-')) {
+			// Skip option value for options that accept a following argument
+			if (
+				value === '-r' ||
+				value === '--require' ||
+				value === '--loader' ||
+				value === '--import' ||
+				value === '--inspect' ||
+				value === '--inspect-brk' ||
+				value === '--inspect-port'
+			) {
+				index += 1;
+			}
+			continue;
+		}
+		scriptIndex = index;
+		break;
+	}
+
+	if (scriptIndex === -1 || scriptIndex >= argv.length) {
+		return;
+	}
+
+	const candidate = argv[scriptIndex];
+	const resolved = resolveExistingScriptPath(candidate);
+	if (!resolved) {
+		return;
+	}
+
+	argv[scriptIndex] = resolved;
+	globalThis.process.argv = argv;
+	if (
+		globalThis.coreModules?.process &&
+		Array.isArray(globalThis.coreModules.process.argv)
+	) {
+		globalThis.coreModules.process.argv[scriptIndex] = resolved;
+	}
+}
+
+normalizeProcessArgvScriptEntry();
+
 export function runMain() {
 	globalThis.coreModules.module.initializeCJS();
 	globalThis.internalModules.process.setupUserModules(true);
