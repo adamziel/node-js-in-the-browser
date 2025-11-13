@@ -1,0 +1,25 @@
+{
+	"name": "vscode-web",
+	"version": "1.0.0",
+	"description": "VS Code for Web - Self-hosted instance",
+	"scripts": {
+		"serve": "node serve.js",
+		"build": "node build.js",
+		"dev": "node -r cross-env/register ./scripts/run-vscode-web-dev.mjs",
+		"dev:insiders": "VSCODE_TEST_WEB_QUALITY=insiders node -r cross-env/register ./scripts/run-vscode-web-dev.mjs",
+		"dev:stable": "VSCODE_TEST_WEB_QUALITY=stable node -r cross-env/register ./scripts/run-vscode-web-dev.mjs",
+		"dev:proxy": "node https-proxy.js"
+	},
+	"keywords": [
+		"vscode",
+		"web",
+		"editor"
+	],
+	"author": "",
+	"license": "MIT",
+	"dependencies": {
+		"@vscode/test-web": "^0.0.64",
+		"http-proxy": "^1.18.1",
+		"mime-types": "^2.1.35"
+	}
+}

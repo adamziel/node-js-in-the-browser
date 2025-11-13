@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"lib": ["ES2022", "DOM", "WebWorker"],
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"outDir": "./dist",
+		"strict": false,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"types": ["vite/client"],
+		"allowSyntheticDefaultImports": true,
+		"allowImportingTsExtensions": true,
+		"emitDeclarationOnly": true
+	},
+	"include": ["runtime/**/*"],
+	"exclude": ["node_modules", "dist", "app", "**/*.spec.ts", "wasmfs-module"]
+}

@@ -1,0 +1,59 @@
+{
+	"name": "kernel-vscode-extension",
+	"$schema": "../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "packages/web-extensions/src",
+	"projectType": "application",
+	"tags": ["type:application"],
+	"targets": {
+		"build": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["^build"],
+			"outputs": ["{projectRoot}/dist"],
+			"options": {
+				"commands": [
+					"nx run @adamziel/kernel:build",
+					"node esbuild.js"
+				],
+				"cwd": "packages/web-extensions",
+				"parallel": false
+			},
+			"configurations": {
+				"production": {
+					"commands": [
+						"nx run @adamziel/kernel:build:production",
+						"node esbuild.js"
+					]
+				}
+			}
+		},
+		"dev": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["^build"],
+			"options": {
+				"commands": [
+					"nx run @adamziel/kernel:build",
+					"node esbuild.js --watch"
+				],
+				"cwd": "packages/web-extensions",
+				"parallel": false
+			}
+		},
+		"watch": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["^build"],
+			"options": {
+				"command": "node esbuild.js --watch",
+				"cwd": "packages/web-extensions"
+			}
+		},
+		"package": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["build"],
+			"outputs": ["{workspaceRoot}/dist/web-extensions/*.vsix"],
+			"options": {
+				"command": "vsce package --no-dependencies --out ../../dist/web-extensions",
+				"cwd": "packages/web-extensions"
+			}
+		}
+	}
+}

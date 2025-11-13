@@ -1,0 +1,39 @@
+{
+	"name": "vscode-web",
+	"$schema": "../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "packages/vscode-web",
+	"projectType": "application",
+	"tags": ["type:application"],
+	"targets": {
+		"serve": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "node serve.js",
+				"cwd": "packages/vscode-web"
+			}
+		},
+		"build": {
+			"executor": "nx:run-commands",
+			"outputs": ["{projectRoot}/dist"],
+			"options": {
+				"command": "node build.js",
+				"cwd": "packages/vscode-web"
+			}
+		},
+		"dev": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["kernel-vscode-extension:build"],
+			"options": {
+				"command": "npx cross-env VSCODE_DEV_FORCE_PROTO=https npx vscode-test-web --browserType none --coi --extensionDevelopmentPath=../web-extensions --host=127.0.0.1 --port=3958",
+				"cwd": "packages/vscode-web"
+			}
+		},
+		"proxy": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "npx wait-on tcp:127.0.0.1:3958 && node https-proxy.js",
+				"cwd": "packages/vscode-web"
+			}
+		}
+	}
+}

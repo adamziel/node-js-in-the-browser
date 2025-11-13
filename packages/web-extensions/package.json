@@ -1,0 +1,243 @@
+{
+	"name": "kernel-vscode-extension",
+	"displayName": "JavaScript Kernel",
+	"description": "Run a JavaScript kernel with filesystem and terminal integration in VS Code Web",
+	"version": "0.0.1",
+	"publisher": "adamziel",
+	"engines": {
+		"vscode": "^1.94.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onStartupFinished",
+		"onFileSystem:kernel"
+	],
+	"extensionKind": [
+		"web"
+	],
+	"browser": "./dist/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "kernel-sidebar",
+					"title": "Kernel",
+					"icon": "$(star)"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "kernel.openTerminal",
+				"title": "Kernel: Open Terminal"
+			},
+			{
+				"command": "kernel.restart",
+				"title": "Kernel: Restart Kernel"
+			},
+			{
+				"command": "kernel.git.clone",
+				"title": "Git: Clone Repository",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.openRemote",
+				"title": "Git: Open Remote Repository",
+				"category": "Kernel"
+			},
+			{
+				"command": "remoteHub.openRepository",
+				"title": "Open Remote Repository"
+			},
+			{
+				"command": "kernel.git.init",
+				"title": "Git: Initialize Repository",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.stage",
+				"title": "Git: Stage Changes",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.commit",
+				"title": "Git: Commit",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.push",
+				"title": "Git: Push",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.pull",
+				"title": "Git: Pull",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.fetch",
+				"title": "Git: Fetch",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.status",
+				"title": "Git: Status",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.branch",
+				"title": "Git: Create Branch",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.checkout",
+				"title": "Git: Checkout Branch",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.log",
+				"title": "Git: Show Log",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.addRemote",
+				"title": "Git: Add Remote",
+				"category": "Kernel"
+			},
+			{
+				"command": "kernel.git.refresh",
+				"title": "Refresh",
+				"category": "Kernel Git",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "kernel.git.openFile",
+				"title": "Open File",
+				"category": "Kernel Git"
+			},
+			{
+				"command": "kernel.git.stage.file",
+				"title": "Stage Changes",
+				"category": "Kernel Git",
+				"icon": "$(add)"
+			},
+			{
+				"command": "kernel.git.unstage.file",
+				"title": "Unstage Changes",
+				"category": "Kernel Git",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "kernel.git.discard",
+				"title": "Discard Changes",
+				"category": "Kernel Git",
+				"icon": "$(discard)"
+			},
+			{
+				"command": "kernel.git.stageAll",
+				"title": "Stage All Changes",
+				"category": "Kernel Git",
+				"icon": "$(add)"
+			},
+			{
+				"command": "kernel.git.unstageAll",
+				"title": "Unstage All Changes",
+				"category": "Kernel Git",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "kernel.git.commitWithMessage",
+				"title": "Commit",
+				"category": "Kernel Git"
+			}
+		],
+		"taskDefinitions": [
+			{
+				"type": "kernel-shell"
+			}
+		],
+		"terminal": {
+			"profiles": [
+				{
+					"id": "kernel.terminal",
+					"title": "Kernel Shell",
+					"icon": "terminal"
+				}
+			]
+		},
+		"menus": {
+			"scm/title": [
+				{
+					"command": "kernel.git.refresh",
+					"group": "navigation",
+					"when": "scmProvider == kernel-git"
+				},
+				{
+					"command": "kernel.git.commitWithMessage",
+					"group": "navigation",
+					"when": "scmProvider == kernel-git"
+				}
+			],
+			"scm/resourceGroup/context": [
+				{
+					"command": "kernel.git.stageAll",
+					"when": "scmProvider == kernel-git && scmResourceGroup == working",
+					"group": "inline"
+				},
+				{
+					"command": "kernel.git.unstageAll",
+					"when": "scmProvider == kernel-git && scmResourceGroup == index",
+					"group": "inline"
+				}
+			],
+			"scm/resourceState/context": [
+				{
+					"command": "kernel.git.stage.file",
+					"when": "scmProvider == kernel-git && scmResourceGroup == working",
+					"group": "inline"
+				},
+				{
+					"command": "kernel.git.stage.file",
+					"when": "scmProvider == kernel-git && scmResourceGroup == untracked",
+					"group": "inline"
+				},
+				{
+					"command": "kernel.git.unstage.file",
+					"when": "scmProvider == kernel-git && scmResourceGroup == index",
+					"group": "inline"
+				},
+				{
+					"command": "kernel.git.discard",
+					"when": "scmProvider == kernel-git && scmResourceGroup == working",
+					"group": "inline"
+				},
+				{
+					"command": "kernel.git.openFile",
+					"when": "scmProvider == kernel-git"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"dev": "npm run build:kernel && node esbuild.js --watch",
+		"build": "npm run build:kernel && node esbuild.js",
+		"build:kernel": "cd ../kernel && npm run build",
+		"vscode:prepublish": "npm run build",
+		"compile": "npm run build",
+		"watch": "npm run dev",
+		"package": "vsce package --no-dependencies",
+		"publish": "vsce publish --no-dependencies"
+	},
+	"dependencies": {
+		"@adamziel/kernel": "*",
+		"@zip.js/zip.js": "^2.8.10",
+		"buffer": "^6.0.3"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.85.0",
+		"@vscode/vsce": "^2.22.0",
+		"esbuild": "^0.19.11"
+	}
+}
