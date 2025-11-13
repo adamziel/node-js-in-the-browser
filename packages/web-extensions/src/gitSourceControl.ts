@@ -164,11 +164,13 @@ export class GitSourceControl implements vscode.Disposable {
 				const uri = vscode.Uri.parse(
 					`kernel://${this.workspaceRoot}/${filepath}`
 				);
+				const command = this.createDiffCommand(uri, filepath);
 
 				// Untracked files
 				if (head === 0 && workdir === 2 && stage === 0) {
 					untracked.push({
 						resourceUri: uri,
+						command,
 						decorations: {
 							strikeThrough: false,
 							faded: false,
@@ -186,6 +188,7 @@ export class GitSourceControl implements vscode.Disposable {
 				else if (head === 0 && workdir === 2 && stage === 2) {
 					staged.push({
 						resourceUri: uri,
+						command,
 						decorations: {
 							strikeThrough: false,
 							faded: false,
@@ -203,6 +206,7 @@ export class GitSourceControl implements vscode.Disposable {
 				else if (head === 1 && workdir === 2 && stage === 2) {
 					staged.push({
 						resourceUri: uri,
+						command,
 						decorations: {
 							strikeThrough: false,
 							faded: false,
@@ -220,6 +224,7 @@ export class GitSourceControl implements vscode.Disposable {
 				else if (head === 1 && workdir === 2 && stage === 1) {
 					unstaged.push({
 						resourceUri: uri,
+						command,
 						decorations: {
 							strikeThrough: false,
 							faded: false,
@@ -238,6 +243,7 @@ export class GitSourceControl implements vscode.Disposable {
 					if (stage === 0) {
 						staged.push({
 							resourceUri: uri,
+							command,
 							decorations: {
 								strikeThrough: true,
 								faded: false,
@@ -253,6 +259,7 @@ export class GitSourceControl implements vscode.Disposable {
 					} else {
 						unstaged.push({
 							resourceUri: uri,
+							command,
 							decorations: {
 								strikeThrough: true,
 								faded: false,
@@ -325,8 +332,8 @@ export class GitSourceControl implements vscode.Disposable {
 		this.disposables.push(
 			vscode.commands.registerCommand(
 				'kernel.git.stage.file',
-				async (uri: vscode.Uri) => {
-					await this.stageFile(uri);
+				async (resource) => {
+					await this.stageFile(resource);
 				}
 			)
 		);
@@ -335,8 +342,8 @@ export class GitSourceControl implements vscode.Disposable {
 		this.disposables.push(
 			vscode.commands.registerCommand(
 				'kernel.git.unstage.file',
-				async (uri: vscode.Uri) => {
-					await this.unstageFile(uri);
+				async (resource) => {
+					await this.unstageFile(resource);
 				}
 			)
 		);
@@ -345,8 +352,8 @@ export class GitSourceControl implements vscode.Disposable {
 		this.disposables.push(
 			vscode.commands.registerCommand(
 				'kernel.git.discard',
-				async (uri: vscode.Uri) => {
-					await this.discardChanges(uri);
+				async (resource) => {
+					await this.discardChanges(resource);
 				}
 			)
 		);
@@ -357,6 +364,15 @@ export class GitSourceControl implements vscode.Disposable {
 				'kernel.git.openFile',
 				async (uri: vscode.Uri) => {
 					await vscode.window.showTextDocument(uri);
+				}
+			)
+		);
+
+		this.disposables.push(
+			vscode.commands.registerCommand(
+				'kernel.git.openDiff',
+				async (resource, filepath?: string) => {
+					await this.openDiff(resource, filepath);
 				}
 			)
 		);
@@ -392,9 +408,10 @@ export class GitSourceControl implements vscode.Disposable {
 	/**
 	 * Stage a file
 	 */
-	private async stageFile(uri: vscode.Uri): Promise<void> {
+	private async stageFile(resource: unknown): Promise<void> {
 		try {
-			const filepath = uri.path.replace(this.workspaceRoot + '/', '');
+			const uri = this.normalizeCommandUri(resource);
+			const filepath = this.getRelativePath(uri);
 
 			await git.add({
 				fs: this.createFsAdapter(),
@@ -413,9 +430,10 @@ export class GitSourceControl implements vscode.Disposable {
 	/**
 	 * Unstage a file
 	 */
-	private async unstageFile(uri: vscode.Uri): Promise<void> {
+	private async unstageFile(resource: unknown): Promise<void> {
 		try {
-			const filepath = uri.path.replace(this.workspaceRoot + '/', '');
+			const uri = this.normalizeCommandUri(resource);
+			const filepath = this.getRelativePath(uri);
 
 			await git.resetIndex({
 				fs: this.createFsAdapter(),
@@ -436,7 +454,7 @@ export class GitSourceControl implements vscode.Disposable {
 	/**
 	 * Discard changes to a file
 	 */
-	private async discardChanges(uri: vscode.Uri): Promise<void> {
+	private async discardChanges(resource: unknown): Promise<void> {
 		const confirm = await vscode.window.showWarningMessage(
 			'Are you sure you want to discard changes? This cannot be undone.',
 			{ modal: true },
@@ -448,7 +466,8 @@ export class GitSourceControl implements vscode.Disposable {
 		}
 
 		try {
-			const filepath = uri.path.replace(this.workspaceRoot + '/', '');
+			const uri = this.normalizeCommandUri(resource);
+			const filepath = this.getRelativePath(uri);
 
 			await git.checkout({
 				fs: this.createFsAdapter(),
@@ -465,6 +484,129 @@ export class GitSourceControl implements vscode.Disposable {
 				`Failed to discard changes: ${message}`
 			);
 		}
+	}
+
+	private normalizeCommandUri(resource: unknown): vscode.Uri {
+		if (!resource) {
+			throw new Error('No file selected.');
+		}
+
+		if (Array.isArray(resource) && resource.length > 0) {
+			return this.normalizeCommandUri(resource[0]);
+		}
+
+		if (vscode.Uri.isUri(resource)) {
+			return resource;
+		}
+
+		if (isSourceControlResourceState(resource)) {
+			if (resource.resourceUri) {
+				return resource.resourceUri;
+			}
+		}
+
+		throw new Error('No file selected.');
+	}
+
+	private createDiffCommand(
+		uri: vscode.Uri,
+		filepath: string
+	): vscode.Command | undefined {
+		if (!this.workspaceRoot) {
+			return undefined;
+		}
+
+		return {
+			command: 'kernel.git.openDiff',
+			title: 'Open Changes',
+			arguments: [uri, filepath],
+		};
+	}
+
+	private async openDiff(
+		resource: unknown,
+		filepath?: string
+	): Promise<void> {
+		if (!this.workspaceRoot) {
+			vscode.window.showErrorMessage('No workspace folder available.');
+			return;
+		}
+		const uri = this.normalizeCommandUri(resource);
+
+		const relativePath = filepath ?? this.getRelativePath(uri);
+		const fs = this.createFsAdapter();
+
+		let headContent = '';
+		try {
+			const { blob } = await git.readBlob({
+				fs,
+				dir: this.workspaceRoot,
+				filepath: relativePath,
+				oid: 'HEAD',
+			});
+			const decoder = new TextDecoder();
+			headContent = decoder.decode(blob);
+		} catch (error) {
+			console.warn('Failed to load HEAD content for diff', error);
+		}
+
+		let language: string | undefined;
+		try {
+			const workingDoc = await vscode.workspace.openTextDocument(uri);
+			language = workingDoc.languageId;
+		} catch {
+			language = undefined;
+		}
+
+		const headDocument = await vscode.workspace.openTextDocument({
+			content: headContent,
+			language,
+		});
+
+		const title = `${relativePath} (HEAD ↔ Working Tree)`;
+		await vscode.commands.executeCommand(
+			'vscode.diff',
+			headDocument.uri,
+			uri,
+			title
+		);
+	}
+
+	private getRelativePath(uri?: vscode.Uri): string {
+		if (!this.workspaceRoot) {
+			throw new Error('No workspace folder available.');
+		}
+		if (!uri) {
+			throw new Error('No file selected.');
+		}
+
+		const workspaceFolder = vscode.workspace.workspaceFolders?.find(
+			(folder) => folder.uri.path === this.workspaceRoot
+		);
+		if (workspaceFolder) {
+			const relative = vscode.workspace.asRelativePath(uri, false);
+			if (
+				relative &&
+				relative !== uri.toString() &&
+				relative !== uri.path
+			) {
+				return relative;
+			}
+		}
+
+		const rootPath = decodeURIComponent(this.workspaceRoot);
+		const fullPath = decodeURIComponent(uri.path);
+
+		if (fullPath === rootPath) {
+			return '.';
+		}
+
+		const prefix = rootPath.endsWith('/') ? rootPath : rootPath + '/';
+		if (fullPath.startsWith(prefix)) {
+			return fullPath.slice(prefix.length);
+		}
+
+		throw new Error('File is outside of the workspace.');
 	}
 
 	/**
@@ -617,14 +759,7 @@ export class GitSourceControl implements vscode.Disposable {
 					try {
 						const uri = vscode.Uri.parse(`kernel://${filepath}`);
 						const stat = await vscode.workspace.fs.stat(uri);
-						return {
-							isFile: () => stat.type === vscode.FileType.File,
-							isDirectory: () => stat.type === vscode.FileType.Directory,
-							isSymbolicLink: () => stat.type === vscode.FileType.SymbolicLink,
-							mode: 0o644, // Default mode
-							size: stat.size,
-							mtimeMs: stat.mtime,
-						};
+						return mapFileStat(stat);
 					} catch (error) {
 						// Convert VS Code FileSystemError to Node.js-style error
 						const err: any = new Error(`ENOENT: no such file or directory, stat '${filepath}'`);
@@ -640,14 +775,7 @@ export class GitSourceControl implements vscode.Disposable {
 						// VS Code doesn't distinguish lstat from stat
 						const uri = vscode.Uri.parse(`kernel://${filepath}`);
 						const stat = await vscode.workspace.fs.stat(uri);
-						return {
-							isFile: () => stat.type === vscode.FileType.File,
-							isDirectory: () => stat.type === vscode.FileType.Directory,
-							isSymbolicLink: () => stat.type === vscode.FileType.SymbolicLink,
-							mode: 0o644,
-							size: stat.size,
-							mtimeMs: stat.mtime,
-						};
+						return mapFileStat(stat);
 					} catch (error) {
 						// Convert VS Code FileSystemError to Node.js-style error
 						const err: any = new Error(`ENOENT: no such file or directory, lstat '${filepath}'`);
@@ -682,4 +810,37 @@ export class GitSourceControl implements vscode.Disposable {
 		}
 		this.disposables = [];
 	}
+}
+
+function mapFileStat(stat: vscode.FileStat) {
+	const mtime = stat.mtime ?? Date.now();
+	const ctime = stat.ctime ?? mtime;
+	return {
+		isFile: () => stat.type === vscode.FileType.File,
+		isDirectory: () => stat.type === vscode.FileType.Directory,
+		isSymbolicLink: () => stat.type === vscode.FileType.SymbolicLink,
+		mode: 0o644,
+		size: stat.size,
+		mtimeMs: mtime,
+		ctimeMs: ctime,
+		mtime: new Date(mtime),
+		ctime: new Date(ctime),
+		dev: 0,
+		ino: 0,
+		uid: 0,
+		gid: 0,
+	};
+}
+
+function isSourceControlResourceState(
+	value: unknown
+): value is vscode.SourceControlResourceState {
+	return (
+		!!value &&
+		typeof value === 'object' &&
+		'resourceUri' in value &&
+		vscode.Uri.isUri(
+			(value as vscode.SourceControlResourceState).resourceUri
+		)
+	);
 }

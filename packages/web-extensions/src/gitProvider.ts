@@ -1108,14 +1108,7 @@ export class KernelGitProvider implements vscode.Disposable {
 					try {
 						const uri = vscode.Uri.parse(`kernel://${filepath}`);
 						const stat = await vscode.workspace.fs.stat(uri);
-						return {
-							isFile: () => stat.type === vscode.FileType.File,
-							isDirectory: () => stat.type === vscode.FileType.Directory,
-							isSymbolicLink: () => stat.type === vscode.FileType.SymbolicLink,
-							mode: 0o644, // Default mode
-							size: stat.size,
-							mtimeMs: stat.mtime,
-						};
+						return mapFileStat(stat);
 					} catch (error) {
 						// Convert VS Code FileSystemError to Node.js-style error
 						const err: any = new Error(`ENOENT: no such file or directory, stat '${filepath}'`);
@@ -1131,14 +1124,7 @@ export class KernelGitProvider implements vscode.Disposable {
 						// VS Code doesn't distinguish lstat from stat
 						const uri = vscode.Uri.parse(`kernel://${filepath}`);
 						const stat = await vscode.workspace.fs.stat(uri);
-						return {
-							isFile: () => stat.type === vscode.FileType.File,
-							isDirectory: () => stat.type === vscode.FileType.Directory,
-							isSymbolicLink: () => stat.type === vscode.FileType.SymbolicLink,
-							mode: 0o644,
-							size: stat.size,
-							mtimeMs: stat.mtime,
-						};
+						return mapFileStat(stat);
 					} catch (error) {
 						// Convert VS Code FileSystemError to Node.js-style error
 						const err: any = new Error(`ENOENT: no such file or directory, lstat '${filepath}'`);
@@ -1359,4 +1345,24 @@ function singleChunkAsyncIterable(
 	return (async function* () {
 		yield chunk;
 	})();
+}
+
+function mapFileStat(stat: vscode.FileStat) {
+	const mtime = stat.mtime ?? Date.now();
+	const ctime = stat.ctime ?? mtime;
+	return {
+		isFile: () => stat.type === vscode.FileType.File,
+		isDirectory: () => stat.type === vscode.FileType.Directory,
+		isSymbolicLink: () => stat.type === vscode.FileType.SymbolicLink,
+		mode: 0o644,
+		size: stat.size,
+		mtimeMs: mtime,
+		ctimeMs: ctime,
+		mtime: new Date(mtime),
+		ctime: new Date(ctime),
+		dev: 0,
+		ino: 0,
+		uid: 0,
+		gid: 0,
+	};
 }
