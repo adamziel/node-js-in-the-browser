@@ -233,7 +233,8 @@
 	"dependencies": {
 		"@adamziel/kernel": "*",
 		"@zip.js/zip.js": "^2.8.10",
-		"buffer": "^6.0.3"
+		"buffer": "^6.0.3",
+		"isomorphic-git": "^1.35.0"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.85.0",

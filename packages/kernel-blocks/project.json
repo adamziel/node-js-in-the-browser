@@ -1,0 +1,25 @@
+{
+	"name": "kernel-blocks",
+	"$schema": "../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "packages/kernel-blocks",
+	"projectType": "library",
+	"tags": ["type:library"],
+	"targets": {
+		"build": {
+			"executor": "nx:run-commands",
+			"outputs": ["{workspaceRoot}/dist/kernel-blocks"],
+			"options": {
+				"command": "node ../../scripts/sync-kernel-blocks.cjs",
+				"cwd": "packages/kernel-blocks"
+			}
+		},
+		"dev": {
+			"executor": "nx:run-commands",
+			"outputs": ["{workspaceRoot}/dist/kernel-blocks"],
+			"options": {
+				"command": "node ../../scripts/sync-kernel-blocks.cjs --watch",
+				"cwd": "packages/kernel-blocks"
+			}
+		}
+	}
+}
