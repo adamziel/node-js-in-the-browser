@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Kernel Smoke Test</title>
+		<style>
+			body {
+				font-family: monospace;
+				padding: 20px;
+				max-width: 800px;
+				margin: 0 auto;
+			}
+			h1 {
+				color: #333;
+			}
+			.test {
+				margin: 10px 0;
+				padding: 10px;
+				border-left: 3px solid #ccc;
+			}
+			.test.pass {
+				border-color: #4caf50;
+				background: #f1f8f4;
+			}
+			.test.fail {
+				border-color: #f44336;
+				background: #fef1f0;
+			}
+			.test.running {
+				border-color: #2196f3;
+				background: #e3f2fd;
+			}
+			pre {
+				background: #f5f5f5;
+				padding: 10px;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+			.summary {
+				margin-top: 20px;
+				padding: 15px;
+				border-radius: 4px;
+				font-weight: bold;
+			}
+			.summary.pass {
+				background: #4caf50;
+				color: white;
+			}
+			.summary.fail {
+				background: #f44336;
+				color: white;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Kernel Build Smoke Test</h1>
+		<div id="output"></div>
+		<div id="summary"></div>
+
+		<script type="module">
+			const output = document.getElementById('output');
+			const summaryDiv = document.getElementById('summary');
+
+			function log(testName, status, message, details = null) {
+				const div = document.createElement('div');
+				div.className = `test ${status}`;
+
+				let html = `<strong>${testName}</strong>: ${message}`;
+				if (details) {
+					html += `<pre>${details}</pre>`;
+				}
+				div.innerHTML = html;
+				output.appendChild(div);
+
+				return div;
+			}
+
+			async function runTests() {
+				const results = {
+					passed: 0,
+					failed: 0,
+					total: 0,
+				};
+
+				try {
+					// Test 1: Import the kernel
+					results.total++;
+					const test1 = log(
+						'Test 1',
+						'running',
+						'Importing kernel from dist...'
+					);
+
+					const { Kernel, getWorkerConfig } = await import(
+						'./dist/index.js'
+					);
+
+					test1.className = 'test pass';
+					test1.innerHTML =
+						'<strong>Test 1</strong>: ✓ Successfully imported Kernel';
+					results.passed++;
+
+					// Test 2: Check worker config
+					results.total++;
+					const test2 = log(
+						'Test 2',
+						'running',
+						'Checking worker configuration...'
+					);
+
+					const workerConfig = getWorkerConfig();
+					const configDetails = JSON.stringify(
+						{
+							processController:
+								workerConfig.processController.toString(),
+							pumpWorker: workerConfig.pumpWorker.toString(),
+							wasmfsWorker: workerConfig.wasmfsWorker.toString(),
+						},
+						null,
+						2
+					);
+
+					test2.className = 'test pass';
+					test2.innerHTML =
+						'<strong>Test 2</strong>: ✓ Worker config loaded<pre>' +
+						configDetails +
+						'</pre>';
+					results.passed++;
+
+					// Test 3: Check SharedArrayBuffer availability
+					results.total++;
+					const test3 = log(
+						'Test 3',
+						'running',
+						'Checking SharedArrayBuffer availability...'
+					);
+
+					const hasSharedArrayBuffer =
+						typeof SharedArrayBuffer !== 'undefined';
+					const sabMessage = hasSharedArrayBuffer
+						? '✓ SharedArrayBuffer is available'
+						: '⚠ SharedArrayBuffer not available (CORS headers may not be set correctly)';
+
+					test3.className = 'test pass';
+					test3.innerHTML = `<strong>Test 3</strong>: ${sabMessage}`;
+					results.passed++;
+
+					//Note: Atomics.wait() is not allowed on the main thread in browsers,
+					// so the kernel will use in-memory filesystem without SharedArrayBuffer-based sync
+
+					// Test 4: Verify build artifacts
+					results.total++;
+					const test4 = log(
+						'Test 4',
+						'running',
+						'Verifying build includes all required files...'
+					);
+
+					// Check that workers are accessible
+					try {
+						const workerTests = [
+							fetch('./dist/workers/process-controller.js').then(
+								(r) => r.ok
+							),
+							fetch('./dist/workers/pump-worker.js').then(
+								(r) => r.ok
+							),
+							fetch('./dist/wasmfs-fs.wasm').then((r) => r.ok),
+							fetch('./dist/flash_wasm_demo_bg.wasm').then(
+								(r) => r.ok
+							),
+						];
+						const workerResults = await Promise.all(workerTests);
+						const allWorkersAvailable = workerResults.every(
+							(r) => r
+						);
+
+						if (allWorkersAvailable) {
+							test4.className = 'test pass';
+							test4.innerHTML =
+								'<strong>Test 4</strong>: ✓ All worker bundles and WASM files are accessible';
+							results.passed++;
+						} else {
+							throw new Error(
+								'Some worker files or WASM files are missing'
+							);
+						}
+					} catch (error) {
+						throw new Error(
+							`Failed to verify build artifacts: ${error.message}`
+						);
+					}
+
+					// Test 5: Run kernel tests in a dedicated worker
+					results.total++;
+					const test5 = log(
+						'Test 5',
+						'running',
+						'Spawning dedicated test worker for kernel operations...'
+					);
+
+					const testWorker = new Worker('./smoke-test-worker.js', {
+						type: 'module',
+					});
+
+					const workerTestResults = await new Promise(
+						(resolve, reject) => {
+							const workerLogs = [];
+							const timeout = setTimeout(() => {
+								testWorker.terminate();
+								reject(
+									new Error(
+										'Worker test timeout after 30 seconds'
+									)
+								);
+							}, 30000);
+
+							testWorker.onmessage = (e) => {
+								if (e.data.type === 'ready') {
+									// Worker is ready, start tests
+									testWorker.postMessage({ type: 'start' });
+								} else if (e.data.type === 'log') {
+									workerLogs.push(
+										e.data.message +
+											(e.data.data
+												? ': ' + e.data.data
+												: '')
+									);
+								} else if (e.data.type === 'complete') {
+									clearTimeout(timeout);
+									testWorker.terminate();
+									resolve({
+										success: e.data.success,
+										logs: workerLogs,
+										error: e.data.error,
+										stack: e.data.stack,
+									});
+								}
+							};
+
+							testWorker.onerror = (error) => {
+								clearTimeout(timeout);
+								testWorker.terminate();
+								reject(
+									new Error('Worker error: ' + error.message)
+								);
+							};
+						}
+					);
+
+					if (workerTestResults.success) {
+						test5.className = 'test pass';
+						const logsHtml = workerTestResults.logs
+							.map((l) => `  ${l}`)
+							.join('\n');
+						test5.innerHTML =
+							'<strong>Test 5</strong>: ✓ Worker tests completed successfully<pre>' +
+							logsHtml +
+							'</pre>';
+						results.passed++;
+					} else {
+						throw new Error(
+							'Worker tests failed: ' +
+								workerTestResults.error +
+								'\n' +
+								(workerTestResults.stack || '')
+						);
+					}
+				} catch (error) {
+					results.failed++;
+					log('Error', 'fail', error.message, error.stack);
+				}
+
+				// Display summary
+				const allPassed =
+					results.failed === 0 && results.passed === results.total;
+				summaryDiv.className = `summary ${allPassed ? 'pass' : 'fail'}`;
+				summaryDiv.innerHTML = `
+                <div>Tests: ${results.passed}/${results.total} passed</div>
+                ${
+					results.failed > 0
+						? `<div>Failed: ${results.failed}</div>`
+						: ''
+				}
+                <div>${
+					allPassed ? '✓ ALL TESTS PASSED' : '✗ SOME TESTS FAILED'
+				}</div>
+            `;
+
+				// Exit with appropriate code for CI
+				if (!allPassed) {
+					console.error('Smoke tests failed');
+					// In a real browser automation context, this would signal failure
+				} else {
+					console.log('All smoke tests passed!');
+				}
+
+				return allPassed;
+			}
+
+			// Run tests on load
+			runTests().then((passed) => {
+				console.log(
+					'Smoke test completed:',
+					passed ? 'PASSED' : 'FAILED'
+				);
+			});
+		</script>
+	</body>
+</html>

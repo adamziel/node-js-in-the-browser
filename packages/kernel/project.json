@@ -1,0 +1,44 @@
+{
+	"name": "@adamziel/kernel",
+	"$schema": "../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "packages/kernel",
+	"projectType": "library",
+	"tags": ["type:library"],
+	"targets": {
+		"build": {
+			"executor": "nx:run-commands",
+			"outputs": ["{workspaceRoot}/dist/kernel"],
+			"options": {
+				"command": "tsup",
+				"cwd": "packages/kernel"
+			},
+			"configurations": {
+				"production": {
+					"command": "NODE_ENV=production tsup"
+				}
+			}
+		},
+		"dev": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "vite & (cd app/programs/node-loader && node build.js --watch) & wait",
+				"cwd": "packages/kernel"
+			}
+		},
+		"test": {
+			"executor": "nx:run-commands",
+			"options": {
+				"command": "vitest run",
+				"cwd": "packages/kernel"
+			}
+		},
+		"test:smoke": {
+			"executor": "nx:run-commands",
+			"dependsOn": ["build"],
+			"options": {
+				"command": "node smoke-test.js",
+				"cwd": "packages/kernel"
+			}
+		}
+	}
+}
