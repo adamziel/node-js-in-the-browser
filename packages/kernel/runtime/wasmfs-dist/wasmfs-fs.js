@@ -67,10 +67,26 @@ async function createWasmFSModule(moduleArg = {}) {
 	var _scriptName = import.meta.url;
 
 	// `/` should be present at the end if `scriptDirectory` is not empty
+	var wasmfsWorkerOverride =
+		typeof globalThis !== 'undefined' &&
+		globalThis.__kernelWasmfsWorkerSource &&
+		typeof globalThis.__kernelWasmfsWorkerSource === 'object'
+			? globalThis.__kernelWasmfsWorkerSource
+			: null;
 	var scriptDirectory = '';
 	function locateFile(path) {
 		if (Module['locateFile']) {
 			return Module['locateFile'](path, scriptDirectory);
+		}
+		if (
+			wasmfsWorkerOverride &&
+			typeof wasmfsWorkerOverride.baseUrl === 'string'
+		) {
+			try {
+				return new URL(path, wasmfsWorkerOverride.baseUrl).href;
+			} catch {
+				// Ignore resolution failures and fall back to default logic.
+			}
 		}
 		return scriptDirectory + path;
 	}
@@ -133,7 +149,9 @@ async function createWasmFSModule(moduleArg = {}) {
 					!isFileURI(url),
 					'readAsync does not work with file:// URLs'
 				);
-				var response = await fetch(url, { credentials: 'same-origin' });
+				var response = await (globalThis.realFetch || fetch)(url, {
+					credentials: 'same-origin',
+				});
 				if (response.ok) {
 					return response.arrayBuffer();
 				}
@@ -790,7 +808,7 @@ async function createWasmFSModule(moduleArg = {}) {
 	async function instantiateAsync(binary, binaryFile, imports) {
 		if (!binary) {
 			try {
-				var response = fetch(binaryFile, {
+				var response = (globalThis.realFetch || fetch)(binaryFile, {
 					credentials: 'same-origin',
 				});
 				var instantiationResult =
@@ -1150,6 +1168,59 @@ async function createWasmFSModule(moduleArg = {}) {
 		return '0x' + ptr.toString(16).padStart(8, '0');
 	};
 
+	const createSameOriginModuleWorker = (target, options) => {
+		const workerOptions = { ...(options || {}), type: 'classic' };
+		if (
+			wasmfsWorkerOverride &&
+			typeof wasmfsWorkerOverride.source === 'string'
+		) {
+			const blob = new Blob([wasmfsWorkerOverride.source], {
+				type: 'application/javascript',
+			});
+			const blobUrl = URL.createObjectURL(blob);
+			try {
+				return new Worker(blobUrl, workerOptions);
+			} finally {
+				setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+			}
+		}
+		try {
+			const resolved =
+				typeof target === 'string'
+					? new URL(target, import.meta.url)
+					: target;
+			const origin =
+				typeof self !== 'undefined' &&
+				self.location &&
+				typeof self.location.origin === 'string'
+					? self.location.origin
+					: null;
+			if (
+				origin &&
+				typeof resolved === 'object' &&
+				'origin' in resolved &&
+				resolved.origin !== origin &&
+				typeof Blob === 'function'
+			) {
+				const blobSource = `import ${JSON.stringify(
+					resolved.href ?? resolved.toString()
+				)};`;
+				const blob = new Blob([blobSource], {
+					type: 'application/javascript',
+				});
+				const blobUrl = URL.createObjectURL(blob);
+				try {
+					return new Worker(blobUrl, workerOptions);
+				} finally {
+					setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+				}
+			}
+			return new Worker(resolved, workerOptions);
+		} catch (error) {
+			return new Worker(target, workerOptions);
+		}
+	};
+
 	var PThread = {
 		unusedWorkers: [],
 		runningWorkers: [],
@@ -1344,7 +1415,7 @@ async function createWasmFSModule(moduleArg = {}) {
 			// URL to import from the server (e.g., for webpack the file:// path).
 			// See https://github.com/webpack/webpack/issues/12638
 			else
-				worker = new Worker(
+				worker = createSameOriginModuleWorker(
 					/* @vite-ignore */ new URL('wasmfs-fs.js', import.meta.url),
 					/* @vite-ignore */ {
 						type: 'module',

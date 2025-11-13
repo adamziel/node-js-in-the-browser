@@ -292,7 +292,10 @@ async function unzipToKernelDirectory(
 	targetDirectory: string
 ) {
 	// Read the zip file from the kernel filesystem
-	const zipData = kernel.readFileSync(zipPath, undefined) as Uint8Array;
+	const zipData = (await kernel.readFileSync(
+		zipPath,
+		undefined
+	)) as Uint8Array;
 
 	// Unzip the data
 	const unzipped = await unzip(zipData);

@@ -24,6 +24,10 @@ const extensionHostWorkerPatch = String.raw`
   }
   globalThis.RealWorker = realWorker;
 
+  if(globalThis.fetch && !globalThis.realFetch) {
+    globalThis.realFetch = globalThis.fetch;
+  }
+
   const toUrlString = (value) => {
     if (typeof value === 'string') {
       return value;
@@ -111,6 +115,18 @@ const credentials = {
 };
 
 const kernelHostDir = path.join(__dirname, 'kernel-host');
+const repoRoot = path.join(__dirname, '..', '..');
+const kernelDistDir = path.join(__dirname, '..', 'web-extensions', 'dist');
+
+const applyIsolationHeaders = (headers) => {
+	if (!headers['Cross-Origin-Opener-Policy']) {
+		headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+	}
+	if (!headers['Cross-Origin-Embedder-Policy']) {
+		headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+	}
+	return headers;
+};
 
 const proxy = httpProxy.createProxyServer({
 	target: { host: targetHost, port: targetPort, protocol: 'http:' },
@@ -126,13 +142,6 @@ proxy.on('proxyReq', (proxyReq, req) => {
 });
 
 proxy.on('proxyRes', (proxyRes, req, res) => {
-	// if (!proxyRes.headers['Cross-Origin-Opener-Policy']) {
-	// 	proxyRes.headers['Cross-Origin-Opener-Policy'] = 'same-origin';
-	// }
-	// if (!proxyRes.headers['Cross-Origin-Embedder-Policy']) {
-	// 	proxyRes.headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
-	// }
-
 	const contentType = proxyRes.headers['content-type'] || '';
 	const encoding = proxyRes.headers['content-encoding'];
 	const pathname = req.url ? req.url.split('?')[0] : '';
@@ -150,12 +159,14 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 		(pathname || '').includes('extensionHostWorkerMain');
 
 	if (!wantsWorkerPatch && !wantsCspHeaderPatch) {
-		res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
+		const headers = applyIsolationHeaders({ ...proxyRes.headers });
+		res.writeHead(proxyRes.statusCode || 500, headers);
 		proxyRes.pipe(res);
 		return;
 	}
 
 	const chunks = [];
+
 	proxyRes.on('data', (chunk) => chunks.push(chunk));
 	proxyRes.on('end', () => {
 		let body = Buffer.concat(chunks).toString('utf8');
@@ -179,7 +190,7 @@ proxy.on('proxyRes', (proxyRes, req, res) => {
 				body = `${extensionHostWorkerPatch}\n${body}`;
 			}
 		}
-		const headers = { ...proxyRes.headers };
+		const headers = applyIsolationHeaders({ ...proxyRes.headers });
 		headers['content-length'] = Buffer.byteLength(body);
 		res.writeHead(proxyRes.statusCode || 200, headers);
 		res.end(body);
@@ -195,12 +206,23 @@ proxy.on('error', (error, req, res) => {
 	res.end(message);
 });
 
-const serveKernelAsset = (req, res) => {
+const buildCorsHeaders = (req) => {
+	const origin = req.headers.origin;
+	if (typeof origin === 'string' && origin.startsWith('https://')) {
+		return {
+			'Access-Control-Allow-Origin': origin,
+			'Access-Control-Allow-Credentials': 'true',
+		};
+	}
+	return { 'Access-Control-Allow-Origin': '*' };
+};
+
+const serveStaticFrom = (req, res, baseDir, routePrefix) => {
 	const pathname = req.url ? req.url.split('?')[0] : '';
-	const relative = pathname.slice('/kernel-host/'.length);
-	const resolved = path.join(kernelHostDir, relative);
+	const relative = pathname.slice(routePrefix.length);
+	const resolved = path.join(baseDir, relative);
 	const normalized = path.normalize(resolved);
-	if (!normalized.startsWith(kernelHostDir) || !fs.existsSync(normalized)) {
+	if (!normalized.startsWith(baseDir) || !fs.existsSync(normalized)) {
 		res.writeHead(404, { 'Content-Type': 'text/plain' });
 		res.end('Not Found');
 		return true;
@@ -217,12 +239,18 @@ const serveKernelAsset = (req, res) => {
 	res.writeHead(200, {
 		'Content-Type': type,
 		'Content-Length': stat.size,
-		'Cross-Origin-Opener-Policy': 'same-origin',
-		'Cross-Origin-Embedder-Policy': 'require-corp',
+		...applyIsolationHeaders({}),
+		...buildCorsHeaders(req),
 	});
 	fs.createReadStream(normalized).pipe(res);
 	return true;
 };
+
+const serveKernelHostAsset = (req, res) =>
+	serveStaticFrom(req, res, kernelHostDir, '/kernel-host/');
+
+const serveKernelDistAsset = (req, res) =>
+	serveStaticFrom(req, res, kernelDistDir, '/kernel/');
 
 const handleCorsProxy = (req, res) => {
 	// Handle preflight requests
@@ -376,7 +404,11 @@ const server = https.createServer(credentials, (req, res) => {
 		return;
 	}
 	if (pathname.startsWith('/kernel-host/')) {
-		serveKernelAsset(req, res);
+		serveKernelHostAsset(req, res);
+		return;
+	}
+	if (pathname.startsWith('/kernel/')) {
+		serveKernelDistAsset(req, res);
 		return;
 	}
 	proxy.web(req, res);

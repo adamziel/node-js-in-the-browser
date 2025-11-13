@@ -1,23 +1,27 @@
-import type { Kernel } from '@adamziel/kernel';
-
-type KernelConstructor = new () => Kernel;
-type BusyboxInstaller = (kernel: Kernel, path?: string) => void;
+import * as vscode from 'vscode';
+import { KernelWorkerProxy } from './kernelWorkerProxy';
 
 /**
  * Manages the kernel instance lifecycle
+ * Now uses KernelWorkerProxy to run kernel in unsandboxed worker for origin isolation support
  */
 export class KernelManager {
-	private kernel: Kernel | null = null;
+	private kernel: any | null = null;
 	private initializationPromise: Promise<void> | null = null;
+	private workerProxy: KernelWorkerProxy | null = null;
+	private context: vscode.ExtensionContext | null = null;
 
-	constructor(
-		private readonly KernelCtor: KernelConstructor,
-		private readonly installBusyboxFn: BusyboxInstaller
-	) {}
-
-	async initialize(): Promise<void> {
+	async initialize(context?: vscode.ExtensionContext): Promise<void> {
 		if (this.initializationPromise) {
 			return this.initializationPromise;
+		}
+
+		if (context) {
+			this.context = context;
+		}
+
+		if (!this.context) {
+			throw new Error('ExtensionContext required for first initialization');
 		}
 
 		this.initializationPromise = this.doInitialize();
@@ -25,28 +29,14 @@ export class KernelManager {
 	}
 
 	private async doInitialize(): Promise<void> {
-		console.log('[KernelManager] Initializing kernel...');
+		console.log('[KernelManager] Initializing kernel in worker...');
 
-		// Create kernel instance
-		this.kernel = new this.KernelCtor();
+		// Create worker proxy
+		this.workerProxy = new KernelWorkerProxy();
+		await this.workerProxy.initialize(this.context!);
 
-		// Set up basic environment
-		this.kernel.setEnv('HOME', '/home');
-		this.kernel.setEnv('USER', 'user');
-		this.kernel.setEnv('SHELL', '/bin/sh');
-		this.kernel.setEnv('TERM', 'xterm-256color');
-		this.kernel.setEnv('PATH', '/bin:/usr/bin');
-
-		// Create basic directory structure
-		this.kernel.mkdirSync('/home', { mode: 0o755, recursive: true });
-		this.kernel.mkdirSync('/tmp', { mode: 0o777, recursive: true });
-		this.kernel.mkdirSync('/usr/bin', { mode: 0o755, recursive: true });
-		this.kernel.mkdirSync('/etc', { mode: 0o755, recursive: true });
-		this.kernel.mkdirSync('/var', { mode: 0o755, recursive: true });
-
-		// Install busybox commands
-		console.log('[KernelManager] Installing busybox...');
-		this.installBusyboxFn(this.kernel);
+		// Get the proxied kernel instance
+		this.kernel = this.workerProxy.getKernel();
 
 		console.log('[KernelManager] Kernel initialization complete');
 	}
@@ -58,19 +48,24 @@ export class KernelManager {
 		await this.initialize();
 	}
 
-	getKernel(): Kernel {
+	getKernel(): any {
 		if (!this.kernel) {
 			throw new Error('Kernel not initialized. Call initialize() first.');
 		}
 		return this.kernel;
 	}
 
+	isInitialized(): boolean {
+		return this.workerProxy?.isInitialized() ?? false;
+	}
+
 	dispose(): void {
-		if (this.kernel) {
-			console.log('[KernelManager] Disposing kernel...');
-			this.kernel.dispose();
-			this.kernel = null;
+		if (this.workerProxy) {
+			console.log('[KernelManager] Disposing kernel worker...');
+			this.workerProxy.dispose();
+			this.workerProxy = null;
 		}
+		this.kernel = null;
 		this.initializationPromise = null;
 	}
 }

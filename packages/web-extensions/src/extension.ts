@@ -4,7 +4,6 @@ import { KernelFileSystemProvider } from './kernelFileSystemProvider';
 import { KernelTerminalProvider } from './kernelTerminalProvider';
 import { KernelGitProvider } from './gitProvider';
 import { GitSourceControl } from './gitSourceControl';
-import type * as KernelModule from '@adamziel/kernel';
 import { onDidLoadKernel } from './on-did-kernel-load';
 
 let kernelManager: KernelManager;
@@ -15,82 +14,15 @@ let gitSourceControl: GitSourceControl;
 let playgroundPanel: vscode.WebviewPanel | null = null;
 let playgroundStatusBarItem: vscode.StatusBarItem | null = null;
 
-let kernelModulePromise: Promise<KernelModule> | null = null;
-function loadKernelModule(
-	context: vscode.ExtensionContext
-): Promise<KernelModule> {
-	if (!kernelModulePromise) {
-		const kernelUri = vscode.Uri.joinPath(
-			context.extensionUri,
-			'dist',
-			'kernel',
-			'index.js'
-		);
-		const kernelUrl = kernelUri.toString(true);
-		kernelModulePromise = import(
-			/* @vite-ignore */ /* webpackIgnore: true */ kernelUrl
-		) as Promise<KernelModule>;
-	}
-
-	return kernelModulePromise;
-}
-
-let nodeModulePromise: Promise<any> | null = null;
-async function loadNodeJsInstaller(
-	context: vscode.ExtensionContext
-): Promise<any> {
-	if (!nodeModulePromise) {
-		const nodeModuleUri = vscode.Uri.joinPath(
-			context.extensionUri,
-			'dist',
-			'kernel-node-js',
-			'index.js'
-		);
-		nodeModulePromise = import(
-			/* @vite-ignore */ /* webpackIgnore: true */ nodeModuleUri.toString(
-				true
-			)
-		) as Promise<any>;
-	}
-	return await nodeModulePromise;
-}
-
 export async function activate(context: vscode.ExtensionContext) {
 	console.log('Kernel VS Code extension is activating...');
 	try {
-		const kernelModule = await loadKernelModule(context);
+		// Create kernel manager (now uses worker proxy internally)
+		kernelManager = new KernelManager();
 
-		const workersBase = vscode.Uri.joinPath(
-			context.extensionUri,
-			'dist',
-			'kernel',
-			'workers'
-		);
-		kernelModule.setWorkerConfig?.({
-			processController: vscode.Uri.joinPath(
-				workersBase,
-				'process-controller.js'
-			).toString(true),
-			pumpWorker: vscode.Uri.joinPath(
-				workersBase,
-				'pump-worker.js'
-			).toString(true),
-			wasmfsWorker: vscode.Uri.joinPath(
-				workersBase,
-				'wasmfs-worker.js'
-			).toString(true),
-		});
-		kernelManager = new KernelManager(
-			kernelModule.Kernel,
-			kernelModule.installBusybox
-		);
-
-		// Initialize the kernel
-		await kernelManager.initialize();
-		console.log('Kernel initialized successfully');
-
-		const nodeInstaller = await loadNodeJsInstaller(context);
-		await nodeInstaller.installNodeJs(kernelManager.getKernel());
+		// Initialize the kernel in the unsandboxed worker
+		await kernelManager.initialize(context);
+		console.log('Kernel initialized successfully in worker');
 
 		// Register filesystem provider
 		fsProvider = new KernelFileSystemProvider(kernelManager);

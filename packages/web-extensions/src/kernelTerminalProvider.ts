@@ -76,21 +76,26 @@ class KernelTerminal implements vscode.Pseudoterminal {
 	private async startShell(): Promise<void> {
 		try {
 			const shellPath = '/bin/tty-shell';
-			if (!this.kernel.existsSync(shellPath)) {
+			if (!(await this.kernel.existsSync(shellPath))) {
 				throw new Error('tty-shell program is missing from /bin');
 			}
 
+			// Get environment variables
+			const PATH = (await this.kernel.getEnv('PATH')) || '/bin';
+			const HOME = (await this.kernel.getEnv('HOME')) || '/home';
+			const USER = (await this.kernel.getEnv('USER')) || 'user';
+
 			// Spawn the shell process
-			const result = this.kernel.spawn({
+			const result = await this.kernel.spawn({
 				argv: [shellPath, '$ '],
 				env: {
-					PATH: this.kernel.getEnv('PATH') || '/bin',
-					HOME: this.kernel.getEnv('HOME') || '/home',
-					USER: this.kernel.getEnv('USER') || 'user',
+					PATH,
+					HOME,
+					USER,
 					TERM: 'xterm-256color',
 					SHELL: shellPath,
 				},
-				cwd: this.kernel.getEnv('HOME') || '/',
+				cwd: HOME,
 				name: `terminal-${this.id}`,
 				stdio: {
 					stdin: 'pipe',

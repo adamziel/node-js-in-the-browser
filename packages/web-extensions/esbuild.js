@@ -71,10 +71,35 @@ async function copyArtifact({ label, source, target }) {
 	}
 
 	missingArtifacts.delete(source);
-	await fs.rm(target, { recursive: true, force: true });
-	await fs.mkdir(path.dirname(target), { recursive: true });
-	await fs.cp(source, target, { recursive: true, force: true });
-	console.log(`Copied ${label} into extension bundle`);
+
+	try {
+		await fs.rm(target, { recursive: true, force: true });
+		await fs.mkdir(path.dirname(target), { recursive: true });
+		await fs.cp(source, target, {
+			recursive: true,
+			force: true,
+			errorOnExist: false,
+			preserveTimestamps: false,
+		});
+		console.log(`Copied ${label} into extension bundle`);
+	} catch (error) {
+		// Ignore chmod errors on files that don't exist (race condition)
+		if (error && error.code === 'ENOENT' && error.syscall === 'chmod') {
+			console.warn(`Warning: ${label} copy encountered chmod issue, retrying...`);
+			// Retry once
+			await fs.rm(target, { recursive: true, force: true });
+			await fs.mkdir(path.dirname(target), { recursive: true });
+			await fs.cp(source, target, {
+				recursive: true,
+				force: true,
+				errorOnExist: false,
+				preserveTimestamps: false,
+			});
+			console.log(`Copied ${label} into extension bundle (retry succeeded)`);
+		} else {
+			throw error;
+		}
+	}
 }
 
 async function syncKernelArtifacts() {
@@ -117,8 +142,9 @@ const startArtifactWatcher = (scheduleCopy) => {
 	return watcher;
 };
 
-const ctx = esbuild
-	.context({
+// Build both extension and worker
+const buildConfigs = [
+	{
 		entryPoints: ['./src/extension.ts'],
 		bundle: true,
 		outfile: path.join(extensionDistPath, 'extension.js'),
@@ -145,26 +171,48 @@ const ctx = esbuild
 				},
 			},
 		],
-	})
-	.then(async (ctx) => {
+	},
+	{
+		entryPoints: ['./src/kernel-worker.ts'],
+		bundle: true,
+		outfile: path.join(extensionDistPath, 'kernel-worker.js'),
+		format: 'esm',
+		platform: 'browser',
+		target: 'es2022',
+		sourcemap: watch,
+		minify: !watch,
+		define: {
+			'process.env.NODE_ENV': watch ? '"development"' : '"production"',
+		},
+		logLevel: 'info',
+		loader: {
+			'.wasm': 'file',
+		},
+	},
+];
+
+const ctx = Promise.all(buildConfigs.map((config) => esbuild.context(config)))
+	.then(async (contexts) => {
 		if (watch) {
-			await ctx.watch({
-				async onRebuild(error) {
-					if (error) {
-						console.error('Extension rebuild failed:', error);
-						return;
-					}
-					await syncKernelArtifacts();
-				},
-			});
+			// Watch all contexts - esbuild will automatically rebuild on changes
+			await Promise.all(contexts.map((ctx) => ctx.watch()));
+
+			// Do initial build
+			await Promise.all(contexts.map((ctx) => ctx.rebuild()));
 			await syncKernelArtifacts();
+
+			// Watch for kernel artifact changes
 			const scheduleCopy = createCopyScheduler();
 			startArtifactWatcher(scheduleCopy);
+
 			console.log('Watching for changes...');
+			console.log('  - Extension source files: packages/web-extensions/src/**/*.ts');
+			console.log('  - Kernel artifacts: dist/kernel/**');
 		} else {
-			await ctx.rebuild();
+			// Build all contexts
+			await Promise.all(contexts.map((ctx) => ctx.rebuild()));
 			await syncKernelArtifacts();
-			await ctx.dispose();
+			await Promise.all(contexts.map((ctx) => ctx.dispose()));
 			console.log('Build complete!');
 		}
 	})

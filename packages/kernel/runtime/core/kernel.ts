@@ -195,7 +195,7 @@ export class Kernel extends InMemoryFileSystem {
 	private readonly hostSpawnSyncClient: SpawnSyncClient | null;
 	private readonly hostSpawnSyncCleanup: (() => void) | null;
 	private readonly atomicsWaitAllowed: boolean;
-	private fsConnectorPreference: FsConnectorPreference = 'shared';
+	private fsConnectorPreference: FsConnectorPreference = 'wasmfs';
 	private wasmFsOverridesInstalled = false;
 	private readonly defaultTerminalSize: TerminalSize = {
 		columns: 80,
@@ -615,11 +615,7 @@ export class Kernel extends InMemoryFileSystem {
 			: this.textDecoder.decode(chunk);
 	}
 
-	resolveExecutable(
-		path: string,
-		cwd: string,
-		env?: Record<string, string>
-	) {
+	resolveExecutable(path: string, cwd: string, env?: Record<string, string>) {
 		if (path.includes('/')) {
 			if (!path.startsWith('/')) {
 				path = joinPaths(cwd, path);
