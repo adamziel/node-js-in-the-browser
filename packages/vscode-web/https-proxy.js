@@ -126,6 +126,13 @@ proxy.on('proxyReq', (proxyReq, req) => {
 });
 
 proxy.on('proxyRes', (proxyRes, req, res) => {
+	// if (!proxyRes.headers['Cross-Origin-Opener-Policy']) {
+	// 	proxyRes.headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+	// }
+	// if (!proxyRes.headers['Cross-Origin-Embedder-Policy']) {
+	// 	proxyRes.headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+	// }
+
 	const contentType = proxyRes.headers['content-type'] || '';
 	const encoding = proxyRes.headers['content-encoding'];
 	const pathname = req.url ? req.url.split('?')[0] : '';
@@ -347,7 +354,23 @@ const handleCorsProxy = (req, res) => {
 };
 
 const server = https.createServer(credentials, (req, res) => {
-	const pathname = req.url ? req.url.split('?')[0] : '';
+	const fullUrl = new URL(
+		req.url || '/',
+		`https://${req.headers.host || `${publicHost}:${publicPort}`}`
+	);
+	if (
+		fullUrl.pathname === '/' &&
+		!fullUrl.searchParams.has('vscode-coi') &&
+		(fullUrl.searchParams.has('folder') ||
+			fullUrl.searchParams.has('payload'))
+	) {
+		fullUrl.searchParams.set('vscode-coi', '3');
+		res.writeHead(307, { Location: fullUrl.toString() });
+		res.end();
+		return;
+	}
+
+	const pathname = fullUrl.pathname;
 	if (pathname.startsWith('/proxy/')) {
 		handleCorsProxy(req, res);
 		return;

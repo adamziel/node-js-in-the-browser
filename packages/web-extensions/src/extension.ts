@@ -2,12 +2,18 @@ import * as vscode from 'vscode';
 import { KernelManager } from './kernelManager';
 import { KernelFileSystemProvider } from './kernelFileSystemProvider';
 import { KernelTerminalProvider } from './kernelTerminalProvider';
+import { KernelGitProvider } from './gitProvider';
+import { GitSourceControl } from './gitSourceControl';
 import type * as KernelModule from '@adamziel/kernel';
 import { onDidLoadKernel } from './on-did-kernel-load';
 
 let kernelManager: KernelManager;
 let fsProvider: KernelFileSystemProvider;
 let terminalProvider: KernelTerminalProvider;
+let gitProvider: KernelGitProvider;
+let gitSourceControl: GitSourceControl;
+let playgroundPanel: vscode.WebviewPanel | null = null;
+let playgroundStatusBarItem: vscode.StatusBarItem | null = null;
 
 let kernelModulePromise: Promise<KernelModule> | null = null;
 function loadKernelModule(
@@ -108,6 +114,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		await ensureKernelTerminalDefault();
 
+		// Register Git provider (commands)
+		gitProvider = new KernelGitProvider(kernelManager, context);
+		gitProvider.registerCommands(context);
+		await gitProvider.restoreLastRemoteRepository();
+		console.log('Kernel Git provider registered');
+
+		// Register Git Source Control
+		gitSourceControl = new GitSourceControl(kernelManager);
+		gitSourceControl.registerCommands(context);
+		await gitSourceControl.initialize();
+		console.log('Git Source Control provider registered');
+
 		// Register commands
 		context.subscriptions.push(
 			vscode.commands.registerCommand('kernel.openTerminal', async () => {
@@ -130,6 +148,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		);
 
 		ensureKernelWorkspaceFolder();
+		initializePlaygroundPreview(context);
 
 		// Optionally auto-open a terminal on first activation
 		const config = vscode.workspace.getConfiguration('kernel');
@@ -150,6 +169,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
 	console.log('Kernel VS Code extension is deactivating...');
+
+	if (playgroundPanel) {
+		playgroundPanel.dispose();
+		playgroundPanel = null;
+	}
+
+	if (playgroundStatusBarItem) {
+		playgroundStatusBarItem.dispose();
+		playgroundStatusBarItem = null;
+	}
+
+	if (gitSourceControl) {
+		gitSourceControl.dispose();
+	}
+
+	if (gitProvider) {
+		gitProvider.dispose();
+	}
 
 	if (terminalProvider) {
 		terminalProvider.dispose();
@@ -203,4 +240,113 @@ async function ensureKernelTerminalDefault() {
 	} catch (error) {
 		console.warn('Kernel: unable to launch terminal profile', error);
 	}
+}
+
+function initializePlaygroundPreview(context: vscode.ExtensionContext) {
+	if (!playgroundStatusBarItem) {
+		playgroundStatusBarItem = vscode.window.createStatusBarItem(
+			vscode.StatusBarAlignment.Right,
+			100
+		);
+		playgroundStatusBarItem.text = '$(browser) Playground Preview';
+		playgroundStatusBarItem.tooltip =
+			'Open the WordPress Playground preview';
+		playgroundStatusBarItem.command = 'kernel.openPlaygroundPreview';
+		playgroundStatusBarItem.show();
+		context.subscriptions.push(playgroundStatusBarItem);
+	}
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('kernel.openPlaygroundPreview', () => {
+			openPlaygroundPreview(context);
+		})
+	);
+
+	openPlaygroundPreview(context);
+}
+
+function openPlaygroundPreview(context: vscode.ExtensionContext) {
+	if (playgroundPanel) {
+		playgroundPanel.reveal(undefined, true);
+		return;
+	}
+
+	playgroundPanel = vscode.window.createWebviewPanel(
+		'kernel.playgroundPreview',
+		'Playground Preview',
+		{ viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+		{
+			enableScripts: true,
+			retainContextWhenHidden: true,
+		}
+	);
+	playgroundPanel.webview.html = getPlaygroundPreviewHtml();
+	context.subscriptions.push(playgroundPanel);
+	playgroundPanel.onDidDispose(
+		() => {
+			playgroundPanel = null;
+		},
+		null,
+		context.subscriptions
+	);
+}
+
+function getPlaygroundPreviewHtml() {
+	const playgroundUrl = 'https://playground.wordpress.net';
+	return /* html */ `<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Playground Preview</title>
+		<style>
+			:root {
+				color-scheme: light dark;
+			}
+			html,
+			body {
+				width: 100%;
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+			}
+			body {
+				display: flex;
+				flex-direction: column;
+				background: var(--vscode-editor-background, #1e1e1e);
+				color: var(--vscode-editor-foreground, #f3f3f3);
+			}
+			body.vscode-light {
+				background: var(--vscode-editor-background, #ffffff);
+				color: var(--vscode-editor-foreground, #111111);
+			}
+			body.vscode-high-contrast {
+				background: #000000;
+				color: #ffffff;
+			}
+			iframe {
+				flex: 1;
+				width: 100%;
+				border: 0;
+				background: #ffffff;
+			}
+			.loading-text {
+				padding: 0.5rem 1rem;
+				text-align: center;
+				font-size: 0.9rem;
+				opacity: 0.8;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="loading-text" id="playground-loading">Loading WordPress Playground…</div>
+		<iframe
+			src="${playgroundUrl}"
+			title="WordPress Playground Preview"
+			allow="clipboard-read; clipboard-write; fullscreen; geolocation; microphone; camera; display-capture"
+			onload="const el = document.getElementById('playground-loading'); if (el) { el.textContent = 'WordPress Playground is ready.'; el.style.opacity = '0.4'; }"
+		></iframe>
+	</body>
+</html>`;
 }
